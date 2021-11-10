@@ -15,8 +15,11 @@
 # script to load spatial data for fisher (provincial scale)
 # written by Joanna Burgar (Joanna.Burgar@gov.bc.ca) - 09-Nov-2021
 #####################################################################################
+version$major
+version$minor
+R_version <- paste0("R-",version$major,".",version$minor)
 
-.libPaths("C:/Program Files/R/R-4.1.1/library") # to ensure reading/writing libraries from C drive
+.libPaths(paste0("C:/Program Files/R/",R_version,"/library")) # to ensure reading/writing libraries from C drive
 tz = Sys.timezone() # specify timezone in BC
 
 # Load Packages
@@ -41,6 +44,9 @@ retrieve_geodata_aoi <- function (ID=ID){
 }
 
 #####################################################################################
+
+aoi <- st_read(dsn=paste0(getwd(),"/data"), layer="FHE_two_pops")
+aoi
 
 # first find the general aoi (will refine)
 ecoprov <- ecoprovinces() %>% filter(ECOPROVINCE_CODE %in% c("BOP","SBI","CEI"))
@@ -105,16 +111,14 @@ aoi.sub$habitat <- ifelse(aoi.sub$ecoprov=="BOREAL PLAINS" & grepl("BWBSdk|BWBSm
                                         ifelse(aoi.sub$ecoprov=="CENTRAL INTERIOR" & grepl("SBPSxc|SBPSmc|SBPSdc|SBPSmk|IDFdk|IDFmw|IDFdw|IDFww|MSxc|MSxk|MSdv|MSdm|MSdk|MSdc|ICHmk|ICHmw|ICHmk|SBSdw|SBSmc", aoi.sub$MAP_LABEL),
                                                1,0))))
 
-
-aoi.fisher.habitat <- aoi.sub %>% filter(habitat==1) %>%
-  summarise(across(geometry, ~ st_combine(.))) %>%
-  summarise(across(geometry, ~ st_union(.)))
-
-
-ggplot()+
-  # geom_sf(data = aoi)+
-  geom_sf(data=aoi.fisher.habitat)
-
-glimpse(aoi.fisher.habitat)
-st_write(aoi.sub, dsn=paste0(getwd(),"/out/aoi.fisher.habitat.kml"))
+# not really what I'm wanting....probably best to just see if I can get the fisher distribution shapefile from someone else
+# aoi.fisher.habitat <- aoi.sub %>% filter(habitat==1) %>% st_combine() %>% st_union(by_feature=FALSE, is_coverage=TRUE)
+# aoi.fisher.habitat <- aoi.fisher.habitat %>% st_zm(drop=TRUE, what="ZM")
+#
+# ggplot()+
+#   # geom_sf(data = aoi)+
+#   geom_sf(data=aoi.fisher.habitat)
+#
+# glimpse(aoi.fisher.habitat)
+# st_write(aoi.fisher.habitat, dsn=paste0(getwd(),"/out/aoi.fisher.habitat.kml"), delete_layer=TRUE)
 
