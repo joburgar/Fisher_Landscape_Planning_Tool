@@ -11,9 +11,9 @@
 # See the License for the specific language governing permissions and limitations under the License.
 #
 #####################################################################################
-# 00_BBN_tutorial.R
-# script to run through Bayesian Belief Network tutorials
-# collated by Joanna Burgar (Joanna.Burgar@gov.bc.ca) - 09-Nov-2021
+# 00_NetLogoR_tutorial.R
+# script to run through NetLogoR tutorials
+# collated by Joanna Burgar (Joanna.Burgar@gov.bc.ca) - 08-Dec-2021
 #####################################################################################
 rversion <- R.Version()
 libpath_path <- paste0("C:/Program Files/R/R-",rversion$major,".",rversion$minor,"/library")
