@@ -71,7 +71,6 @@ fisher.bec.zones <- c("CWH","ICH","IDF","BWBS","MS","SBPS","SBS")
 fisher.bec.subzones <- c("BWBSdk|BWBSmw|BWBSwk|SBSwk|ICHwc|SBSmc|SBSmh|SBSmk|SBSmm|SBSmw|SBSdh|SBSdk|SBSdw|SBPSxc|SBPSmc|SBPSdc|SBPSmk|IDFdk|IDFmw|IDFdw|IDFww|
 MSxc|MSxk|MSdv|MSdm|MSdk|MSdc|ICHmk|ICHmw")
 
-
 aoi.BEC <- bec() %>% st_intersection(aoi) %>% filter(ZONE %in% fisher.bec.zones) %>% filter(grepl(fisher.bec.subzones, MAP_LABEL))
 aoi.BEC %>% count(ZONE) %>% st_drop_geometry()
 
@@ -96,9 +95,7 @@ summary(aoi.BEC$ecoprov)
 
 aoi.sub <- aoi.BEC %>% filter(str_detect(MAP_LABEL, fisher.bec.subzones))
 aoi.sub$ecoprov <- as.character(aoi.sub$ecoprov)
-aoi.sub %>% filter(ecoprov=="BOREAL PLAINS") %>% filter(str_detect(MAP_LABEL, "BWBSdk|BWBSmw|BWBSwk|SBSwk|ICHwc"))
 
-glimpse(aoi.sub)
 aoi.sub$habitat <- ifelse(aoi.sub$ecoprov=="BOREAL PLAINS" & grepl("BWBSdk|BWBSmw|BWBSwk|SBSwk|ICHwc", aoi.sub$MAP_LABEL), 1,
                           ifelse(aoi.sub$ecoprov=="SUB-BOREAL INTERIOR" & grepl("CWH|ICH|IDF", aoi.sub$MAP_LABEL),1,
                                  ifelse(aoi.sub$ecoprov=="SUB-BOREAL INTERIOR" & grepl("SBSwk|SBSmc|SBSmh|SBSmk|SBSmm|SBSmw|SBSdh|SBSdk|SBSdw", aoi.sub$MAP_LABEL),1,
@@ -111,10 +108,11 @@ aoi.fisher.habitat <- aoi.sub %>% filter(habitat==1) %>%
   summarise(across(geometry, ~ st_union(.)))
 
 
+aoi2 <- aoi.BEC %>% st_intersection(aoi.fisher.habitat)
+
 ggplot()+
-  # geom_sf(data = aoi)+
-  geom_sf(data=aoi.fisher.habitat)
+  geom_sf(data = aoi, color="blue")+
+  geom_sf(data=aoi2, color="red")
 
-glimpse(aoi.fisher.habitat)
-st_write(aoi.sub, dsn=paste0(getwd(),"/out/aoi.fisher.habitat.kml"))
-
+rm(aoi)
+save.image("01_load.RData")
