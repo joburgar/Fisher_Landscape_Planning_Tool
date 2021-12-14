@@ -108,7 +108,6 @@ aoi.sub$habitat <- ifelse(aoi.sub$ecoprov=="BOREAL PLAINS" & grepl("BWBSdk|BWBSm
                                         ifelse(aoi.sub$ecoprov=="CENTRAL INTERIOR" & grepl("SBPSxc|SBPSmc|SBPSdc|SBPSmk|IDFdk|IDFmw|IDFdw|IDFww|MSxc|MSxk|MSdv|MSdm|MSdk|MSdc|ICHmk|ICHmw|ICHmk|SBSdw|SBSmc", aoi.sub$MAP_LABEL),
                                                1,0))))
 
-<<<<<<< HEAD
 
 aoi.fisher.habitat <- aoi.sub %>% filter(habitat==1) %>%
   summarise(across(geometry, ~ st_combine(.))) %>%
@@ -120,7 +119,7 @@ aoi2 <- aoi.BEC %>% st_intersection(aoi.fisher.habitat)
 ggplot()+
   geom_sf(data = aoi, color="blue")+
   geom_sf(data=aoi2, color="red")
-=======
+
 # not really what I'm wanting....probably best to just see if I can get the fisher distribution shapefile from someone else
 # aoi.fisher.habitat <- aoi.sub %>% filter(habitat==1) %>% st_combine() %>% st_union(by_feature=FALSE, is_coverage=TRUE)
 # aoi.fisher.habitat <- aoi.fisher.habitat %>% st_zm(drop=TRUE, what="ZM")
@@ -131,7 +130,6 @@ ggplot()+
 #
 # glimpse(aoi.fisher.habitat)
 # st_write(aoi.fisher.habitat, dsn=paste0(getwd(),"/out/aoi.fisher.habitat.kml"), delete_layer=TRUE)
->>>>>>> 6f8ecd6ccfb08aded52513d801261a12b40778a6
 
 rm(aoi)
 save.image("01_load.RData")
