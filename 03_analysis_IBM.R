@@ -77,28 +77,57 @@ t1 <- turtlesOwn(turtles = t1, tVar = c("sex"), tVal = c(rep("F", each=10)))
 t1 <- turtlesOwn(turtles = t1, tVar = c("disperse"), tVal = c(rep("E", each=10)))
 
 
-# MODEL
+###--- MODEL FUNCTIONS
 # Empirical / expert data as inputs
 # use the denning rate and mean litter size to determine number of kits produced
 # for Central Interior - denning rate mean = 0.54; sd = 0.41
 # for Central Inerior - litter size mean = 1.7; sd = 0.73
+# create a reproduce function
 
+###--- REPRODUCE
+reproduce <- function(fishers, denM=0.54, denSD=0.41, ltrM=1.7, ltrSD=0.73) {
+
+  # Randomly selection for which adult females reproduce, based on denning mean and SD (Central Interior)
+  whoFishers <- of(agents = fishers, var = c("who","breed","sex")) # "who" of the fishers before they reproduce
+  whoAFFishers <- whoFishers %>% filter(breed=="adult" & sex=="F") %>% dplyr::select(who)
+
+  repro <- rnorm(n = nrow(whoAFFishers), mean=denM, sd=denSD) > 0.5
+  whoAFFishers$repro <- repro
+
+  reproWho <- whoAFFishers %>% filter(repro==TRUE) # "who" of fishers which reproduce
+  reproInd <- turtle(fishers, who = reproWho$who) # fishers which reproduce
+
+  # if there is at least one fisher reproducing
+  # have those fishers have offspring, based on the mean and sd of litter size for Central Interior
+  if (NLcount(reproInd) != 0) {
+    # energyTurtles <- of(agents = reproInd, var = "energy") # might want to consider this for quality habitat
+    # # Divide the energy between the parent and offspring
+    # turtles <- NLset(turtles = turtles, agents = reproInd, var = "energy",
+    #                  val = energyTurtles / 2)
+    fishers <- hatch(turtles = fishers, who = reproWho$who, n=round(rnorm(n=1, mean=ltrM, sd=ltrSD)),breed="juvenile") # litter size based on Central Interior data
+
+    whoNewFishers <- of(agents = fishers, var = "who") # "who" of the turtles after they reproduced
+    whoOffspring <- fishers[fishers$breed=="juvenile",]$who # "who" of offspring
+    offspring <- turtle(turtles = fishers, who = whoOffspring)
+
+    # assign 50/50 male/female offspring, assign them all as dispersing
+    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "sex", val = sample(c("F","M"),NLcount(offspring),replace=TRUE))
+    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "disperse", val = "D")
+
+  }
+
+  return(fishers)
+}
+
+
+###--- DISPERSE
 # Have the female fisher move 30 times within dispersal season
 # If she finds a good habitat cell without another female, she can take it
 # Otherwise she keeps dispersing
 
 distRate = 1.0
 
-# Create a new variable for kits to establish territory or keep dispersing
-tcount <- turtlesOwn(turtles = t2, tVar = "Disperse", tVal=c(rep("D",nrow(t2))))
 
-# if (params(sim)$WolfSheepPredation$grassOn == TRUE) {
-#   grassRas <- sim$field[["grass"]]
-#   Plot(grassRas, na.color = "white")
-# } else {
-#   grassRas <- sim$grass
-#   Plot(grassRas, col = "green")
-# }
 
 
 for(i in 1:30){
@@ -109,9 +138,7 @@ for(i in 1:30){
 
     # run the model 30 times - based on assumption that female fisher can move ~35 km per month
     # Identify the cells the turtles are on
-    cellTurtle <- patchHere(land, tcount)
-  # And the values of these cells (good quality habitat, where born)
-  distMove <- of(land, cellTurtle)
+
   # A turtle moves with a mean of 1-cell distance
   # at the time (distMove), drawn from a multivariate gamma
   # distribution to show that all turtles move similar
@@ -158,42 +185,14 @@ for(i in 1:30){
                   var=c("heading","xcor","ycor"), val=valtcount1)
 }
 
-reproduce <- function(fishers, denM=0.54, denSD=0.41, ltrM=1.7, ltrSD=0.73) {
-
-  # Randomly selection for which adult females reproduce, based on denning mean and SD (Central Interior)
-  whoFishers <- of(agents = fishers, var = c("who","breed","sex")) # "who" of the fishers before they reproduce
-  whoAFFishers <- whoFishers %>% filter(breed=="adult" & sex=="F") %>% dplyr::select(who)
-
-  repro <- rnorm(n = nrow(whoAFFishers), mean=denM, sd=denSD) > 0.5
-  whoAFFishers$repro <- repro
-
-  reproWho <- whoAFFishers %>% filter(repro==TRUE) # "who" of fishers which reproduce
-  reproInd <- turtle(fishers, who = reproWho$who) # fishers which reproduce
-
-  # if there is at least one fisher reproducing
-  # have those fishers have offspring, based on the mean and sd of litter size for Central Interior
-  if (NLcount(reproInd) != 0) {
-    # energyTurtles <- of(agents = reproInd, var = "energy") # might want to consider this for quality habitat
-    # # Divide the energy between the parent and offspring
-    # turtles <- NLset(turtles = turtles, agents = reproInd, var = "energy",
-    #                  val = energyTurtles / 2)
-    fishers <- hatch(turtles = fishers, who = reproWho$who, n=round(rnorm(n=1, mean=ltrM, sd=ltrSD)),breed="juvenile") # litter size based on Central Interior data
-
-    whoNewFishers <- of(agents = fishers, var = "who") # "who" of the turtles after they reproduced
-    whoOffspring <- fishers[fishers$breed=="juvenile",]$who # "who" of offspring
-    offspring <- turtle(turtles = fishers, who = whoOffspring)
-
-    # assign 50/50 male/female offspring, assign them all as dispersing
-    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "sex", val = sample(c("F","M"),NLcount(offspring),replace=TRUE))
-    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "disperse", val = "D")
-
-  }
-
-  return(fishers)
-}
-
 
 t2 <- reproduce(fishers=t1)
+
+
+
+cellTurtle <- patchHere(land, tcount)
+# And the values of these cells (good quality habitat, where born)
+distMove <- of(land, cellTurtle)
 
 #     # find who for female and male offspring
 #     whoOffspringF <- fishers[fishers$breed=="juvenile" & fishers$sex=="F",]$who # "who" of female offspring
@@ -229,3 +228,40 @@ t2 <- reproduce(fishers=t1)
 #
 #   return(turtles)
 # }
+
+
+###--- SURVIVE
+# Have the fisher live for certain number of time steps and then die - maybe need to run this in a loop?
+# what criteria do we want for fisher to die? right now written so that fisher will die if survival in 2 years (survival squared) falls below dieFisher (0.5)
+
+###--- SURVIVE
+survive <- function(fishers, vsex="F", vbreed="adult", dieFisher=0.5) {
+
+  # Randomly selection for which adult females reproduce, based on denning mean and SD (Central Interior)
+  whoFishers <- of(agents = fishers, var = c("who","breed","sex")) # "who" of the fishers before they reproduce
+  whoSFishers <- whoFishers %>% filter(breed==vbreed & sex==vsex) # the select list of "who" to estimate survival
+
+  if (nrow(whoSFishers[whoSFishers$breed=="adult" & whoSFishers$sex=="F",])!=0){  # adult female
+    survival <- runif(n = nrow(whoSFishers), min=0.61, max=0.97)
+    whoSFishers$survival <- survival
+
+  } else if (nrow(whoSFishers[whoSFishers$breed=="adult" & whoSFishers$sex=="M",])!=0){ # adult male
+    survival <- runif(n = nrow(whoSFishers), min=0.72, max=1.0)
+    whoSFishers$survival <- survival
+
+    } else if (nrow(whoSFishers[whoSFishers$breed=="juvenile" & whoSFishers$sex=="F",])!=0){ # subadult female
+      survival <- runif(n = nrow(whoSFishers), min=0.06, max=0.76)
+      whoSFishers$survival <- survival
+
+      } else { # subadult male
+        survival <- runif(n = nrow(whoSFishers), min=0.61, max=1.0)
+        whoSFishers$survival <- survival
+      }
+
+  whoSFishers$die <- whoSFishers$survival^2 < dieFisher # this is the part that needs some thought!!!!!
+  dieWho <- whoSFishers %>% filter(die==TRUE) # "who" of fishers which die
+
+  fishers <- die(fishers, who=dieInd$who)
+  return(fishers)
+}
+
