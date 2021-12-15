@@ -75,7 +75,7 @@ t1 <- turtlesOwn (turtles = t1, tVar = "sex",
                   tVal = c(rep("F",10),
                            sample(c("F", "M"), nrow(t1[t1$breed=="juvenile",]), replace = TRUE)))
 
-NLcount(t1) # 17 fishers
+NLcount(t1) # fishers
 t1
 
 # have the female juveniles disperse
@@ -97,66 +97,85 @@ NLcount(t2)
 #   print(paste("Values are :  ", val))
 # }
 
-# Have the female fisher move 6 times within dispersal season
+# Have the female fisher move 30 times within dispersal season
 # If she finds a good habitat cell without another female, she can take it
-# Otherwise she keep dispersing
+# Otherwise she keeps dispersing
 
 distRate = 1.0
 
-for(i in 1:6){ # run the model 6 times
-  # if(val == 1){
-  #
-  #   break
-  # }
+# Create a new variable for kits to establish territory or keep dispersing
+tcount <- turtlesOwn(turtles = t2, tVar = "Disperse", tVal=c(rep("D",nrow(t2))))
 
+# if (eventType == "init") {
+#     sim <- scheduleEvent(sim, start(sim), "WolfSheepPredation", "event")
+#
+# } else if (eventType == "plot")
+
+
+for(i in 1:30){
+  if(NLcount(tcount[tcount$Disperse=="E"])==NLcount(tcount)) {
+     t3 <- tcount
+     }
+     else
+
+  # run the model 30 times - based on assumption that female fisher can move ~35 km per month
   # Identify the cells the turtles are on
-  cellTurtle <- patchHere(world = land, turtles = t2)
-  # nrow(t2) # 10 female kits
-  # sum(duplicated(cellTurtle),na.rm=TRUE) # on 5 cells
-  turtlesOn(land,t2,cellTurtle)
-
-  # And the values of these cells (good quality habitat, where born)
-  distMove <- of(world = land, agents = cellTurtle)
+  cellTurtle <- patchHere(land, tcount)
+    # And the values of these cells (good quality habitat, where born)
+     distMove <- of(land, cellTurtle)
   # A turtle moves with a mean of 1-cell distance
   # at the time (distMove), drawn from a multivariate gamma
   # distribution to show that all turtles move similar
   # distances, i.e., affected by unmeasured conditions
-  distShape <- distMove * distRate
-  rho <- matrix(rep(0.8, length = nrow(t2)*nrow(t2)), ncol=nrow(t2))
-  diag(rho) <- 1
-  distMoveRan <- rmvgamma(2, distShape, distRate, rho)[1, ] # vector
-  # The fishers t2 move with a step length of distMoveRan (one value each)
+     distShape <- distMove * distRate
+     rho <- matrix(rep(0.8, length = nrow(tcount)*nrow(tcount)), ncol=nrow(tcount))
+     diag(rho) <- 1
+     distMoveRan <- rmvgamma(2, distShape, distRate, rho)[1, ] # vector
+  # The fishers tcount move with a step length of distMoveRan (one value each)
   # The landscape is not a torus (torus = FALSE)
   # and the fishers can disperse outside of the landscape (out=TRUE)
-  t2 <- fd(turtles = t2, dist = distMoveRan,
-           world = land, torus = FALSE, out = TRUE)
-
-  # Then the fishers rotate with a multivariate normal turn angle,
-  # based on the mean of the group, correlated at 0.8
-  meanHeading <- mean(of(agents = t2, var = "heading"))
-  Sigma <- matrix(rep(0.8 * meanHeading, length = nrow(t2) * nrow(t2)), ncol = nrow(t2))
-  diag(Sigma) <- meanHeading
-  angleInd = mvrnorm(n = 1, mu = rep(meanHeading, nrow(t2)), Sigma = Sigma)
-  # Turtles rotate to the right if angleInd > 0
-  # or to the left if angleInd < 0
-  t2 <- right(turtles = t2, angle = angleInd)
-
+     tcount <- fd(turtles = tcount, dist = distMoveRan,world = land, torus = FALSE, out = TRUE)
 
   # if the kit finds a good quality unoccupied cell, can stay, otherwise keeps moving
+  # "D" = disperse; "E" = establish territory
+     tcount.habitat <- of(world = land, agents = patchHere(world=land, turtles=tcount))
+     tcount.patch <- patchHere(land, tcount)
 
-  t2.habitat <- of(world = land, agents = patchHere(world=land, turtles=t2))
-  tmp.patch <- patchHere(land, t2[1])
-  tmp.patch.occ <- turtlesOn(world = land, turtles = t2, agents = patch(land,tmp.patch[1], tmp.patch[2]))
-  if(nrow(tmp.patch.occ)>1){
-    fd(turtles = t2[1], dist = distMoveRan[1],
-             world = land, torus = FALSE, out = TRUE)
-  }
+     for(k in 1:nrow(tcount)){
+       tcount.patch.occ <- turtlesOn(world = land, turtles = tcount[k],
+                                  agents = patch(land, tcount.patch[k,1], tcount.patch[k,2]))
+       if(tcount.habitat[k]==1 & nrow(tcount.patch.occ)==1){
+         tcount <- NLset(turtles = tcount, agents = turtle(tcount, who = tcount[k]$who), var = "Disperse", val = "E")
+         } else {
+           tcount <- NLset(turtles = tcount, agents = turtle(tcount, who = tcount[k]$who), var = "Disperse", val = "D")
+         }
+       }
 
-    # Visualize the turtles' new position
-  points(t1, pch = 16, col = of(agents = t1, var = "color"))
-}
+  # If continuing on their dispersal, then
+  # The fishers rotate with a multivariate normal turn angle,
+  # based on the mean of the group, correlated at 0.8
+     meanHeading <- mean(of(agents = tcount, var = "heading"))
+     Sigma <- matrix(rep(0.8 * meanHeading, length = nrow(tcount)*nrow(tcount)), ncol = nrow(tcount))
+     diag(Sigma) <- meanHeading
+     angleInd = mvrnorm(n = 1, mu = of(agents = tcount, var = "heading"), Sigma = Sigma)
+  # Turtles rotate to the right if angleInd > 0
+  # or to the left if angleInd < 0
+     tcount <- right(turtles = tcount, angle = angleInd)
+     tcount.D <- of(agents=tcount, var="Disperse")
+     D.value <- which(tcount.D=="D")
+     tcount1 <- fd(turtles = tcount[tcount$Disperse=="D",], dist = distMoveRan[D.value], world = land, torus = FALSE, out = TRUE)
+     valtcount1 <- of(agents=tcount1, var=c("heading","xcor","ycor"))
+     tcount <- NLset(turtles=tcount, agents=turtle(tcount, who=tcount[tcount$Disperse=="D"]$who),
+                  var=c("heading","xcor","ycor"), val=valtcount1)
+     }
 
 
+
+# Visualize the turtles' new position
+plot(land)
+points(t1[t1$breed=="adult"], pch = 16, col = of(agents = t1[t1$breed=="adult"], var = "color"))
+points(t2, pch = 16, col = of(agents = t2, var = "color"))
+points(t3, pch = 16, col = of(agents = t3, var = "color"))
 ###########################################################################################
 # https://rdrr.io/cran/NetLogoR/f/vignettes/ProgrammingGuide.Rmd
 
@@ -583,6 +602,7 @@ death <- function(turtles) {
   return(turtles)
 }
 
+reproduce(t1)
 reproduce <- function(turtles, reproTurtles) {
   # Throw dice to see if the turtles will reproduce
   repro <- runif(n = NLcount(turtles), min = 0, max = 100) < reproTurtles
