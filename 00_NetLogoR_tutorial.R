@@ -35,20 +35,14 @@ rm(list.of.packages, new.packages) # for housekeeping
 
 #install.packages("lcmix", repos="http://R-Forge.R-project.org")
 # AGENTS
-<<<<<<< HEAD
 # Create a square landscape of 100 by 100 cells (1000 cells total)
 # Cell values are randomly chosen either 1 or 2
-=======
 
 
-# Create a square landscape of 20 by 20 cells (400 cells total)
-# Cell values are randomly chosen either 0 or 1 (bad or good habitat)
->>>>>>> 26db3539caf126f59b0d652e1ebc49bde9a0ea67
 land <- createWorld(minPxcor = 1, maxPxcor = 20,
                     minPycor = 1, maxPycor = 20,
                     sample(c(0, 1), 400, replace = TRUE))
 plot(land) # visualize the landscape
-<<<<<<< HEAD
 
 # randomly select 10 "good" habitat cells to start turtles
 r1 <- world2raster(land)
@@ -81,39 +75,6 @@ points(fem_juv)
 # move juveniles 1 patch in heading, stay if patch is good, otherwise continue to move
 fem_juv <- t1[t1$sex=="F" & t1$breed=="juvenile"]
 
-tmp <- vector('list',6)
-for(t in 1:6){
-  tmp[[t]] <- land[patchHere(land, fd(world=land, turtles=fem_juv[i],dist=t))]
-}
-tmp1 <- unlist(tmp)
-if(tmp1[tmp1>0]){
-  min(which(tmp1>0))}
-
-scrsim01.out <- vector('list', length(list.sims))
-for(i in 1:length(list.sims)){
-  load(paste0("out/scrsim_Kara/",list.sims[i]))
-  scrsim01.out[[i]] <- SCR.sim
-}
-
-
-for(i in 1:nrow(fem_juv)){
-  t2 <- fd(world=land, turtles=fem_juv[i], dist=1)
-  if(land[patchHere(land, t2)]<1){
-    t3 <- fd(world=land, turtles=t2,dist=1)
-  }
-  else{print(land[patchHere(land, t2)])}
-  if(land[patchHere(land, t3)]<1){
-    t4 <- fd(world=land, turtles=t3,dist=1)
-  }
-  if(land[patchHere(land, t4)]<1){
-    t5 <- fd(world=land, turtles=t4,dist=1)
-  }
-  if(land[patchHere(land, t5)]<1){
-    t6 <- fd(world=land, turtles=t5,dist=1)
-  }
-}
-land[19,6]
-
 
 if (params(sim)$WolfSheepPredation$grassOn == TRUE) {
   grassRas <- sim$field[["grass"]]
@@ -133,7 +94,7 @@ points(t1, pch = 16, col = of(agents = t1, var = "color"))
 points(t2, pch = 16, col = of(agents = t2, var = "color"))
 # Define a variable
 distRate <- 0.5
-=======
+
 rtmp <- world2raster(land)
 turtles_start <- as.data.frame(sampleStratified(rtmp, size=10, xy=TRUE)) %>% filter(layer==1)
 turtles_start <- as.matrix(turtles_start[c("x","y")])
@@ -175,7 +136,6 @@ NLcount(t2)
 # for when changing juveniles to adults, NLset may be helpful
 # t2 <- NLset(turtles = t2, agents = turtle(t2, who = 0), var = "breed", val = "wolf")
 
->>>>>>> 26db3539caf126f59b0d652e1ebc49bde9a0ea67
 
 # MODEL
 
