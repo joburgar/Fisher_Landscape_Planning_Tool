@@ -25,7 +25,7 @@ libpath_path <- paste0("C:/Program Files/R/R-",rversion$major,".",rversion$minor
 # R script example of a spatially explicit agent-based model using NetLogoR
 
 # Load Packages
-list.of.packages <- c("NetLogoR","nnls","lcmix","MASS","SpaDES.core","SpaDES.tools")
+list.of.packages <- c("NetLogoR","nnls","lcmix","MASS","SpaDES.core","SpaDES.tools","tidyverse")
 
 # Check you have them and load them
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
@@ -35,17 +35,94 @@ rm(list.of.packages, new.packages) # for housekeeping
 
 #install.packages("lcmix", repos="http://R-Forge.R-project.org")
 # AGENTS
-# Create a square landscape of 9 by 9 cells (81 cells total)
+# Create a square landscape of 100 by 100 cells (1000 cells total)
 # Cell values are randomly chosen either 1 or 2
-land <- createWorld(minPxcor = 1, maxPxcor = 9,
-                    minPycor = 1, maxPycor = 9,
-                    sample(c(1, 2), 81, replace = TRUE))
+land <- createWorld(minPxcor = 1, maxPxcor = 20,
+                    minPycor = 1, maxPycor = 20,
+                    sample(c(0, 1), 400, replace = TRUE))
 plot(land) # visualize the landscape
+
+# randomly select 10 "good" habitat cells to start turtles
+r1 <- world2raster(land)
+turtle_start <- as.data.frame(sampleStratified(r1, size = 10, xy=TRUE))
+turtle_start <- turtle_start %>% filter(layer==1)
+turtle_start <- as.matrix(turtle_start[c("x","y")])
+t1 <- createTurtles(n=10, coords=turtle_start, breed="adult")
+
+
+# each fisher has offspring, the number of kits in the litter varies based on mean litter size in Central Interior
+who_breeds <- t1[t1$breed=="adult"]$who
+for(i in 1:length(who_breeds)){
+  t1 <- hatch(t1, who=who_breeds[i],
+              n=round(rnorm(1, mean=1.7, sd=0.73)),  # Central Interior mean and SD litter size
+              breed="juvenile")
+  }
+NLcount(t1)
+# make all adults females
+# make offspring 50/50 female/male ratio
+turt.adult <- rep("F", nrow(t1[t1$breed=="adult",]))
+turt.juvenile <- sample(c("F","M"),nrow(t1[t1$breed=="juvenile",]), replace=TRUE)
+t1 <- turtlesOwn(turtles = t1, tVar = "sex",tVal = c(turt.adult, turt.juvenile))
+
+# give fishers random heading direction (workaournd as default is to duplicate mom's heading for all offspring)
+t1 <- left(t1, angle=runif(nrow(t1),0,365))
+of(agents = t1, var="heading")
+
+plot(land)
+points(fem_juv)
+# move juveniles 1 patch in heading, stay if patch is good, otherwise continue to move
+fem_juv <- t1[t1$sex=="F" & t1$breed=="juvenile"]
+
+tmp <- vector('list',6)
+for(t in 1:6){
+  tmp[[t]] <- land[patchHere(land, fd(world=land, turtles=fem_juv[i],dist=t))]
+}
+tmp1 <- unlist(tmp)
+if(tmp1[tmp1>0]){
+  min(which(tmp1>0))}
+
+scrsim01.out <- vector('list', length(list.sims))
+for(i in 1:length(list.sims)){
+  load(paste0("out/scrsim_Kara/",list.sims[i]))
+  scrsim01.out[[i]] <- SCR.sim
+}
+
+
+for(i in 1:nrow(fem_juv)){
+  t2 <- fd(world=land, turtles=fem_juv[i], dist=1)
+  if(land[patchHere(land, t2)]<1){
+    t3 <- fd(world=land, turtles=t2,dist=1)
+  }
+  else{print(land[patchHere(land, t2)])}
+  if(land[patchHere(land, t3)]<1){
+    t4 <- fd(world=land, turtles=t3,dist=1)
+  }
+  if(land[patchHere(land, t4)]<1){
+    t5 <- fd(world=land, turtles=t4,dist=1)
+  }
+  if(land[patchHere(land, t5)]<1){
+    t6 <- fd(world=land, turtles=t5,dist=1)
+  }
+}
+land[19,6]
+
+
+if (params(sim)$WolfSheepPredation$grassOn == TRUE) {
+  grassRas <- sim$field[["grass"]]
+  Plot(grassRas, na.color = "white")
+} else {
+  grassRas <- sim$grass
+  Plot(grassRas, col = "green")
+}
+
 # Create three moving individuals (three turtles)
 # Place the turtles in the middle of the landscape just created
-t1 <- createTurtles(n = 3, world = land)
+t2 <- fd(world = land, turtles = t1[t1$breed=="juvenile" & t1$sex=="F"], dist = 5, torus = FALSE)
+
 # Visualize the turtles on the landscape with their respective color
+plot(land) # visualize the landscape
 points(t1, pch = 16, col = of(agents = t1, var = "color"))
+points(t2, pch = 16, col = of(agents = t2, var = "color"))
 # Define a variable
 distRate <- 0.5
 
