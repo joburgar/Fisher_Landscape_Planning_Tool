@@ -60,13 +60,13 @@ plot(land) # visualize the landscape
 
 # randomly select 10 "good" habitat cells for adult female fishers
 rtmp <- world2raster(land)
-turtles_start <- as.data.frame(sampleStratified(rtmp, size=10, xy=TRUE)) %>% filter(layer==1)
-turtles_start <- as.matrix(turtles_start[c("x","y")])
+fishers_start <- as.data.frame(sampleStratified(rtmp, size=10, xy=TRUE)) %>% filter(layer==1)
+fishers_start <- as.matrix(fishers_start[c("x","y")])
 
 # FEMALE ONLY MODEL
 # Create ten female fishers and have them produce kits
 # place the females on "good" habitat
-t1 <- createTurtles(n = 10, coords=turtles_start, breed="adult")
+t1 <- createTurtles(n = 10, coords=fishers_start, breed="adult")
 
 # Visualize the turtles on the landscape with their respective color
 plot(land)
@@ -119,80 +119,60 @@ reproduce <- function(fishers, denM=0.54, denSD=0.41, ltrM=1.7, ltrSD=0.73) {
   return(fishers)
 }
 
+t2 <- reproduce(fishers=t1)
 
 ###--- DISPERSE
 # Have the female fisher move 30 times within dispersal season
 # If she finds a good habitat cell without another female, she can take it
 # Otherwise she keeps dispersing
 
-distRate = 1.0
+disperse <- function(land, fishers, dist_mov=1.0) {
+  # Only want fishers without established territories to move
+  whoDFishers <- fishers[fishers$disperse=="D",]$who
+  disperseInd <- turtle(fishers, who = whoDFishers) # fishers which reproduce
 
-
-
-
-for(i in 1:30){
-  if(NLcount(tcount[tcount$Disperse=="E"])==NLcount(tcount)) {
-    t3 <- tcount
-  }
-  else
-
-    # run the model 30 times - based on assumption that female fisher can move ~35 km per month
-    # Identify the cells the turtles are on
-
-  # A turtle moves with a mean of 1-cell distance
-  # at the time (distMove), drawn from a multivariate gamma
-  # distribution to show that all turtles move similar
-  # distances, i.e., affected by unmeasured conditions
-  distShape <- distMove * distRate
-  rho <- matrix(rep(0.8, length = nrow(tcount)*nrow(tcount)), ncol=nrow(tcount))
-  diag(rho) <- 1
-  distMoveRan <- rmvgamma(2, distShape, distRate, rho)[1, ] # vector
-  # The fishers tcount move with a step length of distMoveRan (one value each)
+  # Have each fisher move 1 step in random heading
   # The landscape is not a torus (torus = FALSE)
   # and the fishers can disperse outside of the landscape (out=TRUE)
-  tcount <- fd(turtles = tcount, dist = distMoveRan,world = land, torus = FALSE, out = TRUE)
+  disperseInd <- right(disperseInd, angle = runif(n = NLcount(disperseInd), min = 0, max = 360))
+  disperseInd <- fd(disperseInd, dist=dist_mov, land, torus = FALSE, out = TRUE)
 
-  # if the kit finds a good quality unoccupied cell, can stay, otherwise keeps moving
-  # "D" = disperse; "E" = establish territory
-  tcount.habitat <- of(world = land, agents = patchHere(world=land, turtles=tcount))
-  tcount.patch <- patchHere(land, tcount)
+  cellTurtle <- patchHere(land, disperseInd)
+  patchHere(land, fishers)
+  disperseHabitat <- of(land, agents=patchHere(land, disperseInd))
+  dispersePatch <- patchHere(land, tcount)
 
-  for(k in 1:nrow(tcount)){
-    tcount.patch.occ <- turtlesOn(world = land, turtles = tcount[k],
-                                  agents = patch(land, tcount.patch[k,1], tcount.patch[k,2]))
-    if(tcount.habitat[k]==1 & nrow(tcount.patch.occ)==1){
-      tcount <- NLset(turtles = tcount, agents = turtle(tcount, who = tcount[k]$who), var = "Disperse", val = "E")
-    } else {
-      tcount <- NLset(turtles = tcount, agents = turtle(tcount, who = tcount[k]$who), var = "Disperse", val = "D")
-    }
+# the code we'll need for determining if there is a male within 2 cells of another dispersing male (establish territory)
+# and also if there is a female within 2 cells (able to mate)
+    # turtlesAt(land, fishers, agents=turtle(fishers,who=10), dx=c(0:5), dy=c(0:5), torus = FALSE)
+# if the kit finds a good quality unoccupied cell, can stay, otherwise keeps moving
+# "D" = disperse; "E" = establish territory
+
+for(k in 1:nrow(tcount)){
+  tcount.patch.occ <- turtlesOn(world = land, turtles = tcount[k],
+                                agents = patch(land, tcount.patch[k,1], tcount.patch[k,2]))
+  if(tcount.habitat[k]==1 & nrow(tcount.patch.occ)==1){
+    tcount <- NLset(turtles = tcount, agents = turtle(tcount, who = tcount[k]$who), var = "Disperse", val = "E")
+  } else {
+    tcount <- NLset(turtles = tcount, agents = turtle(tcount, who = tcount[k]$who), var = "Disperse", val = "D")
   }
+}
+tcount <- right(turtles = tcount, angle = angleInd)
+tcount.D <- of(agents=tcount, var="Disperse")
+D.value <- which(tcount.D=="D")
+tcount1 <- fd(turtles = tcount[tcount$Disperse=="D",], dist = distMoveRan[D.value], world = land, torus = FALSE, out = TRUE)
+valtcount1 <- of(agents=tcount1, var=c("heading","xcor","ycor"))
+tcount <- NLset(turtles=tcount, agents=turtle(tcount, who=tcount[tcount$Disperse=="D"]$who),
+                var=c("heading","xcor","ycor"), val=valtcount1)
 
-  # If continuing on their dispersal, then
-  # The fishers rotate with a multivariate normal turn angle,
-  # based on the mean of the group, correlated at 0.8
-  meanHeading <- mean(of(agents = tcount, var = "heading"))
-  Sigma <- matrix(rep(0.8 * meanHeading, length = nrow(tcount)*nrow(tcount)), ncol = nrow(tcount))
-  diag(Sigma) <- meanHeading
-  angleInd = mvrnorm(n = 1, mu = of(agents = tcount, var = "heading"), Sigma = Sigma)
-  # Turtles rotate to the right if angleInd > 0
-  # or to the left if angleInd < 0
-  tcount <- right(turtles = tcount, angle = angleInd)
-  tcount.D <- of(agents=tcount, var="Disperse")
-  D.value <- which(tcount.D=="D")
-  tcount1 <- fd(turtles = tcount[tcount$Disperse=="D",], dist = distMoveRan[D.value], world = land, torus = FALSE, out = TRUE)
-  valtcount1 <- of(agents=tcount1, var=c("heading","xcor","ycor"))
-  tcount <- NLset(turtles=tcount, agents=turtle(tcount, who=tcount[tcount$Disperse=="D"]$who),
-                  var=c("heading","xcor","ycor"), val=valtcount1)
+
+return(fishers)
+
 }
 
 
-t2 <- reproduce(fishers=t1)
 
-
-
-cellTurtle <- patchHere(land, tcount)
 # And the values of these cells (good quality habitat, where born)
-distMove <- of(land, cellTurtle)
 
 #     # find who for female and male offspring
 #     whoOffspringF <- fishers[fishers$breed=="juvenile" & fishers$sex=="F",]$who # "who" of female offspring
