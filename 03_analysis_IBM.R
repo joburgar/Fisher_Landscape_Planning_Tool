@@ -24,7 +24,7 @@ tz = Sys.timezone() # specify timezone in BC
 
 # Load Packages
 list.of.packages <- c("tidyverse", "NetLogoR","nnls","lcmix","MASS","SpaDES.core","SpaDES.tools",
-                      "Cairo","PNWColors")
+                      "Cairo","PNWColors","survival")
 # Check you have them and load them
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
@@ -213,8 +213,66 @@ return(fishers)
 ###--- SURVIVE
 # Have the fisher live for certain number of time steps and then die - maybe need to run this in a loop?
 # what criteria do we want for fisher to die? right now written so that fisher will die if survival in 2 years (survival squared) falls below dieFisher (0.5)
+# use the survival function output from Eric's latest survival anlysis
 
 ###--- SURVIVE
+# load Eric Lofroth's survival data (recieved Dec 2021)
+load("./data/fisher_survival.RData")
+
+# summary(fishersurvival)
+# Call: survfit(formula = fishersurv ~ Population + Sex + Ageclass, data = fisher1)
+library(ggfortify)
+
+summary(fishersurv)
+fisher1 %>% group_by(Population, Sex, Ageclass) %>% summarise(mean(DaysMonitored))
+fisher1$rownum <- as.numeric(rownames(fisher1))
+fisher_adult <- fisher1 %>% filter(Ageclass=="Adult")
+fisher_adult$rownum
+glimpse(fisher_adult)
+fishersurv_adult <- fishersurv[fisher_adult$rownum,]
+
+km_full <- survfit(formula = fishersurv ~ Population + Sex + Ageclass, data=fisher1)
+km_adult <- survfit(formula = fishersurv_adult ~ Population + Sex, data=fisher_adult)
+
+# no difference if running survfit with all data or just adult, so run with all data
+# ignore subadult output after 2 years as not biologically meaningful 
+# extract survival (mean and SE) for each cohort (Pop + Sex + Ageclass) in 6 month increments (365/2=182.5)
+# use these values as the probabilty of a fisher surviving in the IBM survival function
+surv_times <- c(182, 365, 548, 730, 912, 1095, 1278, 1460, 1642, 1825, 2008, 2190, 2372, 2555, 2738, 2920)
+
+km_full_summary <- summary(km_full, times=surv_times, extend=TRUE)
+
+str(km_full_summary)
+length(surv_times) # 16 times (every 6 months for 8 years)
+length(km_full_summary$strata) # 8 strata, repeating 16 values
+
+# [1] "Population=Boreal, Sex=Female, Ageclass=Adult   "           "Population=Boreal, Sex=Female, Ageclass=Subadult"           "Population=Boreal, Sex=Male  , Ageclass=Adult   "          
+# [4] "Population=Boreal, Sex=Male  , Ageclass=Subadult"           "Population=Central Interior, Sex=Female, Ageclass=Adult   " "Population=Central Interior, Sex=Female, Ageclass=Subadult"
+# [7] "Population=Central Interior, Sex=Male  , Ageclass=Adult   " "Population=Central Interior, Sex=Male  , Ageclass=Subadult"
+
+km_surv_estimates <- as.data.frame(cbind(km_full_summary$surv, km_full_summary$std.err, km_full_summary$lower, km_full_summary$upper))
+colnames(km_surv_estimates) <- c("Surv","SE","L95CL","U95CL")
+km_surv_estimates$Cohort <- rep(c("BFA","BFJ","BMA","BMJ","CFA","CFJ","CMA","CMJ"),each=16) # add in the group, e.g., BFA = Boreal Population, Female, Adult)
+km_surv_estimates$Time <- rep(surv_times, times=8) # add in the time interval for the estimates
+km_surv_estimates$Time_step <- rep(seq_len(16),times=8) # add in the time step (as per the IBM - every six months = 1 time step)
+#km_surv_estimates$Use <- ifelse() # create a case when or filter so as not to include juveniles past 2 years.
+
+autoplot(km_nosex)
+
+cox_full <- coxph(fishersurv ~ Population + Sex + Ageclass, data=fisher1)
+cox_nosex <- coxph(fishersurv ~ Population + Ageclass, data=fisher1)
+cox_nopop <- coxph(fishersurv ~ Sex + Ageclass, data=fisher1)
+cox_noac <- coxph(fishersurv ~ Population + Sex, data=fisher1)
+cox_pop <- coxph(fishersurv ~ Population, data=fisher1)
+cox_sex <- coxph(fishersurv ~ Sex, data=fisher1)
+cox_ac <- coxph(fishersurv ~ Ageclass, data=fisher1)
+anova(cox_full, cox_nosex, cox_noac, cox_ac, cox_pop, cox_nopop, cox_sex)
+
+summary(cox_full)
+summary(cox_nosex)
+cox_fit <- survfit(cox_full)
+autoplot(cox_fit)
+
 survive <- function(fishers, vsex="F", vbreed="adult", dieFisher=0.5) {
 
   # Randomly selection for which adult females reproduce, based on denning mean and SD (Central Interior)
