@@ -24,7 +24,7 @@ tz = Sys.timezone() # specify timezone in BC
 
 # Load Packages
 list.of.packages <- c("tidyverse", "NetLogoR","nnls","lcmix","MASS","SpaDES.core","SpaDES.tools",
-                      "Cairo","PNWColors","survival")
+                      "Cairo","PNWColors")
 # Check you have them and load them
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
@@ -66,28 +66,37 @@ fishers_start <- as.matrix(fishers_start[c("x","y")])
 # FEMALE ONLY MODEL
 # Create ten female fishers and have them produce kits
 # place the females on "good" habitat
-t1 <- createTurtles(n = 10, coords=fishers_start, breed="adult")
+nfishers = 10
+t1 <- createTurtles(n = nfishers, coords=fishers_start, breed="adult")
 
 # Visualize the turtles on the landscape with their respective color
 plot(land)
 points(t1, pch = 16, col = of(agents = t1, var = "color"))
 
 # assign each turtle as a female with an established territory
-t1 <- turtlesOwn(turtles = t1, tVar = c("sex"), tVal = c(rep("F", each=10)))
-t1 <- turtlesOwn(turtles = t1, tVar = c("disperse"), tVal = c(rep("E", each=10)))
+t1 <- turtlesOwn(turtles = t1, tVar = c("sex"), tVal = c(rep("F", each=nfishers)))
+t1 <- turtlesOwn(turtles = t1, tVar = c("disperse"), tVal = c(rep("E", each=nfishers)))
+
+# create a random age for the fishers
+# keep in mind that time steps are 6 months so have ages in 6 month increments
+# the oldest a female fisher can be is 8 or 16 time steps
+# the youngest time step for an adult is 5 (juvenile = up to 2 years of 4 time steps)
+####  QUESTION - SHOULD AGES BE IN 0.5 INCREMENTS TO REFLECT YEARS? OR IS IT NOT TOO CONFUSING FOR AN AGE OF 2 TO MEAN 1 YEAR?
+yrs.adult <- 5:16
+t1 <- turtlesOwn(turtles=t1, tVar = c("age"), tVal = sample(yrs.adult, nfishers, replace=TRUE))
 
 
 ###--- MODEL FUNCTIONS
 # Empirical / expert data as inputs
 # use the denning rate and mean litter size to determine number of kits produced
 # for Central Interior - denning rate mean = 0.54; sd = 0.41
-# for Central Inerior - litter size mean = 1.7; sd = 0.73
+# for Central Interior - litter size mean = 1.7; sd = 0.73
 # create a reproduce function
 
 ###--- REPRODUCE
 reproduce <- function(fishers, denM=0.54, denSD=0.41, ltrM=1.7, ltrSD=0.73) {
 
-  # Randomly selection for which adult females reproduce, based on denning mean and SD (Central Interior)
+  # Random selection for which adult females reproduce, based on denning mean and SD (Central Interior)
   whoFishers <- of(agents = fishers, var = c("who","breed","sex")) # "who" of the fishers before they reproduce
   whoAFFishers <- whoFishers %>% filter(breed=="adult" & sex=="F") %>% dplyr::select(who)
 
@@ -113,7 +122,8 @@ reproduce <- function(fishers, denM=0.54, denSD=0.41, ltrM=1.7, ltrSD=0.73) {
     # assign 50/50 male/female offspring, assign them all as dispersing
     fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "sex", val = sample(c("F","M"),NLcount(offspring),replace=TRUE))
     fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "disperse", val = "D")
-
+    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "age", val = "0") # just born so time step 0
+    
   }
 
   return(fishers)
@@ -121,15 +131,22 @@ reproduce <- function(fishers, denM=0.54, denSD=0.41, ltrM=1.7, ltrSD=0.73) {
 
 t2 <- reproduce(fishers=t1)
 
+###--- SURVIVE
+# should have first round of survival in here up to the first year
+# so go through two time steps and have kits who survive have an age of 2
+
 ###--- DISPERSE
 # Have the female fisher move 30 times within dispersal season
-# If she finds a good habitat cell without another female, she can take it
-# Otherwise she keeps dispersing
+# If she finds a good habitat cell without another female, she can take it, otherwise she keeps dispersing
+# The disperse function movement distance can be changed, the default is 1 (i.e., moves 1 cell)
+# Kits can move up to 30 times in one dispersal season so need to consider this wehen working into other loops
+# Recall that 1 time step = 6 months or 30 potential moves
 
-disperse <- function(land, fishers, dist_mov=1.0) {
+disperse <- function(land=land, fishers=fishers, dist_mov=1.0) {
   # Only want fishers without established territories to move
+  fishers=t2
   whoDFishers <- fishers[fishers$disperse=="D",]$who
-  disperseInd <- turtle(fishers, who = whoDFishers) # fishers which reproduce
+  disperseInd <- turtle(fishers, who = whoDFishers) # fishers who are dispersing (i.e., kits)
 
   # Have each fisher move 1 step in random heading
   # The landscape is not a torus (torus = FALSE)
@@ -137,145 +154,130 @@ disperse <- function(land, fishers, dist_mov=1.0) {
   disperseInd <- right(disperseInd, angle = runif(n = NLcount(disperseInd), min = 0, max = 360))
   disperseInd <- fd(disperseInd, dist=dist_mov, land, torus = FALSE, out = TRUE)
 
-  cellTurtle <- patchHere(land, disperseInd)
-  patchHere(land, fishers)
-  disperseHabitat <- of(land, agents=patchHere(land, disperseInd))
-  dispersePatch <- patchHere(land, tcount)
+  disperseHabitat <- of(land, agents=patchHere(land, disperseInd)) # the habitat type where dispersing individuals are currently located
+  dispersePatch <- patchHere(land, disperseInd) # the coordinates for the locations of the dispersing individuals
 
-# the code we'll need for determining if there is a male within 2 cells of another dispersing male (establish territory)
-# and also if there is a female within 2 cells (able to mate)
+  # the code we'll need for determining if there is a male within 2 cells of another dispersing male (establish territory)
+  # and also if there is a female within 2 cells (able to mate)
     # turtlesAt(land, fishers, agents=turtle(fishers,who=10), dx=c(0:5), dy=c(0:5), torus = FALSE)
-# if the kit finds a good quality unoccupied cell, can stay, otherwise keeps moving
-# "D" = disperse; "E" = establish territory
-
-for(k in 1:nrow(tcount)){
-  tcount.patch.occ <- turtlesOn(world = land, turtles = tcount[k],
-                                agents = patch(land, tcount.patch[k,1], tcount.patch[k,2]))
-  if(tcount.habitat[k]==1 & nrow(tcount.patch.occ)==1){
-    tcount <- NLset(turtles = tcount, agents = turtle(tcount, who = tcount[k]$who), var = "Disperse", val = "E")
-  } else {
-    tcount <- NLset(turtles = tcount, agents = turtle(tcount, who = tcount[k]$who), var = "Disperse", val = "D")
+  
+  # if the kit finds a good quality unoccupied cell (1), can stay, otherwise (if habitat = 0) kit keeps moving
+  # "D" = disperse; "E" = establish territory
+  for(k in 1:nrow(disperseInd)){
+    disperseInd.patch.occ <- turtlesOn(world = land, turtles = disperseInd[k],
+                                  agents = patch(land, dispersePatch[k,1], dispersePatch[k,2]))
+    if(disperseHabitat[k]==1 & nrow(disperseInd.patch.occ)==1){
+      disperseInd <- NLset(turtles = disperseInd, agents = turtle(disperseInd, who = disperseInd[k]$who), var = "disperse", val = "E")
+      } else {
+        disperseInd <- NLset(turtles = disperseInd, agents = turtle(disperseInd, who = disperseInd[k]$who), var = "disperse", val = "D")
+      }
+    }
+  
+  # now have updated object with kits dispersing or establishing
+  # add the new values to the existing fishers 'turtle' object
+  valdisperseInd <- of(agents=disperseInd, var=c("heading","xcor","ycor", "prevX","prevY","disperse"))
+  fishers <- NLset(turtles = fishers, agents=turtle(fishers, who=disperseInd$who),var=c("heading","xcor","ycor","prevX","prevY","disperse"), val=valdisperseInd)
+  
+  return(fishers)
+  
   }
+
+
+
+# now run function for up to 30 times for one season
+t3 <- t2
+for(i in 1:30){
+  t3 <- disperse(land=land, fishers=t3, dist_mov=1.0)
 }
-tcount <- right(turtles = tcount, angle = angleInd)
-tcount.D <- of(agents=tcount, var="Disperse")
-D.value <- which(tcount.D=="D")
-tcount1 <- fd(turtles = tcount[tcount$Disperse=="D",], dist = distMoveRan[D.value], world = land, torus = FALSE, out = TRUE)
-valtcount1 <- of(agents=tcount1, var=c("heading","xcor","ycor"))
-tcount <- NLset(turtles=tcount, agents=turtle(tcount, who=tcount[tcount$Disperse=="D"]$who),
-                var=c("heading","xcor","ycor"), val=valtcount1)
+# will throw up error message if all kits establish territory before the 30 runs
+# fine as output is what we want, up to 30 times
+# should think about adding in a "break" to stop it once all "D" turn to "E"
 
+t3 # all have now established territory
+plot(land)
+points(t1)
+points(t3, pch = 16, col = of(agents = t3, var = "color"))
 
-return(fishers)
-
-}
-
-
-
-# And the values of these cells (good quality habitat, where born)
-
-#     # find who for female and male offspring
-#     whoOffspringF <- fishers[fishers$breed=="juvenile" & fishers$sex=="F",]$who # "who" of female offspring
-#     offspringF <- turtle(turtles = fishers, who = whoOffspringF)
-#
-#     whoOffspringM <- fishers[fishers$breed=="juvenile" & fishers$sex=="M",]$who # "who" of male offspring
-#     offspringM <- turtle(turtles = fishers, who = whoOffspringM)
-#
-#     # Move the female offspring by up to 6 steps, stopping once on good habitat
-#     offspringFMoved <- right(turtles = offspringF,
-#                             angle = runif(n = NLcount(offspringF), min = 0, max = 360))
-#     offspringFMoved <- fd(world = land, turtles = offspringF, dist = 1, torus=FALSE, out=TRUE)
-#
-#     offspringFhabitat <- of(world = land, agents = patchHere(world=land, turtles=offspringFMoved))
-#     offspringFpatch <- patchHere(land, offspringFMoved)
-#     offspringFpatchOcc <- turtlesOn(world=land, turtles=offspringFMoved, agents=patch(land, offspringFpatch[1], offspringFpatch[2]))
-#
-#     for(k in 1:nrow(tcount)){
-#       tcount.patch.occ <- turtlesOn(world = land, turtles = tcount[k],
-#                                     agents = patch(land, tcount.patch[k,1], tcount.patch[k,2]))
-#       if(tcount.habitat[k]==1 & nrow(tcount.patch.occ)==1){
-#         tcount <- NLset(turtles = tcount, agents = turtle(tcount, who = tcount[k]$who), var = "Disperse", val = "E")
-#       } else {
-#         tcount <- NLset(turtles = tcount, agents = turtle(tcount, who = tcount[k]$who), var = "Disperse", val = "D")
-#       }
-#     }
-#
-#     # Update the headings and coordinates of the offsprings inside the turtles
-#     valOffspringF <- of(agents = offspringFMoved, var = c("heading", "xcor", "ycor"))
-#     turtles <- NLset(turtles = turtles, agents = offspring, var = c("heading", "xcor", "ycor"),
-#                      val = valOffspring)
-#   }
-#
-#   return(turtles)
-# }
+# next step is to add in survival probability for each fisher to survive a full year
+# and then to repeat the reproducing and dispersing functions
 
 
 ###--- SURVIVE
-# Have the fisher live for certain number of time steps and then die - maybe need to run this in a loop?
-# what criteria do we want for fisher to die? right now written so that fisher will die if survival in 2 years (survival squared) falls below dieFisher (0.5)
-# use the survival function output from Eric's latest survival anlysis
+# Have the fisher survive one time step depending on their age and cohort
+# Use the survival function output from Eric's latest survival analysis
+# Cohorts are broken down by population (Boreal / Central Interior), sex (M/F), and ageclass (A/J)
+# Write the function with defaults to Central Interior but ability to update as necessary
 
 ###--- SURVIVE
 # load Eric Lofroth's survival data (recieved Dec 2021)
-load("./data/fisher_survival.RData")
+# load("./data/fisher_survival.RData")
+# library(survival)
+# 
+# # summary(fishersurvival)
+# # Call: survfit(formula = fishersurv ~ Population + Sex + Ageclass, data = fisher1)
+# # library(ggfortify)
+# cox_full <- coxph(fishersurv ~ Population + Sex + Ageclass, data=fisher1)
+# cox_nosex <- coxph(fishersurv ~ Population + Ageclass, data=fisher1)
+# cox_nopop <- coxph(fishersurv ~ Sex + Ageclass, data=fisher1)
+# cox_noac <- coxph(fishersurv ~ Population + Sex, data=fisher1)
+# cox_pop <- coxph(fishersurv ~ Population, data=fisher1)
+# cox_sex <- coxph(fishersurv ~ Sex, data=fisher1)
+# cox_ac <- coxph(fishersurv ~ Ageclass, data=fisher1)
+# anova(cox_full, cox_nosex, cox_noac, cox_ac, cox_pop, cox_nopop, cox_sex)
+# 
+# summary(cox_full)
+# summary(cox_nosex)
+# cox_fit <- survfit(cox_full)
+# autoplot(cox_fit)
 
-# summary(fishersurvival)
-# Call: survfit(formula = fishersurv ~ Population + Sex + Ageclass, data = fisher1)
-library(ggfortify)
+# summary(fishersurv)
+# fisher1 %>% group_by(Population, Sex, Ageclass) %>% summarise(mean(DaysMonitored))
+# fisher1$rownum <- as.numeric(rownames(fisher1))
+# fisher_adult <- fisher1 %>% filter(Ageclass=="Adult")
+# fisher_adult$rownum
+# glimpse(fisher_adult)
+# fishersurv_adult <- fishersurv[fisher_adult$rownum,]
+# 
+# km_full <- survfit(formula = fishersurv ~ Population + Sex + Ageclass, data=fisher1)
+# km_adult <- survfit(formula = fishersurv_adult ~ Population + Sex, data=fisher_adult)
+# 
+# # no difference if running survfit with all data or just adult, so run with all data
+# # ignore subadult output after 2 years as not biologically meaningful 
+# # extract survival (mean and SE) for each cohort (Pop + Sex + Ageclass) in 6 month increments (365/2=182.5)
+# # use these values as the probabilty of a fisher surviving in the IBM survival function
+# surv_times <- c(182, 365, 548, 730, 912, 1095, 1278, 1460, 1642, 1825, 2008, 2190, 2372, 2555, 2738, 2920)
+# 
+# km_full_summary <- summary(km_full, times=surv_times, extend=TRUE)
+# 
+# str(km_full_summary)
+# length(surv_times) # 16 times (every 6 months for 8 years)
+# length(km_full_summary$strata) # 8 strata, repeating 16 values
 
-summary(fishersurv)
-fisher1 %>% group_by(Population, Sex, Ageclass) %>% summarise(mean(DaysMonitored))
-fisher1$rownum <- as.numeric(rownames(fisher1))
-fisher_adult <- fisher1 %>% filter(Ageclass=="Adult")
-fisher_adult$rownum
-glimpse(fisher_adult)
-fishersurv_adult <- fishersurv[fisher_adult$rownum,]
-
-km_full <- survfit(formula = fishersurv ~ Population + Sex + Ageclass, data=fisher1)
-km_adult <- survfit(formula = fishersurv_adult ~ Population + Sex, data=fisher_adult)
-
-# no difference if running survfit with all data or just adult, so run with all data
-# ignore subadult output after 2 years as not biologically meaningful 
-# extract survival (mean and SE) for each cohort (Pop + Sex + Ageclass) in 6 month increments (365/2=182.5)
-# use these values as the probabilty of a fisher surviving in the IBM survival function
-surv_times <- c(182, 365, 548, 730, 912, 1095, 1278, 1460, 1642, 1825, 2008, 2190, 2372, 2555, 2738, 2920)
-
-km_full_summary <- summary(km_full, times=surv_times, extend=TRUE)
-
-str(km_full_summary)
-length(surv_times) # 16 times (every 6 months for 8 years)
-length(km_full_summary$strata) # 8 strata, repeating 16 values
-
-# [1] "Population=Boreal, Sex=Female, Ageclass=Adult   "           "Population=Boreal, Sex=Female, Ageclass=Subadult"           "Population=Boreal, Sex=Male  , Ageclass=Adult   "          
+# [1] "Population=Boreal, Sex=Female, Ageclass=Adult   "           "Population=Boreal, Sex=Female, Ageclass=Subadult"           "Population=Boreal, Sex=Male  , Ageclass=Adult   "
 # [4] "Population=Boreal, Sex=Male  , Ageclass=Subadult"           "Population=Central Interior, Sex=Female, Ageclass=Adult   " "Population=Central Interior, Sex=Female, Ageclass=Subadult"
 # [7] "Population=Central Interior, Sex=Male  , Ageclass=Adult   " "Population=Central Interior, Sex=Male  , Ageclass=Subadult"
 
-km_surv_estimates <- as.data.frame(cbind(km_full_summary$surv, km_full_summary$std.err, km_full_summary$lower, km_full_summary$upper))
-colnames(km_surv_estimates) <- c("Surv","SE","L95CL","U95CL")
-km_surv_estimates$Cohort <- rep(c("BFA","BFJ","BMA","BMJ","CFA","CFJ","CMA","CMJ"),each=16) # add in the group, e.g., BFA = Boreal Population, Female, Adult)
-km_surv_estimates$Time <- rep(surv_times, times=8) # add in the time interval for the estimates
-km_surv_estimates$Time_step <- rep(seq_len(16),times=8) # add in the time step (as per the IBM - every six months = 1 time step)
-#km_surv_estimates$Use <- ifelse() # create a case when or filter so as not to include juveniles past 2 years.
+# km_surv_estimates <- as.data.frame(cbind(km_full_summary$surv, km_full_summary$std.err, km_full_summary$lower, km_full_summary$upper))
+# colnames(km_surv_estimates) <- c("Surv","SE","L95CL","U95CL")
+# km_surv_estimates$Cohort <- rep(c("BFA","BFJ","BMA","BMJ","CFA","CFJ","CMA","CMJ"),each=16) # add in the group, e.g., BFA = Boreal Population, Female, Adult)
+# km_surv_estimates$Time <- rep(surv_times, times=8) # add in the time interval for the estimates
+# km_surv_estimates$Time_step <- rep(seq_len(16),times=8) # add in the time step (as per the IBM - every six months = 1 time step)
+# km_surv_estimates$Use <- 1 # default to 1 (use) to set up case_when function
+# km_surv_estimates <- km_surv_estimates %>% mutate(Use = case_when(grepl("J", Cohort) & Time_step > 4 ~ 0, TRUE ~ Use)) # only consider juvenile time steps for 2 years
+# km_surv_estimates$Cohort <- as.factor(km_surv_estimates$Cohort)
+# write.csv(km_surv_estimates, "km_surv_estimates.csv", row.names = FALSE)
 
-autoplot(km_nosex)
+# no need to create new survival estimates, load previously created unless new data from Eric
+km_surv_estimates <- read.csv("km_surv_estimates.csv", header=TRUE)
+glimpse(km_surv_estimates)
 
-cox_full <- coxph(fishersurv ~ Population + Sex + Ageclass, data=fisher1)
-cox_nosex <- coxph(fishersurv ~ Population + Ageclass, data=fisher1)
-cox_nopop <- coxph(fishersurv ~ Sex + Ageclass, data=fisher1)
-cox_noac <- coxph(fishersurv ~ Population + Sex, data=fisher1)
-cox_pop <- coxph(fishersurv ~ Population, data=fisher1)
-cox_sex <- coxph(fishersurv ~ Sex, data=fisher1)
-cox_ac <- coxph(fishersurv ~ Ageclass, data=fisher1)
-anova(cox_full, cox_nosex, cox_noac, cox_ac, cox_pop, cox_nopop, cox_sex)
+km_surv_estimates %>% group_by(Use,Cohort) %>% dplyr::summarise(max(Time_step))
+km_surv_estimates %>% filter(Use==1 & grepl("J", Cohort)) 
 
-summary(cox_full)
-summary(cox_nosex)
-cox_fit <- survfit(cox_full)
-autoplot(cox_fit)
+# create a function that runs each time step to determine the probabilty of a fisher surviving to the next time step
+survive <- function(fishers, vsex="F", vbreed="adult", dieFisher=0.5, surv_estimates=km_surv_estimates) {
 
-survive <- function(fishers, vsex="F", vbreed="adult", dieFisher=0.5) {
-
-  # Randomly selection for which adult females reproduce, based on denning mean and SD (Central Interior)
+  # Create
   whoFishers <- of(agents = fishers, var = c("who","breed","sex")) # "who" of the fishers before they reproduce
   whoSFishers <- whoFishers %>% filter(breed==vbreed & sex==vsex) # the select list of "who" to estimate survival
 
