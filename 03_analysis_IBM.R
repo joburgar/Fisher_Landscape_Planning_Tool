@@ -136,47 +136,103 @@ t2 <- reproduce(fishers=t1)
 # so go through two time steps and have kits who survive have an age of 2
 
 ###--- DISPERSE
-# Have the female fisher move 30 times within dispersal season
+# Have the female fisher move 30 cells within dispersal season and the male fisher move 60 cells
 # If she finds a good habitat cell without another female, she can take it, otherwise she keeps dispersing
 # The disperse function movement distance can be changed, the default is 1 (i.e., moves 1 cell)
-# Kits can move up to 30 times in one dispersal season so need to consider this wehen working into other loops
+# Kits can move up to 30 times in one dispersal season so need to consider this when working into other loops
 # Recall that 1 time step = 6 months or 30 potential moves
+# "D" = disperse; "E" = establish territory
 
 disperse <- function(land=land, fishers=fishers, dist_mov=1.0) {
   # Only want fishers without established territories to move
-  fishers=t2
+  # Assume female fisher can move ~35 km in a month, and that each pixel is 5.5 km in length or 7.8 km in diameter
+  # Assume a male fisher can move ~70 km in a month
+  # For ease of calculations, assume a dist_mov of 1.0 is one pixel
+  # This means that a female fisher can move between 5-6 pixels per month or 30-36 pixels in each time step
+  # And for simplicity, a male fisher can move 2*dist_mov (twice the distance of a female)
+  # dist_mov relates to the number of cells (not quite right if fisher moving diagonally across a cell but works for our purposes)
+  
+  # fishers=t2
   whoDFishers <- fishers[fishers$disperse=="D",]$who
   disperseInd <- turtle(fishers, who = whoDFishers) # fishers who are dispersing (i.e., kits)
 
   # Have each fisher move 1 step in random heading
-  # The landscape is not a torus (torus = FALSE)
+  # The landscape is not wrapped (torus = FALSE)
   # and the fishers can disperse outside of the landscape (out=TRUE)
   disperseInd <- right(disperseInd, angle = runif(n = NLcount(disperseInd), min = 0, max = 360))
-  disperseInd <- fd(disperseInd, dist=dist_mov, land, torus = FALSE, out = TRUE)
-
-  disperseHabitat <- of(land, agents=patchHere(land, disperseInd)) # the habitat type where dispersing individuals are currently located
-  dispersePatch <- patchHere(land, disperseInd) # the coordinates for the locations of the dispersing individuals
-
-  # the code we'll need for determining if there is a male within 2 cells of another dispersing male (establish territory)
-  # and also if there is a female within 2 cells (able to mate)
-    # turtlesAt(land, fishers, agents=turtle(fishers,who=10), dx=c(0:5), dy=c(0:5), torus = FALSE)
+  disperseInd <- fd(turtle(fishers, who=whoDFishers),dist=dist_mov, land, torus = FALSE, out = TRUE) # all kits move 1 cell
   
-  # if the kit finds a good quality unoccupied cell (1), can stay, otherwise (if habitat = 0) kit keeps moving
-  # "D" = disperse; "E" = establish territory
-  for(k in 1:nrow(disperseInd)){
-    disperseInd.patch.occ <- turtlesOn(world = land, turtles = disperseInd[k],
-                                  agents = patch(land, dispersePatch[k,1], dispersePatch[k,2]))
-    if(disperseHabitat[k]==1 & nrow(disperseInd.patch.occ)==1){
-      disperseInd <- NLset(turtles = disperseInd, agents = turtle(disperseInd, who = disperseInd[k]$who), var = "disperse", val = "E")
-      } else {
-        disperseInd <- NLset(turtles = disperseInd, agents = turtle(disperseInd, who = disperseInd[k]$who), var = "disperse", val = "D")
+  ###--- for dispersing FEMALES
+  # determine patch information for dispersing females
+  # only run the loop if there are dispersing females
+  if(NLcount(disperseInd[disperseInd$sex=="F"])!=0){
+    disperseIndF <- turtle(disperseInd, who = disperseInd[disperseInd$sex=="F",]$who) # identify those dispersing (i.e., female kits)
+    disperseHabitatF <- of(land, agents=patchHere(land, disperseIndF)) # identify habitat quality of current location
+    dispersePatchF <- patchHere(land, disperseIndF) # the coordinates for the cells 
+    
+    # run loop to determine if females are dispersing
+    # if the female kit finds a good quality cell (1) that is NOT occupied by another female (occupancy==1) can stay,
+    # otherwise (if habitat = 0 OR occupancy>1) kit keeps moving
+    # "D" = disperse; "E" = establish territory
+    
+    for(k in 1:nrow(disperseIndF)){
+      # check how many fishers are currently on the cell
+      disperseInd.patch.occ <- turtlesOn(world = land, turtles = disperseIndF[k],
+                                       agents = patch(land, dispersePatchF[k,1], dispersePatchF[k,2]))
+      
+      if(disperseHabitatF[k]==1 & nrow(disperseInd.patch.occ)==1){ # if the habitat is good and there is only one turtle on the patch
+        disperseIndF <- NLset(turtles = disperseIndF, agents = turtle(disperseIndF, who = disperseIndF[k]$who), var = "disperse", val = "E") # then establish
+        } else {
+          disperseIndF <- NLset(turtles = disperseIndF, agents = turtle(disperseIndF, who = disperseIndF[k]$who), var = "disperse", val = "D") # otherwise keep dispersing
+        }
       }
-    }
   
   # now have updated object with kits dispersing or establishing
   # add the new values to the existing fishers 'turtle' object
-  valdisperseInd <- of(agents=disperseInd, var=c("heading","xcor","ycor", "prevX","prevY","disperse"))
-  fishers <- NLset(turtles = fishers, agents=turtle(fishers, who=disperseInd$who),var=c("heading","xcor","ycor","prevX","prevY","disperse"), val=valdisperseInd)
+  valdisperseIndF <- of(agents=disperseIndF, var=c("heading","xcor","ycor", "prevX","prevY","disperse"))
+  fishers <- NLset(turtles = fishers, agents=turtle(fishers, who=disperseIndF$who),var=c("heading","xcor","ycor","prevX","prevY","disperse"), val=valdisperseIndF)
+  }
+  
+  ###--- for dispersing MALES
+  if(NLcount(disperseInd[disperseInd$sex=="M"])!=0){
+    # determine patch information for dispersing males
+    disperseIndM <- turtle(disperseInd, who = disperseInd[disperseInd$sex=="M",]$who) 
+    disperseHabitatM <- of(land, agents=patchHere(land, disperseIndM)) 
+    
+    # if the male kit finds a good quality cell (1) and there aren't other established males within 2 cells (x and y direction) can stay,
+    # otherwise (if habitat = 0 OR nearby male fishers>0) kit keeps moving
+    for(k in 1:nrow(disperseIndM)){
+      
+      # check if any established male fisher is nearby (within 4 cells east:west and 4 cells north:south to consider within male territory)
+      # k=2
+      dispserseInd.neighbour <- turtlesAt(land, turtles = fishers[fishers$sex=="M" & fishers$disperse=="E"], agents = turtle(disperseIndM[k], who = disperseIndM[k]$who),
+                                          dx=c(-2:2), dy=c(-2:2), torus = FALSE)
+      
+      if(disperseHabitatM[k]==1 & NLcount(dispserseInd.neighbour)==0){ # if the habitat is good and there are no other established male territories nearby
+        disperseIndM <- NLset(turtles = disperseIndM, agents = turtle(disperseIndM, who = disperseIndM[k]$who), var = "disperse", val = "E") # then establish
+        } else {
+          disperseIndM <- NLset(turtles = disperseIndM, agents = turtle(disperseIndM, who = disperseIndM[k]$who), var = "disperse", val = "D") # otherwise keep dispersing
+          
+          # move dispersing male one more cell (can move 2 cells for every 1 cell female moves); keep the male moving in the same direction, moving one more dist.mov distance
+          disperseIndTMP <- fd(turtle(disperseIndM, who=disperseIndM[k]$who),dist=dist_mov, land, torus = FALSE, out = TRUE)
+          # patchHere(land, disperseIndTMP) # the coordinates for the cells
+
+          disperseHabitatTMP <- of(land, agents=patchHere(land, disperseIndTMP))
+          dispserseInd.neighbourTMP <- turtlesAt(land, fishers[fishers$sex=="M" & fishers$disperse=="E"], agents = turtle(disperseIndM, who = disperseIndTMP$who),
+                                                dx=c(-2:2), dy=c(-2:2), torus = FALSE)
+          if(disperseHabitatTMP==1 & is.na(NLcount(dispserseInd.neighbourTMP))==0){ # if the habitat is good and there are no other established male territories nearby
+            disperseIndM <- NLset(turtles = disperseIndM, agents = turtle(disperseIndM, who = disperseIndTMP$who), var = "disperse", val = "E") # then establish
+            } else {
+              disperseIndM <- NLset(turtles = disperseIndM, agents = turtle(disperseIndM, who = disperseIndTMP$who), var = "disperse", val = "D") # otherwise keep dispersing
+            }
+        }
+      }
+    
+    # now have updated object with kits dispersing or establishing
+    # add the new values to the existing fishers 'turtle' object
+    valdisperseIndM <- of(agents=disperseIndM, var=c("heading","xcor","ycor", "prevX","prevY","disperse"))
+    fishers <- NLset(turtles = fishers, agents=turtle(fishers, who=disperseIndM$who),var=c("heading","xcor","ycor","prevX","prevY","disperse"), val=valdisperseIndM)
+    }
   
   return(fishers)
   
@@ -186,12 +242,14 @@ disperse <- function(land=land, fishers=fishers, dist_mov=1.0) {
 
 # now run function for up to 30 times for one season
 t3 <- t2
-for(i in 1:30){
+t3 
+
+for(i in 1:10){
   t3 <- disperse(land=land, fishers=t3, dist_mov=1.0)
 }
-# will throw up error message if all kits establish territory before the 30 runs
-# fine as output is what we want, up to 30 times
+
 # should think about adding in a "break" to stop it once all "D" turn to "E"
+# currently just keeps running through
 
 t3 # all have now established territory
 plot(land)
