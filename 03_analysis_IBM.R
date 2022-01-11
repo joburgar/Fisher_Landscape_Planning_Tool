@@ -135,6 +135,50 @@ t2 <- reproduce(fishers=t1)
 # should have first round of survival in here up to the first year
 # so go through two time steps and have kits who survive have an age of 2
 
+valt2 <- of(agents=t2, var=c("age"))+1
+t2 <- NLset(turtles = t2, agents=turtle(t2, who=t3$who),var="age", val=valt2)
+
+# no need to create new survival estimates, load previously created unless new data from Eric
+km_surv_estimates <- read.csv("km_surv_estimates.csv", header=TRUE)
+glimpse(km_surv_estimates)
+
+# data check - to make sure it makes sense for juveniles (i.e., subadutls)
+# km_surv_estimates %>% group_by(Use,Cohort) %>% dplyr::summarise(max(Time_step))
+# km_surv_estimates %>% filter(Use==1 & grepl("J", Cohort)) 
+
+# create a function that runs each time step to determine the probability of a fisher surviving to the next time step
+survive <- function(fishers, vsex="F", vbreed="adult", dieFisher=0.5, surv_estimates=km_surv_estimates) {
+  
+  # Create
+  whoFishers <- of(agents = fishers, var = c("who","breed","sex")) # "who" of the fishers before they reproduce
+  whoSFishers <- whoFishers %>% filter(breed==vbreed & sex==vsex) # the select list of "who" to estimate survival
+  
+  if (nrow(whoSFishers[whoSFishers$breed=="adult" & whoSFishers$sex=="F",])!=0){  # adult female
+    survival <- runif(n = nrow(whoSFishers), min=0.61, max=0.97)
+    whoSFishers$survival <- survival
+    
+  } else if (nrow(whoSFishers[whoSFishers$breed=="adult" & whoSFishers$sex=="M",])!=0){ # adult male
+    survival <- runif(n = nrow(whoSFishers), min=0.72, max=1.0)
+    whoSFishers$survival <- survival
+    
+  } else if (nrow(whoSFishers[whoSFishers$breed=="juvenile" & whoSFishers$sex=="F",])!=0){ # subadult female
+    survival <- runif(n = nrow(whoSFishers), min=0.06, max=0.76)
+    whoSFishers$survival <- survival
+    
+  } else { # subadult male
+    survival <- runif(n = nrow(whoSFishers), min=0.61, max=1.0)
+    whoSFishers$survival <- survival
+  }
+  
+  whoSFishers$die <- whoSFishers$survival^2 < dieFisher # this is the part that needs some thought!!!!!
+  dieWho <- whoSFishers %>% filter(die==TRUE) # "who" of fishers which die
+  
+  fishers <- die(fishers, who=dieInd$who)
+  return(fishers)
+}
+
+
+
 ###--- DISPERSE
 # Have the female fisher move 30 cells within dispersal season and the male fisher move 60 cells
 # If she finds a good habitat cell without another female, she can take it, otherwise she keeps dispersing
@@ -241,12 +285,27 @@ disperse <- function(land=land, fishers=fishers, dist_mov=1.0) {
 
 
 # now run function for up to 30 times for one season
-t3 <- t2
-t3 
 
-for(i in 1:10){
+# now need to go through 1 time step before kits are kicked out of natal territory and 1 time step associated with dispersal
+# ran through the dispersal for one "season" or 6 month period so need to update the age for each fisher
+
+# For a female:
+#   Start - Female is born (t0 - Apr 1)
+# 
+# Step 1. Female is kicked out of natal territory (t1 - Oct 1) 
+# *** Probability of survival to t1 - either 0.41 or 0.50 depending on population
+# *** Assume female fisher can move ~35 km in a month, and if each pixel is 5.5 km in length or 7.8 km in diameter than a female fisher can move between 5-6 pixels per month or 30-36 pixels in each time step. (Will need to think of a movement model to use - random walk? Need to code in that bearing can change within timestep???)
+# *** If the fisher encounter a vacant territory then move to Step 2, otherwise go back to Step 1. 
+# *** Assume that first available territory beyond some base threshold will be taken if vacant (later can add in increased mortality risk if territory quality is lower, but sufficient; to start have territories as 1 = 1 suitable and 0 = 0 unsuitable).
+# *** Can only survive until 2 without a territory - this means that if no territory by t4 (or 3 loops) then fisher dies.
+# *** Cannot breed unless in vacant territory - will need to code this in (if pixel occupied, can travel through but not stay / breed)
+# Step 2. Establishes / maintains territory & scents territory (t2 - Apr 1)
+
+
+for(i in 1:30){
   t3 <- disperse(land=land, fishers=t3, dist_mov=1.0)
 }
+
 
 # should think about adding in a "break" to stop it once all "D" turn to "E"
 # currently just keeps running through
@@ -325,41 +384,4 @@ points(t3, pch = 16, col = of(agents = t3, var = "color"))
 # km_surv_estimates$Cohort <- as.factor(km_surv_estimates$Cohort)
 # write.csv(km_surv_estimates, "km_surv_estimates.csv", row.names = FALSE)
 
-# no need to create new survival estimates, load previously created unless new data from Eric
-km_surv_estimates <- read.csv("km_surv_estimates.csv", header=TRUE)
-glimpse(km_surv_estimates)
-
-km_surv_estimates %>% group_by(Use,Cohort) %>% dplyr::summarise(max(Time_step))
-km_surv_estimates %>% filter(Use==1 & grepl("J", Cohort)) 
-
-# create a function that runs each time step to determine the probabilty of a fisher surviving to the next time step
-survive <- function(fishers, vsex="F", vbreed="adult", dieFisher=0.5, surv_estimates=km_surv_estimates) {
-
-  # Create
-  whoFishers <- of(agents = fishers, var = c("who","breed","sex")) # "who" of the fishers before they reproduce
-  whoSFishers <- whoFishers %>% filter(breed==vbreed & sex==vsex) # the select list of "who" to estimate survival
-
-  if (nrow(whoSFishers[whoSFishers$breed=="adult" & whoSFishers$sex=="F",])!=0){  # adult female
-    survival <- runif(n = nrow(whoSFishers), min=0.61, max=0.97)
-    whoSFishers$survival <- survival
-
-  } else if (nrow(whoSFishers[whoSFishers$breed=="adult" & whoSFishers$sex=="M",])!=0){ # adult male
-    survival <- runif(n = nrow(whoSFishers), min=0.72, max=1.0)
-    whoSFishers$survival <- survival
-
-    } else if (nrow(whoSFishers[whoSFishers$breed=="juvenile" & whoSFishers$sex=="F",])!=0){ # subadult female
-      survival <- runif(n = nrow(whoSFishers), min=0.06, max=0.76)
-      whoSFishers$survival <- survival
-
-      } else { # subadult male
-        survival <- runif(n = nrow(whoSFishers), min=0.61, max=1.0)
-        whoSFishers$survival <- survival
-      }
-
-  whoSFishers$die <- whoSFishers$survival^2 < dieFisher # this is the part that needs some thought!!!!!
-  dieWho <- whoSFishers %>% filter(die==TRUE) # "who" of fishers which die
-
-  fishers <- die(fishers, who=dieInd$who)
-  return(fishers)
-}
-
+###--- NEED TO CONSIDER THAT Time_step should make intuitive sense for adults and juveniles. Perhaps change Time_step to "age" where adults become adult at time_step 5 so 5-16 = adult and 1-4 = juvenile
