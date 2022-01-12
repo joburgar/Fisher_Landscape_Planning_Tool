@@ -17,13 +17,30 @@
 # written by Joanna Burgar (Joanna.Burgar@gov.bc.ca) - 02-Dec-2021
 #####################################################################################
 
+# denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4], ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2])
 
 ###--- REPRODUCE
-reproduce <- function(fishers, denLCI=denLCI, denUCI=denUCI, ltrM=ltrM, ltrSD=ltrSD) {
+denning <- function(fishers, denLCI=denLCI, denUCI=denUCI) {
 
   # Random selection for which adult females reproduce, based on denning mean and SD (Central Interior)
-  whoFishers <- of(agents = fishers, var = c("who","breed","sex")) # "who" of the fishers before they reproduce
-  whoAFFishers <- whoFishers %>% filter(breed=="adult" & sex=="F") %>% dplyr::select(who)
+  # fishers=t0; rm(fishers)
+  whoFishers <- of(agents = fishers, var = c("who","breed","sex","mate_avail")) # "who" of the fishers before they reproduce
+  whoAFFishers <- whoFishers %>% filter(breed=="adult" & sex=="F" & mate_avail=="Y") %>% dplyr::select(who)
+
+  repro <- rbinom(n = nrow(whoAFFishers), size=1, prob=denLCI:denUCI) # prob can be a range - confidence intervals?
+  whoAFFishers$repro <- repro
+
+  fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=whoAFFishers$who), var = "repro", val = whoAFFishers$repro)
+
+  return(fishers)
+}
+
+kits_produced <- function(fishers, ltrM=ltrM, ltrSD=ltrSD) {
+
+  # Random selection for which adult females reproduce, based on denning mean and SD (Central Interior)
+  # fishers=t1; rm(fishers)
+  whoFishers <- of(agents = fishers, var = c("who","repro")) # "who" of the fishers before they reproduce
+  whoRFishers <- whoFishers %>% filter(repro==1) %>% dplyr::select(who)
 
   repro <- rbinom(n = nrow(whoAFFishers), size=1, prob=denLCI:denUCI) # prob can be a range - confidence intervals?
   whoAFFishers$repro <- repro
@@ -48,13 +65,12 @@ reproduce <- function(fishers, denLCI=denLCI, denUCI=denUCI, ltrM=ltrM, ltrSD=lt
     fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "sex", val = sample(c("F","M"),NLcount(offspring),replace=TRUE))
     fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "disperse", val = "D")
     fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "age", val = 0) # just born so time step 0
+    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "mated", val = "N") # just born so time step 0
 
   }
 
   return(fishers)
 }
-
-
 ###--- SURVIVE
 # Have the fisher survive one time step depending on their age and cohort
 # Use the survival function output from Eric's latest survival analysis
