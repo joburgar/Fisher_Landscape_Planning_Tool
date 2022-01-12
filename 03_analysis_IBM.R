@@ -35,14 +35,79 @@ source("00_IBM_functions.R")
 
 # Start with a very simple example
 # Die by 2 if haven’t found a territory.
-# Females mean = 5 years; 8 = max
-# Males = 4 max
+# Females max age length = 8 (might instead go with survival analysis data)
+# Males max age length = 4 (may also go with survival analysis data)
 # Female territory = 30 km2
 # Male territory = 5*female territory (have 3 female territories) 150-200 km2
 # Female transient animal = 70 km2 Euclidian distance within a couple months
 # Male transient animal = moves much farther
 # When a landscape is full of animals an animal has to move quite far – so if territories are all full, then the animal has to leave the study area (one went to Alberta)
 # When the landscape is poor and isn’t able to support fishers, then the distance moved is also far
+
+###--- Need to run the survival function every 6 months to start the next time step with appropriate number of individuals
+
+# Start - Pregnant females on the landscape
+# the start of the scenario, set it up with pregnant females in established territories
+
+# *** Step 1. START
+# t0 = April
+# function REPRODUCE - all kits are 0 and random age of adults to start scenario
+
+# *** Step 2. SURVIVE
+# t1 = October
+# function SURVIVE - add 0.5 to all fishers, kill off individuals who do not survive through t1
+
+# *** Step 3. ESTABLISH / MAINTAIN TERRITORY & SCENT TERRITORY (MATE) & SURVIVE
+# t2 = April
+# 3a. function DISPERSE - run through DISPERSE function for individuals without territories, up to 30 times to allow 6 months of movement
+# 3b. function MATE - for female fishers with ESTABLISHED territory, if male is within 2 cells, assign mated status (i.e., if male is in same cell or ± 2 cell either via xlim and/or ylim)
+# 3c. function SURVIVE - add add 0.5 to all fishers, kill off individuals who do not survive through t2
+
+# *** Step 4.  ESTABLISH / MAINTAIN TERRITORY & SURVIVE
+# t3 = October
+# 4a. function DISPERSE - run through DISPERSE function for individuals without territories, up to 30 times to allow 6 months of movement
+# 4b. function SURVIVE - add 0.5 to all fishers, kill off individuals who do not survive through t3
+
+# *** Step 5. REPRODUCE
+# t4 = April
+# function REPRODUCE
+
+# Step 1. Female is kicked out of natal territory (t1 - Oct 1)
+# *** Probability of survival can be found in km_surv_estimates (population, age and sex dependent)
+# *** Assume female fisher can move ~35 km in a month, and if each pixel is 5.5 km in length or 7.8 km in diameter than a female fisher can move between 5-6 pixels per month or 30-36 pixels in each time step. (Will need to think of a movement model to use - random walk? Need to code in that bearing can change within timestep???)
+# *** If the dispsersing female encounters a vacant territory then move to Step 2, otherwise go back to Step 1.
+# *** Assume that first available territory beyond some base threshold will be taken if vacant (later can add in increased mortality risk if territory quality is lower, but sufficient; to start have territories as 1 = 1 suitable and 0 = 0 unsuitable).
+# *** Can only survive until 2 without a territory - this means that if no territory by t4 (or 3 loops) then fisher dies.
+# *** Cannot breed unless in vacant territory - will need to code this in (if pixel occupied, can travel through but not stay / breed)
+#
+# Step 2. Establishes / maintains territory & scents territory (t2 - Apr 1)
+# *** If male within 2 cells of female (i.e., if male is in same cell or ± 1 cell either via xlim and/or ylim) , then female mates (or use denning rate if all female model)
+# *** Estimate of denning rate: either 0.54 or 0.75 depending on population
+#
+# Step 3. Survived in territory (t3 - Oct)
+# *** Necessary step for time steps to work properly
+# *** Perhaps here we can add in adult survival or maybe at each time step using the probability of survival within the bounds of mean-max lifespan?  (Probability of survival in adulthood - 0.79 or 0.86 depending on population)
+#
+# Step 4. Kits are born (t4 - Apr 1)
+# *** If on the most optimistic timeline, then female fisher is 2 years old when having first litter
+# *** Number of kits based on mean litter size = 1.7 or 2.6 depending on population, round number of kits to whole number for realism
+# *** Use Bernoulli distribution for female/male sex in kits (i.e., 50/50 probability)
+# *** Loop back to Step 2 and allow female fisher to repeat steps 2-4 another 3-5 times (mean female fisher lifespan = 5 years, max = 8 years)
+#
+# For a male:
+#   Start - Male is born (t0 - Apr 1)
+#
+# Step 1. Male is kicked out of natal territory.
+# *** Probability of survival to Year 1 - either 0.86 or 1.0 depending on population
+# *** Assume male fisher can move ~70 km in a month and if each pixel is 5.5 km in length or 7.8 km in diameter than a male fisher can move between 9-13 pixels per month or 45-78 pixels in each time step. (Will need to think of a movement model to use - random walk? Need to code in that bearing can change within timestep???)
+# *** If there are no other males within 2 pixels (i.e., ± 1 cell either via xlim and/or ylim), consider the territory as 'vacant' and then move to Step 2, otherwise go back to Step 1.
+# *** Can only survive until 2 without a territory - this means that if no territory by t4 (or 3 loops) then fisher dies.
+#
+# Step 2. Establishes / maintains territory & finds female(s) (t2 - Apr 1)
+# *** If female within 2 cells of male (i.e., if female is in same cell or ± 1 cell either via xlim and/or ylim) ,
+# *** This is really just a female step. What matters is that if a male establishes a territory he can live up to 4 years, otherwise he dies after 2. Can add in some sort of probability associated with survival for each time step from establishing territory (t2 at earliest, t4 at latest) till death at  end of t8. Rosiest scenario has male breeding for 4 time steps (t2, t4, t6, t8). Make mortality probabilistic based on male adulthood survival - 0.9 or 0.33 depending on population.
+
+
 
 ###--- AGENTS
 # There are two types of 'agents' in NetLogoR: patches and turtles
@@ -63,37 +128,40 @@ rtmp <- world2raster(land)
 fishers_start <- as.data.frame(sampleStratified(rtmp, size=10, xy=TRUE)) %>% filter(layer==1)
 fishers_start <- as.matrix(fishers_start[c("x","y")])
 
-# FEMALE ONLY MODEL
+# Start with a landscape of reproductively capable females
 # Create ten female fishers and have them produce kits
 # place the females on "good" habitat
 nfishers = 10
-t1 <- createTurtles(n = nfishers, coords=fishers_start, breed="adult")
+t0 <- createTurtles(n = nfishers, coords=fishers_start, breed="adult")
 
 # Visualize the turtles on the landscape with their respective color
 plot(land)
-points(t1, pch = 16, col = of(agents = t1, var = "color"))
+points(t0, pch = 16, col = of(agents = t0, var = "color"))
 
 # assign each turtle as a female with an established territory
-t1 <- turtlesOwn(turtles = t1, tVar = c("sex"), tVal = c(rep("F", each=nfishers)))
-t1 <- turtlesOwn(turtles = t1, tVar = c("disperse"), tVal = c(rep("E", each=nfishers)))
+t0 <- turtlesOwn(turtles = t0, tVar = c("sex"), tVal = c(rep("F", each=nfishers)))
+t0 <- turtlesOwn(turtles = t0, tVar = c("disperse"), tVal = c(rep("E", each=nfishers)))
+t0 <- turtlesOwn(turtles = t0, tVar = c("mate_avail"), tVal = c(rep("Y", each=nfishers)))
+t0 <- turtlesOwn(turtles = t0, tVar = c("repro"), tVal = 0)
 
 # create a random age for the fishers
 # keep in mind that time steps are 6 months so have ages in 6 month increments
 # the oldest a female fisher can be is 8 or 16 time steps
-# the youngest time step for an adult is 5 (juvenile = up to 2 years of 4 time steps)
-####  QUESTION - SHOULD AGES BE IN 0.5 INCREMENTS TO REFLECT YEARS? OR IS IT NOT TOO CONFUSING FOR AN AGE OF 2 TO MEAN 1 YEAR?
+# the youngest time step for an adult is 1.5 or 5 time steps (juvenile = up to 2 years of 4 time steps)
 yrs.adult <- sample(5:16, nfishers, replace=TRUE)
 
-t1 <- turtlesOwn(turtles=t1, tVar = c("age"), tVal = yrs.adult/2)
-t1
+t0 <- turtlesOwn(turtles=t0, tVar = c("age"), tVal = yrs.adult/2)
+t0
 
+#REPRODUCE
 # read in csv created from reproductive rates in Rich and Eric's paper - 00_surv_repro_estimates_prep.R
+
 repro.CI <- read.csv("data/repro.CI.csv", header=TRUE, row.names = 1)
 
 # for Central interior population
-t2 <- reproduce(fishers=t1, denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4], ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2])
-t2
-
+t1 <- denning(fishers=t0, denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4])
+t1 <- kits_produced(fishers=t1, ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2])
+t1
 
 
 # should have first round of survival in here up to the first year
