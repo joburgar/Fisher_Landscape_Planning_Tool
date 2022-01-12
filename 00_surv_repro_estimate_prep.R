@@ -53,7 +53,7 @@ CI_from_meanSDn <- function(mean=mean, sd=sd, n=n, alpha=0.5){
   upper.bound <- sample.mean + margin.error
   # print(c(lower.bound,upper.bound))
 
-  return(c(lower.bound, upper.bound))
+  return(c(sample.mean, sample.sd, lower.bound, upper.bound))
 }
 
 # use on reproductive parameters from Rich and Eric's survival paper
@@ -74,7 +74,7 @@ lsB <- CI_from_meanSDn(mean=lsBmean, sd=lsBsd, n=lsBn)
 
 
 repro.CI <- cbind(drCI, lsCI, drB, lsB)
-rownames(repro.CI) <- c("L95CI", "U95CI")
+rownames(repro.CI) <- c("mean", "sd", "L95CI", "U95CI")
 write.csv(as.data.frame(repro.CI), "data/repro.CI.csv")
 
 ###--- SURVIVE
