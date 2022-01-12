@@ -61,19 +61,19 @@ CI_from_meanSDn <- function(mean=mean, sd=sd, n=n, alpha=0.5){
 # for Central Interior - litter size mean = 1.7; sd = 0.73; n = 14
 # for Boreal - denning rate mean = 0.75; sd = 0.39; n = 22
 # for Boreal - litter size mean = 2.6; sd = 0.70; n = 18
-drCImean <- 0.54; drCIsd <- 0.41; drCIn <- 37
-lsCImean <- 1.7; lsCIsd <- 0.73; lsCIn = 14
+drCmean <- 0.54; drCsd <- 0.41; drCn <- 37
+lsCmean <- 1.7; lsCsd <- 0.73; lsCn = 14
 drBmean <- 0.75; drBsd <- 0.39; drBn <- 22
 lsBmean <- 2.6; lsBsd <- 0.70; lsBn <- 18
 
 
-drCI <- CI_from_meanSDn(mean=drCImean, sd=drCIsd, n=drCIn)
-lsCI <- CI_from_meanSDn(mean=lsCImean, sd=lsCIsd, n=lsCIn)
+drC <- CI_from_meanSDn(mean=drCmean, sd=drCsd, n=drCn)
+lsC <- CI_from_meanSDn(mean=lsCmean, sd=lsCsd, n=lsCn)
 drB <- CI_from_meanSDn(mean=drBmean, sd=drBsd, n=drBn)
 lsB <- CI_from_meanSDn(mean=lsBmean, sd=lsBsd, n=lsBn)
 
 
-repro.CI <- cbind(drCI, lsCI, drB, lsB)
+repro.CI <- cbind(drC, lsC, drB, lsB)
 rownames(repro.CI) <- c("mean", "sd", "L95CI", "U95CI")
 write.csv(as.data.frame(repro.CI), "data/repro.CI.csv")
 
