@@ -87,7 +87,7 @@ write.csv(as.data.frame(repro.CI), "data/repro.CI.csv")
 # load Eric Lofroth's survival data (recieved Dec 2021)
 load("./data/fisher_survival.RData")
 library(survival)
-?survfit
+
 summary(fishersurvival)
 # Call: survfit(formula = fishersurv ~ Population + Sex + Ageclass, data = fisher1)
 library(ggfortify)
@@ -147,6 +147,15 @@ km_surv_estimates <- km_surv_estimates %>% mutate(Use = case_when(grepl("J", Coh
 km_surv_estimates <- km_surv_estimates %>% mutate(age_6mnths = case_when(grepl("A", Cohort) ~ as.numeric(Time_step) + 4, TRUE ~ as.numeric(Time_step))) # only consider juvenile time steps for 2 years
 km_surv_estimates$age <- km_surv_estimates$age_6mnths / 2
 glimpse(km_surv_estimates)
+
+# subset to estimates needed for survival function
+km_surv_estimates <- km_surv_estimates %>% filter(Use==1 & age<8.5) %>% dplyr::select(-Use)
+glimpse(km_surv_estimates)
+
+# data check - to make sure it makes sense for each age class
+km_surv_estimates %>% group_by(Cohort) %>% summarise(max(age))
+km_surv_estimates %>% filter(grepl("J", Cohort))
+km_surv_estimates %>% filter(grepl("A", Cohort))
 
 write.csv(km_surv_estimates, "data/km_surv_estimates.csv", row.names = FALSE)
 
