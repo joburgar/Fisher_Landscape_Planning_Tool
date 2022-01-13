@@ -39,13 +39,8 @@ kits_produced <- function(fishers, ltrM=ltrM, ltrSD=ltrSD) {
 
   # Random selection for which adult females reproduce, based on denning mean and SD (Central Interior)
   # fishers=t1; rm(fishers)
-  whoFishers <- of(agents = fishers, var = c("who","repro")) # "who" of the fishers before they reproduce
-  whoRFishers <- whoFishers %>% filter(repro==1) %>% dplyr::select(who)
-
-  repro <- rbinom(n = nrow(whoAFFishers), size=1, prob=denLCI:denUCI) # prob can be a range - confidence intervals?
-  whoAFFishers$repro <- repro
-
-  reproWho <- whoAFFishers %>% filter(repro==TRUE) # "who" of fishers which reproduce
+  whoFishers <- of(agents = fishers, var = c("who","mate_avail","repro")) # "who" of the fishers before they reproduce
+  reproWho <- whoFishers %>% filter(repro==1) %>% dplyr::select(who) # "who" of fishers which reproduce
   reproInd <- turtle(fishers, who = reproWho$who) # fishers which reproduce
 
   # if there is at least one fisher reproducing
@@ -65,7 +60,8 @@ kits_produced <- function(fishers, ltrM=ltrM, ltrSD=ltrSD) {
     fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "sex", val = sample(c("F","M"),NLcount(offspring),replace=TRUE))
     fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "disperse", val = "D")
     fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "age", val = 0) # just born so time step 0
-    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "mated", val = "N") # just born so time step 0
+    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "mate_avail", val = "NA") # just born so time step 0
+    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "repro", val = 0) # just born so time step 0
 
   }
 
