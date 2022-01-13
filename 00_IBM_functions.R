@@ -108,8 +108,8 @@ kits_produced <- function(fishers, ltrM=ltrM, ltrSD=ltrSD) {
 
 survive <- function(fishers, surv_estimates=km_surv_estimates, Fpop="C") {
 
-  # fishers=t2
-  survFishers <- of(agents = fishers, var = c("who","breed","sex","age")) # "who" of the fishers before they reproduce
+  # fishers=t1
+  survFishers <- of(agents = fishers, var = c("who","breed","sex","disperse","age")) # "who" of the fishers before they reproduce
   survFishers$Cohort <- toupper(paste0(rep(Fpop,times=nrow(survFishers)),survFishers$sex,substr(survFishers$breed,1,1)))
 
   survFishers <- left_join(survFishers,surv_estimates %>% dplyr::select(-Time_step, -age_6mnths, -Time),
@@ -118,16 +118,17 @@ survive <- function(fishers, surv_estimates=km_surv_estimates, Fpop="C") {
   survFishers$live <- NA
 
   for(i in 1:nrow(survFishers)){
-    survFishers[i,10] <- rbinom(n=1, size=1, prob=survFishers[i,8]:survFishers[i,9])
+    if(survFishers[i,3]!=0){ # can't kill off juveniles that haven't reached 6 months
+    survFishers[i,11] <- rbinom(n=1, size=1, prob=survFishers[i,9]:survFishers[i,10])
+    }
   }
 
-  dieWho <- survFishers %>% filter(live!=TRUE) # "who" of fishers which die, based on probabilty
+  dieWho <- survFishers %>% filter(live!=TRUE) # "who" of fishers which die, based on probability
   oldM <- survFishers %>% filter(sex=="M" & age>4) # "who" of male fishers who die of 'old age' (i.e., > 4 yrs)
   oldF <- survFishers %>% filter(sex=="F" & age>8) # "who" of female fishers who die of 'old age' (i.e., > 8 yrs)
+  dispersing <- survFishers %>% filter(disperse=="D" & age>2) # "who" of dispersing fishers over 2
 
-  fishers <- die(fishers, who=dieWho$who)
-  fishers <- die(fishers, who=oldM$who)
-  fishers <- die(fishers, who=oldF$who)
+  fishers <- die(fishers, who=c(dieWho$who, oldM$who, oldF$who, dispersing$who))
 
   return(fishers)
 }
@@ -150,7 +151,7 @@ disperse <- function(land=land, fishers=fishers, dist_mov=1.0) {
   # dist_mov relates to the number of cells (not quite right if fisher moving diagonally across a cell but works for our purposes)
 
   # fishers=t2
-  whoDFishers <- fishers[fishers$disperse=="D",]$who
+  whoDFishers <- fishers[fishers$disperse=="D" & fishers$age>0,]$who
   disperseInd <- turtle(fishers, who = whoDFishers) # fishers who are dispersing (i.e., kits)
 
   # Have each fisher move 1 step in random heading
