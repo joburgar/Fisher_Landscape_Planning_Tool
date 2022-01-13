@@ -159,9 +159,9 @@ t0
 repro.CI <- read.csv("data/repro.CI.csv", header=TRUE, row.names = 1)
 
 # for Central interior population
-t1 <- denning(fishers=t0, denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4])
-t1 <- kits_produced(fishers=t1, ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2])
-t1
+t1 <- denning(fishers=t0, denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4]); t1
+t1 <- kits_produced(fishers=t1, ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2]); t1
+points(t1, pch = 16, col = of(agents = t1, var = "color")) # looks the same because kit are at same location as their moms
 
 
 # should have first round of survival in here up to the first year
