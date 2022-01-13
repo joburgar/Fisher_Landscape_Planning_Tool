@@ -20,6 +20,34 @@
 # denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4], ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2])
 
 ###--- REPRODUCE
+find_mate <- function(fishers){
+  # fishers=t0
+  whoMFishers <- fishers[fishers$sex=="F" & fishers$age>1 & fishers$disperse=="E"]$who
+  matingInd <- turtle(fishers, who = whoMFishers) # fishers who are available for mating
+
+  if(NLcount(matingInd!=0)){
+
+    # if the female finds finds an established males within 2 cells (x and y direction) can mate,
+    # otherwise (if nearby male fishers==0) no chance for mating
+    for(k in 1:nrow(matingInd)){
+
+      # check if any established male fisher is nearby (within 4 cells east:west and 4 cells north:south to consider within male territory)
+      #
+      nearby.male <- turtlesAt(land, turtles = fishers[fishers$sex=="M" & fishers$disperse=="E"], agents = turtle(matingInd[k], who = matingInd[k]$who),
+                                          dx=c(-1:1), dy=c(-1:1), torus = FALSE)
+
+      if(NLcount(nearby.male)==0){ # if there are no established male territories nearby (i.e., no mates)
+        fishers <- NLset(turtles = fishers, agents = turtle(matingInd, who = matingInd[k]$who), var = "mate_avail", val = "N") # not able to mate
+      } else {
+        fishers <- NLset(turtles = fishers, agents = turtle(matingInd, who = matingInd[k]$who), var = "mate_avail", val = "Y") # otherwise able to mate
+
+      }
+    }
+  }
+  return(fishers)
+}
+
+
 denning <- function(fishers, denLCI=denLCI, denUCI=denUCI) {
 
   # Random selection for which adult females reproduce, based on denning mean and SD (Central Interior)
@@ -34,6 +62,7 @@ denning <- function(fishers, denLCI=denLCI, denUCI=denUCI) {
 
   return(fishers)
 }
+
 
 kits_produced <- function(fishers, ltrM=ltrM, ltrSD=ltrSD) {
 
@@ -67,6 +96,7 @@ kits_produced <- function(fishers, ltrM=ltrM, ltrSD=ltrSD) {
 
   return(fishers)
 }
+
 ###--- SURVIVE
 # Have the fisher survive one time step depending on their age and cohort
 # Use the survival function output from Eric's latest survival analysis
@@ -162,10 +192,10 @@ disperse <- function(land=land, fishers=fishers, dist_mov=1.0) {
     # otherwise (if habitat = 0 OR nearby male fishers>0) kit keeps moving
     for(k in 1:nrow(disperseIndM)){
 
-      # check if any established male fisher is nearby (within 4 cells east:west and 4 cells north:south to consider within male territory)
+      # check if any established male fisher is nearby (within 2 cells east:west and 2 cells north:south to consider within male territory)
       # k=2
       dispserseInd.neighbour <- turtlesAt(land, turtles = fishers[fishers$sex=="M" & fishers$disperse=="E"], agents = turtle(disperseIndM[k], who = disperseIndM[k]$who),
-                                          dx=c(-2:2), dy=c(-2:2), torus = FALSE)
+                                          dx=c(-1:1), dy=c(-1:1), torus = FALSE)
 
       if(disperseHabitatM[k]==1 & NLcount(dispserseInd.neighbour)==0){ # if the habitat is good and there are no other established male territories nearby
         disperseIndM <- NLset(turtles = disperseIndM, agents = turtle(disperseIndM, who = disperseIndM[k]$who), var = "disperse", val = "E") # then establish
@@ -178,7 +208,7 @@ disperse <- function(land=land, fishers=fishers, dist_mov=1.0) {
 
         disperseHabitatTMP <- of(land, agents=patchHere(land, disperseIndTMP))
         dispserseInd.neighbourTMP <- turtlesAt(land, fishers[fishers$sex=="M" & fishers$disperse=="E"], agents = turtle(disperseIndM, who = disperseIndTMP$who),
-                                               dx=c(-2:2), dy=c(-2:2), torus = FALSE)
+                                               dx=c(-1:1), dy=c(-1:1), torus = FALSE)
         if(disperseHabitatTMP==1 & is.na(NLcount(dispserseInd.neighbourTMP))==0){ # if the habitat is good and there are no other established male territories nearby
           disperseIndM <- NLset(turtles = disperseIndM, agents = turtle(disperseIndM, who = disperseIndTMP$who), var = "disperse", val = "E") # then establish
         } else {
