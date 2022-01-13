@@ -49,33 +49,34 @@ source("00_IBM_functions.R")
 # Start - Pregnant females on the landscape
 # the start of the scenario, set it up with pregnant females in established territories
 
-# *** Step 1. START
+# *** Step 1. START ***
 # t0 = April
 # function REPRODUCE - all kits are 0 and random age of adults to start scenario
+# simple assumption is to start with 10 adult males and 10 females, all on quality habitat
 
-# *** Step 2. SURVIVE
+# *** Step 2. SURVIVE ***
 # t1 = October
 # function SURVIVE - add 0.5 to all fishers, kill off individuals who do not survive through t1
 
-# *** Step 3. ESTABLISH / MAINTAIN TERRITORY & SCENT TERRITORY (MATE) & SURVIVE
+# *** Step 3. ESTABLISH / MAINTAIN TERRITORY & SCENT TERRITORY (MATE) & SURVIVE ***
 # t2 = April
 # 3a. function DISPERSE - run through DISPERSE function for individuals without territories, up to 30 times to allow 6 months of movement
 # 3b. function MATE - for female fishers with ESTABLISHED territory, if male is within 2 cells, assign mated status (i.e., if male is in same cell or ± 2 cell either via xlim and/or ylim)
 # 3c. function SURVIVE - add add 0.5 to all fishers, kill off individuals who do not survive through t2
 
-# *** Step 4.  ESTABLISH / MAINTAIN TERRITORY & SURVIVE
+# *** Step 4.  ESTABLISH / MAINTAIN TERRITORY & SURVIVE ***
 # t3 = October
 # 4a. function DISPERSE - run through DISPERSE function for individuals without territories, up to 30 times to allow 6 months of movement
 # 4b. function SURVIVE - add 0.5 to all fishers, kill off individuals who do not survive through t3
 
-# *** Step 5. REPRODUCE
+# *** Step 5. REPRODUCE ***
 # t4 = April
 # function REPRODUCE
 
 # Step 1. Female is kicked out of natal territory (t1 - Oct 1)
 # *** Probability of survival can be found in km_surv_estimates (population, age and sex dependent)
 # *** Assume female fisher can move ~35 km in a month, and if each pixel is 5.5 km in length or 7.8 km in diameter than a female fisher can move between 5-6 pixels per month or 30-36 pixels in each time step. (Will need to think of a movement model to use - random walk? Need to code in that bearing can change within timestep???)
-# *** If the dispsersing female encounters a vacant territory then move to Step 2, otherwise go back to Step 1.
+# *** If the dispersing female encounters a vacant territory then move to Step 2, otherwise go back to Step 1.
 # *** Assume that first available territory beyond some base threshold will be taken if vacant (later can add in increased mortality risk if territory quality is lower, but sufficient; to start have territories as 1 = 1 suitable and 0 = 0 unsuitable).
 # *** Can only survive until 2 without a territory - this means that if no territory by t4 (or 3 loops) then fisher dies.
 # *** Cannot breed unless in vacant territory - will need to code this in (if pixel occupied, can travel through but not stay / breed)
@@ -108,6 +109,10 @@ source("00_IBM_functions.R")
 # *** This is really just a female step. What matters is that if a male establishes a territory he can live up to 4 years, otherwise he dies after 2. Can add in some sort of probability associated with survival for each time step from establishing territory (t2 at earliest, t4 at latest) till death at  end of t8. Rosiest scenario has male breeding for 4 time steps (t2, t4, t6, t8). Make mortality probabilistic based on male adulthood survival - 0.9 or 0.33 depending on population.
 
 
+################################################################################
+# *** Step 1. START ***
+# t0 = April
+# function DENNING & KITS_PRODUCED - all kits are 0 and random age of adults to start scenario
 
 ###--- AGENTS
 # There are two types of 'agents' in NetLogoR: patches and turtles
@@ -123,40 +128,46 @@ land <- createWorld(minPxcor = 1, maxPxcor = 20,
                     sample(c(0, 1), 400, replace = TRUE))
 plot(land) # visualize the landscape
 
-# randomly select 10 "good" habitat cells for adult female fishers
+# randomly select 40 "good" habitat cells for adult female fishers
 rtmp <- world2raster(land)
-fishers_start <- as.data.frame(sampleStratified(rtmp, size=10, xy=TRUE)) %>% filter(layer==1)
+fishers_start <- as.data.frame(sampleStratified(rtmp, size=60, xy=TRUE)) %>% filter(layer==1)
 fishers_start <- as.matrix(fishers_start[c("x","y")])
 
-# Start with a landscape of reproductively capable females
-# Create ten female fishers and have them produce kits
-# place the females on "good" habitat
-nfishers = 10
+# Start with a landscape of reproductively capable females and males
+# Create 40 adult fishers, all with established territories
+# Place the fishers on "good" habitat
+nfishers = 60
 t0 <- createTurtles(n = nfishers, coords=fishers_start, breed="adult")
 
-# Visualize the turtles on the landscape with their respective color
-plot(land)
-points(t0, pch = 16, col = of(agents = t0, var = "color"))
 
 # assign each turtle as a female with an established territory
-t0 <- turtlesOwn(turtles = t0, tVar = c("sex"), tVal = c(rep("F", each=nfishers)))
+t0 <- turtlesOwn(turtles = t0, tVar = c("sex"), tVal = rep(c("F","M"), each=nfishers/2))
+t0 <- turtlesOwn(turtles = t0, tVar = c("shape"), tVal = rep(c(16,15), each=nfishers/2)) # females are circles, males are squares
 t0 <- turtlesOwn(turtles = t0, tVar = c("disperse"), tVal = c(rep("E", each=nfishers)))
-t0 <- turtlesOwn(turtles = t0, tVar = c("mate_avail"), tVal = c(rep("Y", each=nfishers)))
+t0 <- turtlesOwn(turtles = t0, tVar = c("mate_avail"), tVal = c(rep("NA", each=nfishers)))
 t0 <- turtlesOwn(turtles = t0, tVar = c("repro"), tVal = 0)
 
 # create a random age for the fishers
+# randomly assign females with ages from 2.5-8 and males with ages from 2.5-4
 # keep in mind that time steps are 6 months so have ages in 6 month increments
 # the oldest a female fisher can be is 8 or 16 time steps
-# the youngest time step for an adult is 1.5 or 5 time steps (juvenile = up to 2 years of 4 time steps)
-yrs.adult <- sample(5:16, nfishers, replace=TRUE)
-
+# the youngest time step for an adult is 2.5 or 5 time steps (juvenile = up to 2 years of 4 time steps)
+yrs.adult <- c(sample(5:16, nfishers/2, replace=TRUE), sample(5:8, nfishers/2, replace=TRUE))
 t0 <- turtlesOwn(turtles=t0, tVar = c("age"), tVal = yrs.adult/2)
 t0
 
-#REPRODUCE
+# Visualize the turtles on the landscape with their respective color
+plot(land)
+points(t0, pch = t0$shape, col = of(agents = t0, var = "color"))
+
+# check if mates are available for females
+t0 <- find_mate(t0, dx=c(-4:4), dy=c(-4:4)) # give unrealistic mating distance to start off
+t0[t0$mate_avail=="Y"] # number of 30 females able to find a mate with unrealistic distance
+
 # read in csv created from reproductive rates in Rich and Eric's paper - 00_surv_repro_estimates_prep.R
 
 repro.CI <- read.csv("data/repro.CI.csv", header=TRUE, row.names = 1)
+
 
 # for Central interior population
 t1 <- denning(fishers=t0, denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4]); t1
@@ -164,13 +175,15 @@ t1 <- kits_produced(fishers=t1, ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2]); t1
 points(t1, pch = 16, col = of(agents = t1, var = "color")) # looks the same because kit are at same location as their moms
 
 
+################################################################################
+# *** Step 2. SURVIVE *** #
+
 # should have first round of survival in here up to the first year
 # so go through two time steps and have kits who survive have an age of 2
 
-###--- SURVIVE
 # have all fisher progress 1 time step (i.e., age 6 months)
-valt2 <- of(agents=t2, var=c("age"))+0.5
-t2 <- NLset(turtles = t2, agents=turtle(t2, who=t2$who),var="age", val=valt2)
+age.val <- of(agents=t1, var=c("age"))+0.5
+t2 <- NLset(turtles = t1, agents=turtle(t1, who=t1$who),var="age", val=age.val)
 t2
 
 # load Eric Lofroth's survival data (recieved Dec 2021)
@@ -178,17 +191,21 @@ t2
 # or read the csv of the already processed / formatted survival probability estimates
 km_surv_estimates <- read.csv("data/km_surv_estimates.csv", header=TRUE)
 
-# subset to estimates needed for survival function
-km_surv_estimates <- km_surv_estimates %>% filter(Use==1 & age<8.5) %>% dplyr::select(-Use)
-glimpse(km_surv_estimates)
-
-# data check - to make sure it makes sense for each age class
-km_surv_estimates %>% group_by(Cohort) %>% summarise(max(age))
-km_surv_estimates %>% filter(grepl("J", Cohort))
-# km_surv_estimates %>% filter(grepl("A", Cohort))
+# # subset to estimates needed for survival function
+# km_surv_estimates <- km_surv_estimates %>% filter(Use==1 & age<8.5) %>% dplyr::select(-Use)
+# glimpse(km_surv_estimates)
+#
+# # data check - to make sure it makes sense for each age class
+# km_surv_estimates %>% group_by(Cohort) %>% summarise(max(age))
+# km_surv_estimates %>% filter(grepl("J", Cohort))
+# # km_surv_estimates %>% filter(grepl("A", Cohort))
 
 # now run function for up to 30 times for one season
+t2 <- survive(t2)
+t2
 
+plot(land)
+points(t2, pch = 16, col = of(agents = t2, var = "color")) # looks the same because kit are at same location as their moms
 # now need to go through 1 time step before kits are kicked out of natal territory and 1 time step associated with dispersal
 # ran through the dispersal for one "season" or 6 month period so need to update the age for each fisher
 
@@ -204,7 +221,7 @@ km_surv_estimates %>% filter(grepl("J", Cohort))
 # *** Cannot breed unless in vacant territory - will need to code this in (if pixel occupied, can travel through but not stay / breed)
 # Step 2. Establishes / maintains territory & scents territory (t2 - Apr 1)
 
-
+t3 <- t2
 for(i in 1:30){
   t3 <- disperse(land=land, fishers=t3, dist_mov=1.0)
 }
@@ -215,8 +232,8 @@ for(i in 1:30){
 
 t3 # all have now established territory
 plot(land)
-points(t1)
-points(t3, pch = 16, col = of(agents = t3, var = "color"))
+points(t2)
+points(t3, pch = 16, col = of(agents = t3, var = "color")) # looks the same because kit are at same location as their moms
 
 # next step is to add in survival probability for each fisher to survive a full year
 # and then to repeat the reproducing and dispersing functions
