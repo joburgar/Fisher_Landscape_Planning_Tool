@@ -20,7 +20,7 @@
 # denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4], ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2])
 
 ###--- REPRODUCE
-find_mate <- function(fishers){
+find_mate <- function(fishers, dx=c(-1:1), dy=c(-1:1)){
   # fishers=t0
   whoMFishers <- fishers[fishers$sex=="F" & fishers$age>1 & fishers$disperse=="E"]$who
   matingInd <- turtle(fishers, who = whoMFishers) # fishers who are available for mating
@@ -34,7 +34,7 @@ find_mate <- function(fishers){
       # check if any established male fisher is nearby (within 4 cells east:west and 4 cells north:south to consider within male territory)
       #
       nearby.male <- turtlesAt(land, turtles = fishers[fishers$sex=="M" & fishers$disperse=="E"], agents = turtle(matingInd[k], who = matingInd[k]$who),
-                                          dx=c(-1:1), dy=c(-1:1), torus = FALSE)
+                                          dx=dx, dy=dy, torus = FALSE)
 
       if(NLcount(nearby.male)==0){ # if there are no established male territories nearby (i.e., no mates)
         fishers <- NLset(turtles = fishers, agents = turtle(matingInd, who = matingInd[k]$who), var = "mate_avail", val = "N") # not able to mate
@@ -87,6 +87,8 @@ kits_produced <- function(fishers, ltrM=ltrM, ltrSD=ltrSD) {
 
     # assign 50/50 male/female offspring, assign them all as dispersing
     fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "sex", val = sample(c("F","M"),NLcount(offspring),replace=TRUE))
+    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=fishers[fishers$sex=="F",]$who), var = "shape", val = 16) # assign circle shape to females
+    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=fishers[fishers$sex=="M",]$who), var = "shape", val = 15) # assign square shape to males
     fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "disperse", val = "D")
     fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "age", val = 0) # just born so time step 0
     fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "mate_avail", val = "NA") # just born so time step 0
@@ -102,6 +104,7 @@ kits_produced <- function(fishers, ltrM=ltrM, ltrSD=ltrSD) {
 # Use the survival function output from Eric's latest survival analysis
 # Cohorts are broken down by population (Boreal / Central Interior), sex (M/F), and ageclass (A/J)
 # create a function that runs each time step to determine the probability of a fisher surviving to the next time step
+# also need to kill off any fishers that are over 8 years (female) and 4 years (male)
 
 survive <- function(fishers, surv_estimates=km_surv_estimates, Fpop="C") {
 
@@ -118,9 +121,14 @@ survive <- function(fishers, surv_estimates=km_surv_estimates, Fpop="C") {
     survFishers[i,10] <- rbinom(n=1, size=1, prob=survFishers[i,8]:survFishers[i,9])
   }
 
-  dieWho <- survFishers %>% filter(live!=TRUE) # "who" of fishers which die
+  dieWho <- survFishers %>% filter(live!=TRUE) # "who" of fishers which die, based on probabilty
+  oldM <- survFishers %>% filter(sex=="M" & age>4) # "who" of male fishers who die of 'old age' (i.e., > 4 yrs)
+  oldF <- survFishers %>% filter(sex=="F" & age>8) # "who" of female fishers who die of 'old age' (i.e., > 8 yrs)
 
   fishers <- die(fishers, who=dieWho$who)
+  fishers <- die(fishers, who=oldM$who)
+  fishers <- die(fishers, who=oldF$who)
+
   return(fishers)
 }
 
