@@ -160,21 +160,26 @@ kits_produced <- function(fishers, ltrM=ltrM, ltrSD=ltrSD) {
 # Cohorts are broken down by population (Boreal / Central Interior), sex (M/F), and ageclass (A/J)
 # create a function that runs each time step to determine the probability of a fisher surviving to the next time step
 # also need to kill off any fishers that are over 8 years (female) and 4 years (male)
+# *** UPDATE - not enough fishers were surviving when using age survival probabilities, changed to cohort level probabilities
 
-survive <- function(fishers, surv_estimates=km_surv_estimates, Fpop="C") {
+survive <- function(fishers, surv_estimates=lwdh_surv_estimates, Fpop="C") {
 
   # fishers=t1
   survFishers <- of(agents = fishers, var = c("who","breed","sex","disperse","age")) # "who" of the fishers before they reproduce
   survFishers$Cohort <- toupper(paste0(rep(Fpop,times=nrow(survFishers)),survFishers$sex,substr(survFishers$breed,1,1)))
 
-  survFishers <- left_join(survFishers,surv_estimates %>% dplyr::select(-Time_step, -age_6mnths, -Time),
-                           by=c("Cohort", "age"))
+  # survFishers <- left_join(survFishers,surv_estimates %>% dplyr::select(-Time_step, -age_6mnths, -Time),
+  #                          by=c("Cohort", "age"))
+
+  survFishers <- as.data.frame(left_join(survFishers,surv_estimates,by=c("Cohort")))
+
   survFishers[is.na(survFishers)] <- 0
   survFishers$live <- NA
 
   for(i in 1:nrow(survFishers)){
-    if(survFishers[i,3]!=0){ # can't kill off juveniles that haven't reached 6 months
-    survFishers[i,11] <- rbinom(n=1, size=1, prob=survFishers[i,9]:survFishers[i,10])
+    # i=1
+    if(survFishers[i,]$age!=0){ # can't kill off juveniles that haven't reached 6 months
+    survFishers[i,]$live <- rbinom(n=1, size=1, prob=survFishers[i,]$L95CL:survFishers[i,]$U95CL)
     }
   }
 
