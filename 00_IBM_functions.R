@@ -17,7 +17,62 @@
 # written by Joanna Burgar (Joanna.Burgar@gov.bc.ca) - 02-Dec-2021
 #####################################################################################
 
-# denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4], ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2])
+###--- SET-UP WORLD
+set_up_world <- function(nfishers=nfishers, xlim=c(1,20), ylim=c(1,20), prophab=0.5){
+  # nfishers=60
+
+   # There are two types of 'agents' in NetLogoR: patches and turtles
+  # Patches cannot move (i.e., landbase) while turtles can (i.e., fishers)
+
+  # Create a landscape with coordinates equal to xlim and ylim (default is 20*20 square landscape)
+  # Each cell is assumed to be the same size as one fisher territory
+  # Cell values are randomly chosen either 0 or 1
+  # Assume 0 = habitat unsuitable for fisher territory; 1 = suitable fisher habitat
+  # with the proportion of suitable "good" habitat (1) given in function (default = 0.5)
+  # Create the patches
+  numcells <- (xlim[2]-xlim[1]+1) * (ylim[2]-ylim[1]+1)
+
+  land <- createWorld(minPxcor = xlim[1], maxPxcor = xlim[2],
+                      minPycor = ylim[1], maxPycor = ylim[2],
+                      rbinom(numcells, 1, prophab))
+
+  # randomly select "good" habitat cells for each fishers
+  rtmp <- world2raster(land)
+  numhabitatcells <- sum(rtmp@data@values) # number of "good" habitat cells
+  actual.prop.hab <- numhabitatcells/numcells
+
+  fishers_start <- as.data.frame(sampleStratified(rtmp, size=nfishers, xy=TRUE)) %>% filter(layer==1)
+  fishers_start <- as.matrix(fishers_start[c("x","y")])
+
+  # Start with a landscape of adult females and males, all with established territories
+  # Place the fishers on "good" habitat
+
+  t0 <- createTurtles(n = nfishers, coords=fishers_start, breed="adult")
+
+  # assign each turtle as a female with an established territory
+  t0 <- turtlesOwn(turtles = t0, tVar = c("sex"), tVal = rep(c("F","M"), each=nfishers/2))
+  t0 <- turtlesOwn(turtles = t0, tVar = c("shape"), tVal = rep(c(16,15), each=nfishers/2)) # females are circles, males are squares
+  t0 <- turtlesOwn(turtles = t0, tVar = c("disperse"), tVal = c(rep("E", each=nfishers)))
+  t0 <- turtlesOwn(turtles = t0, tVar = c("mate_avail"), tVal = c(rep("NA", each=nfishers)))
+  t0 <- turtlesOwn(turtles = t0, tVar = c("repro"), tVal = 0)
+
+  # create a random age for the fishers
+  # randomly assign females with ages from 2.5-8 and males with ages from 2.5-4
+  # keep in mind that time steps are 6 months so have ages in 6 month increments
+  # the oldest a female fisher can be is 8 or 16 time steps
+  # the youngest time step for an adult is 2.5 or 5 time steps (juvenile = up to 2 years of 4 time steps)
+  yrs.adult <- c(sample(5:16, nfishers/2, replace=TRUE), sample(5:8, nfishers/2, replace=TRUE))
+  t0 <- turtlesOwn(turtles=t0, tVar = c("age"), tVal = yrs.adult/2)
+  t0
+
+  # Visualize the turtles on the landscape with their respective color
+  plot(land)
+  points(t0, pch = t0$shape, col = of(agents = t0, var = "color"))
+
+  return(list("land"=land, "t0"=t0, "actual.prop.hab"=actual.prop.hab))
+
+}
+
 
 ###--- REPRODUCE
 find_mate <- function(fishers, dx=c(-1:1), dy=c(-1:1)){
