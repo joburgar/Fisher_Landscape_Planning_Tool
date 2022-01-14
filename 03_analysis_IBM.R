@@ -82,11 +82,14 @@ source("00_IBM_functions.R")
 ################################################################################
 # data to read in; already prepped / formatted in 00_surv_repro_estimates_prep.R
 
-# reproductive rates in Rich and Eric's paper -
+# reproductive rates from manuscript
 repro.CI <- read.csv("data/repro.CI.csv", header=TRUE, row.names = 1)
 
 # survival probability estimates
+# data from Eric, survival at each time step
 km_surv_estimates <- read.csv("data/km_surv_estimates.csv", header=TRUE)
+# taken from manuscript, survival binned to cohort
+lwdh_surv_estimates <- read.csv("data/lwdh_surv_estimates.csv", header=TRUE)
 
 ################################################################################
 # *** Step 1. START ***
@@ -99,7 +102,7 @@ km_surv_estimates <- read.csv("data/km_surv_estimates.csv", header=TRUE)
 
 
 ###--- SET-UP WORLD
-w1 <- set_up_world(nfishers=100)
+w1 <- set_up_world(nfishers=200, prophab=0.8)
 
 land <- w1$land
 t0 <- w1$t0
@@ -187,7 +190,6 @@ points(t4, pch = t4$shape, col = of(agents = t4, var = "color")) # looks the sam
 # 5d. function FIND_MATE - for female fishers with ESTABLISHED territory, if male is within 2 cells in either direction or 8 adjacent cells plus same cell, assign mated status (i.e., if male is in same cell or ± 1 cell either via xlim and/or ylim)
 # 5e. function SURVIVE - add 0.5 to all fishers, kill off individuals who do not survive this 6 month time step
 
-
 # for Central interior population
 t5 <- denning(fishers=t4, denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4])
 t5 <- kits_produced(fishers=t5, ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2])
@@ -210,8 +212,127 @@ points(t5, pch = t5$shape, col = of(agents = t5, var = "color"))
 
 ################################################################################
 # *** Step 6.
-nmix.sim.out <- vector('list', length(list.sims))
-for(i in 1:length(list.sims)){
-  load(paste0("out/nmixsim/",list.sims[i]))
-  nmix.sim.out[[i]] <- nmix.sim
+
+# create function to loop through functions, allow sub-function specification
+
+fisher_IBM_simulation <- function(nfishers=200, xlim=c(1,20), ylim=c(1,20), prophab=0.8,  # set_up_world
+                              dx=c(-4:4), dy=c(-4:4),                                     # find_mate
+                              denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
+                              ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
+                              surv_estimates=lwdh_surv_estimates, Fpop="B",               # survive
+                              dist_mov=1.0,                                               # disperse
+                              yrs.to.run=10){                                             # number of years to run simulations ()
+
+  # 2 times steps per year so yrs.to.run*2 plus the initial 3 time steps (start in Apr=t0, Oct=t1, Apr=t2)
+    IBM.sim.out <- vector('list', (yrs.to.run*2)+3)
+
+    # *** Step 1. START ***
+    # t0 = October to April = kits born
+
+    ###--- SET-UP WORLD
+    w1 <- set_up_world(nfishers=nfishers, prophab=prophab)
+    land <- w1$land
+    t0 <- w1$t0
+
+    ###--- REPRODUCE
+    # check if mates are available for females
+    t0 <- find_mate(t0, dx=dx, dy=dy)
+
+    t0 <- denning(fishers=t0, denLCI=denLCI, denUCI=denUCI)
+    t0 <- kits_produced(fishers=t0, ltrM=ltrM, ltrSD=ltrSD)
+
+    IBM.sim.out[[1]] <- t0 # time step ends at April
+
+    # *** Step 2. SURVIVE ***
+    # t1 = April to October = kits kicked out of natal territory
+    # function SURVIVE - add 0.5 to all fishers, kill off individuals who do not survive through t1
+
+    age.val <- of(agents=t0, var=c("age"))+0.5
+    t1 <- NLset(turtles = t0, agents=turtle(t0, who=t0$who),var="age", val=age.val)
+
+    t1 <- survive(t1, Fpop=Fpop)
+
+    IBM.sim.out[[2]] <- t1 # time step ends at October
+
+    # *** Step 3. ESTABLISH / MAINTAIN TERRITORY & SCENT TERRITORY (MATE) & SURVIVE ***
+    # t2 = October to April = females with established territory find mate
+    # 3a. function DISPERSE - run through DISPERSE function for individuals without territories, up to 30 times to allow 6 months of movement
+    # 3b. function FIND_MATE - for female fishers with ESTABLISHED territory, if male is within 2 cells in either direction or 8 adjacent cells plus same cell, assign mated status (i.e., if male is in same cell or ± 1 cell either via xlim and/or ylim)
+    # 3c. function SURVIVE - add 0.5 to all fishers, kill off individuals who do not survive this 6 month time step
+
+    t2 <- t1
+    for(i in 1:30){
+      t2 <- disperse(land=land, fishers=t2, dist_mov=dist_mov)
+    }
+
+    t2 <- find_mate(t2)
+
+    age.val <- of(agents=t2, var=c("age"))+0.5
+    t2 <- NLset(turtles = t2, agents=turtle(t2, who=t2$who),var="age", val=age.val)
+
+    t2 <- survive(t2, Fpop=Fpop)
+
+    IBM.sim.out[[3]] <- t2 # time step ends at April
+
+
+  ################################################################################
+
+    tOct <- t2
+
+    for(tcount in 4:(yrs.to.run*2+3)){
+
+      # *** Step 4.  ESTABLISH / MAINTAIN TERRITORY & SURVIVE ***
+      # t3 = April to October = keep surviving
+      # 4a. function DISPERSE - run through DISPERSE function for individuals without territories, up to 30 times to allow 6 months of movement
+      # 4b. function SURVIVE - add 0.5 to all fishers, kill off individuals who do not survive through this 6 month time step
+
+      for(i in 1:30){
+        tOct <- disperse(land=land, fishers=tOct, dist_mov=dist_mov)
+      }
+
+      age.val <- of(agents=tOct, var=c("age"))+0.5
+      tOct <- NLset(turtles = tOct, agents=turtle(tOct, who=tOct$who),var="age", val=age.val)
+
+      tOct <- survive(tOct, Fpop=Fpop)
+
+      IBM.sim.out[[tcount]] <- tOct
+
+      # *** Step 5. ESTABLISH / MAINTAIN TERRITORY & REPRODUCE & SCENT TERRITORY (MATE) & SURVIVE ***
+      # t4 = October to April = females with established territory proudce kits and find mates for next round
+
+      tApr <- denning(fishers=tOct, denLCI=denLCI, denUCI=denUCI)
+      tApr <- kits_produced(fishers=tApr, ltrM=ltrM, ltrSD=ltrSD)
+
+      for(i in 1:30){
+        tApr <- disperse(land=land, fishers=tApr, dist_mov=dist_mov)
+      }
+
+      tApr <- find_mate(tApr)
+
+      age.val <- of(agents=tApr, var=c("age"))+0.5
+      tApr <- NLset(turtles = tApr, agents=turtle(tApr, who=tApr$who),var="age", val=age.val)
+
+      tApr <- survive(tApr, Fpop=Fpop)
+
+      tcount <- tcount+1
+      IBM.sim.out[[tcount]] <- tApr
+
+    }
+
+    return(IBM.sim.out)
+
 }
+
+
+sim01 <- fisher_IBM_simulation(nfishers=200, xlim=c(1,20), ylim=c(1,20), prophab=0.8,  # set_up_world
+                                  dx=c(-4:4), dy=c(-4:4),                                     # find_mate
+                                  denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
+                                  ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
+                                  surv_estimates=lwdh_surv_estimates, Fpop="B",               # survive
+                                  dist_mov=1.0,                                               # disperse
+                                  yrs.to.run=10)
+
+str(sim01)
+
+print(NLcount(t0[t0$mate_avail=="Y"])/(NLcount(t0)/2)) # proportion of females able to find a mate to start
+print(NLcount(t0), NLcount(t1), NLcount(t2), NLcount(t3), NLcount(t4)) # number of fishers at each step
