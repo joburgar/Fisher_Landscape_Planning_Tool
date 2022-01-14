@@ -41,7 +41,7 @@ set_up_world <- function(nfishers=nfishers, xlim=c(1,20), ylim=c(1,20), prophab=
   numhabitatcells <- sum(rtmp@data@values) # number of "good" habitat cells
   actual.prop.hab <- numhabitatcells/numcells
 
-  fishers_start <- as.data.frame(sampleStratified(rtmp, size=nfishers, xy=TRUE)) %>% filter(layer==1)
+  fishers_start <- as.data.frame(sampleStratified(rtmp, size=nfishers, xy=TRUE, )) %>% filter(layer==1)
   fishers_start <- as.matrix(fishers_start[c("x","y")])
 
   # Start with a landscape of adult females and males, all with established territories
@@ -49,12 +49,28 @@ set_up_world <- function(nfishers=nfishers, xlim=c(1,20), ylim=c(1,20), prophab=
 
   t0 <- createTurtles(n = nfishers, coords=fishers_start, breed="adult")
 
-  # assign each turtle as a female with an established territory
+  # assign 50:50 sex ratio, all females have an established territory, males do if >2 cells from another male
   t0 <- turtlesOwn(turtles = t0, tVar = c("sex"), tVal = rep(c("F","M"), each=nfishers/2))
   t0 <- turtlesOwn(turtles = t0, tVar = c("shape"), tVal = rep(c(16,15), each=nfishers/2)) # females are circles, males are squares
   t0 <- turtlesOwn(turtles = t0, tVar = c("disperse"), tVal = c(rep("E", each=nfishers)))
   t0 <- turtlesOwn(turtles = t0, tVar = c("mate_avail"), tVal = c(rep("NA", each=nfishers)))
   t0 <- turtlesOwn(turtles = t0, tVar = c("repro"), tVal = 0)
+
+  # if a male is within 2 cells (i.e., same one or 8 adjacent, must be dispersing "D", otherwise can stay)
+  male.fishers <- t0[t0$sex=="M" & t0$disperse=="E"]
+  for(k in 1:NLcount(male.fishers)){
+
+    nearby.male <- turtlesAt(land, turtles = fishers[fishers$sex=="M" & fishers$disperse=="E"],
+                             agents = turtle(male.turtles[i], who = male.turtles[i]$who),
+                             dx=c(-1:1), dy=c(-1:1), torus = FALSE)
+
+    if(NLcount(nearby.male)==0){ # if there are no established male territories nearby then can stay
+      t0 <- NLset(turtles = t0, agents = turtle(male.fishers, who = male.fishers[k]$who), var = "disperse", val = "E") # able to stay
+    } else {
+      t0 <- NLset(turtles = t0, agents = turtle(male.fishers, who = male.fishers[k]$who), var = "disperse", val = "D") # not able to stay
+
+    }
+  }
 
   # create a random age for the fishers
   # randomly assign females with ages from 2.5-8 and males with ages from 2.5-4
