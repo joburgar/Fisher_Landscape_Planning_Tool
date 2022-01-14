@@ -241,6 +241,7 @@ fisher_IBM_simulation <- function(nfishers=200, xlim=c(1,20), ylim=c(1,20), prop
     t0 <- denning(fishers=t0, denLCI=denLCI, denUCI=denUCI)
     t0 <- kits_produced(fishers=t0, ltrM=ltrM, ltrSD=ltrSD)
 
+    print(NLcount(t0))
     IBM.sim.out[[1]] <- t0 # time step ends at April
 
     # *** Step 2. SURVIVE ***
@@ -252,6 +253,7 @@ fisher_IBM_simulation <- function(nfishers=200, xlim=c(1,20), ylim=c(1,20), prop
 
     t1 <- survive(t1, Fpop=Fpop)
 
+    print(NLcount(t1))
     IBM.sim.out[[2]] <- t1 # time step ends at October
 
     # *** Step 3. ESTABLISH / MAINTAIN TERRITORY & SCENT TERRITORY (MATE) & SURVIVE ***
@@ -272,6 +274,7 @@ fisher_IBM_simulation <- function(nfishers=200, xlim=c(1,20), ylim=c(1,20), prop
 
     t2 <- survive(t2, Fpop=Fpop)
 
+    print(NLcount(t2))
     IBM.sim.out[[3]] <- t2 # time step ends at April
 
 
@@ -286,6 +289,8 @@ fisher_IBM_simulation <- function(nfishers=200, xlim=c(1,20), ylim=c(1,20), prop
       # 4a. function DISPERSE - run through DISPERSE function for individuals without territories, up to 30 times to allow 6 months of movement
       # 4b. function SURVIVE - add 0.5 to all fishers, kill off individuals who do not survive through this 6 month time step
 
+      if(NLcount(tOct)!=0){
+
       for(i in 1:30){
         tOct <- disperse(land=land, fishers=tOct, dist_mov=dist_mov)
       }
@@ -295,6 +300,7 @@ fisher_IBM_simulation <- function(nfishers=200, xlim=c(1,20), ylim=c(1,20), prop
 
       tOct <- survive(tOct, Fpop=Fpop)
 
+      print(NLcount(tOct))
       IBM.sim.out[[tcount]] <- tOct
 
       # *** Step 5. ESTABLISH / MAINTAIN TERRITORY & REPRODUCE & SCENT TERRITORY (MATE) & SURVIVE ***
@@ -313,15 +319,20 @@ fisher_IBM_simulation <- function(nfishers=200, xlim=c(1,20), ylim=c(1,20), prop
       tApr <- NLset(turtles = tApr, agents=turtle(tApr, who=tApr$who),var="age", val=age.val)
 
       tApr <- survive(tApr, Fpop=Fpop)
+      print(NLcount(tApr))
 
       tcount <- tcount+1
       IBM.sim.out[[tcount]] <- tApr
 
+      tOct <- tApr
+
+      } else {
+        IBM.sim.out[[tcount]] <- 0 }
     }
 
-    return(IBM.sim.out)
+      return(IBM.sim.out)
 
-}
+    }
 
 
 sim01 <- fisher_IBM_simulation(nfishers=200, xlim=c(1,20), ylim=c(1,20), prophab=0.8,  # set_up_world
