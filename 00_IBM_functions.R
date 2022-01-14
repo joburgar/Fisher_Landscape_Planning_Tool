@@ -226,6 +226,7 @@ disperse <- function(land=land, fishers=fishers, dist_mov=1.0) {
   if(NLcount(disperseInd[disperseInd$sex=="F"])!=0){
     disperseIndF <- turtle(disperseInd, who = disperseInd[disperseInd$sex=="F",]$who) # identify those dispersing (i.e., female kits)
     disperseHabitatF <- of(land, agents=patchHere(land, disperseIndF)) # identify habitat quality of current location
+    disperseHabitatF[is.na(disperseHabitatF)] <- 0 # any NA habitat (i.e., outside of world is NOT suitable)
     dispersePatchF <- patchHere(land, disperseIndF) # the coordinates for the cells
 
     # run loop to determine if females are dispersing
@@ -256,6 +257,7 @@ disperse <- function(land=land, fishers=fishers, dist_mov=1.0) {
     # determine patch information for dispersing males
     disperseIndM <- turtle(disperseInd, who = disperseInd[disperseInd$sex=="M",]$who)
     disperseHabitatM <- of(land, agents=patchHere(land, disperseIndM))
+    disperseHabitatM[is.na(disperseHabitatM)] <- 0 # any NA habitat (i.e., outside of world is NOT suitable)
 
     # if the male kit finds a good quality cell (1) and there aren't other established males within 2 cells (x and y direction) can stay,
     # otherwise (if habitat = 0 OR nearby male fishers>0) kit keeps moving
@@ -276,6 +278,8 @@ disperse <- function(land=land, fishers=fishers, dist_mov=1.0) {
         # patchHere(land, disperseIndTMP) # the coordinates for the cells
 
         disperseHabitatTMP <- of(land, agents=patchHere(land, disperseIndTMP))
+        disperseHabitatTMP[is.na(disperseHabitatTMP)] <- 0
+
         dispserseInd.neighbourTMP <- turtlesAt(land, fishers[fishers$sex=="M" & fishers$disperse=="E"], agents = turtle(disperseIndM, who = disperseIndTMP$who),
                                                dx=c(-1:1), dy=c(-1:1), torus = FALSE)
         if(disperseHabitatTMP==1 & is.na(NLcount(dispserseInd.neighbourTMP))==0){ # if the habitat is good and there are no other established male territories nearby
