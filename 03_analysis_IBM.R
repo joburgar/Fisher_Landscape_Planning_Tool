@@ -214,12 +214,12 @@ points(t5, pch = t5$shape, col = of(agents = t5, var = "color"))
 # *** Step 6.
 
 # create function to loop through functions, allow sub-function specification
-
+# now that the function is using the cohort survival data, have the survival run on an annual basis, not per time step
 fisher_IBM_simulation <- function(nfishers=200, xlim=c(1,20), ylim=c(1,20), prophab=0.8,  # set_up_world
                               dx=c(-4:4), dy=c(-4:4),                                     # find_mate
-                              denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
-                              ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
-                              surv_estimates=lwdh_surv_estimates, Fpop="B",               # survive
+                              denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
+                              ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2],                # kits_produced
+                              surv_estimates=lwdh_surv_estimates, Fpop="C",               # survive
                               dist_mov=1.0,                                               # disperse
                               yrs.to.run=10){                                             # number of years to run simulations ()
 
@@ -246,12 +246,10 @@ fisher_IBM_simulation <- function(nfishers=200, xlim=c(1,20), ylim=c(1,20), prop
 
     # *** Step 2. SURVIVE ***
     # t1 = April to October = kits kicked out of natal territory
-    # function SURVIVE - add 0.5 to all fishers, kill off individuals who do not survive through t1
+    # let all individuals survive these  6 months, only step here is to add 0.5 in age to all fishers
 
     age.val <- of(agents=t0, var=c("age"))+0.5
     t1 <- NLset(turtles = t0, agents=turtle(t0, who=t0$who),var="age", val=age.val)
-
-    t1 <- survive(t1, Fpop=Fpop)
 
     print(NLcount(t1))
     IBM.sim.out[[2]] <- t1 # time step ends at October
@@ -260,7 +258,6 @@ fisher_IBM_simulation <- function(nfishers=200, xlim=c(1,20), ylim=c(1,20), prop
     # t2 = October to April = females with established territory find mate
     # 3a. function DISPERSE - run through DISPERSE function for individuals without territories, up to 30 times to allow 6 months of movement
     # 3b. function FIND_MATE - for female fishers with ESTABLISHED territory, if male is within 2 cells in either direction or 8 adjacent cells plus same cell, assign mated status (i.e., if male is in same cell or ± 1 cell either via xlim and/or ylim)
-    # 3c. function SURVIVE - add 0.5 to all fishers, kill off individuals who do not survive this 6 month time step
 
     t2 <- t1
     for(i in 1:30){
@@ -273,6 +270,7 @@ fisher_IBM_simulation <- function(nfishers=200, xlim=c(1,20), ylim=c(1,20), prop
     t2 <- NLset(turtles = t2, agents=turtle(t2, who=t2$who),var="age", val=age.val)
 
     t2 <- survive(t2, Fpop=Fpop)
+
 
     print(NLcount(t2))
     IBM.sim.out[[3]] <- t2 # time step ends at April
@@ -298,13 +296,17 @@ fisher_IBM_simulation <- function(nfishers=200, xlim=c(1,20), ylim=c(1,20), prop
       age.val <- of(agents=tOct, var=c("age"))+0.5
       tOct <- NLset(turtles = tOct, agents=turtle(tOct, who=tOct$who),var="age", val=age.val)
 
-      tOct <- survive(tOct, Fpop=Fpop)
+      breed.val <- as.data.frame(of(agents=tOct, var=c("breed","age")))
+      breed.val$breed <- case_when(breed.val$age>4 ~ "adult",
+                                   TRUE ~ as.character(breed.val$breed))
+
+      tOct <- NLset(turtles = tOct, agents=turtle(tOct, who=tOct$who),var="breed", val=breed.val$breed)
 
       print(NLcount(tOct))
       IBM.sim.out[[tcount]] <- tOct
 
-      # *** Step 5. ESTABLISH / MAINTAIN TERRITORY & REPRODUCE & SCENT TERRITORY (MATE) & SURVIVE ***
-      # t4 = October to April = females with established territory proudce kits and find mates for next round
+      # *** Step 5. ESTABLISH / MAINTAIN TERRITORY & REPRODUCE & SCENT TERRITORY (MATE) ***
+      # t4 = October to April = females with established territory produce kits and find mates for next round
 
       tApr <- denning(fishers=tOct, denLCI=denLCI, denUCI=denUCI)
       tApr <- kits_produced(fishers=tApr, ltrM=ltrM, ltrSD=ltrSD)
@@ -318,7 +320,8 @@ fisher_IBM_simulation <- function(nfishers=200, xlim=c(1,20), ylim=c(1,20), prop
       age.val <- of(agents=tApr, var=c("age"))+0.5
       tApr <- NLset(turtles = tApr, agents=turtle(tApr, who=tApr$who),var="age", val=age.val)
 
-      tApr <- survive(tApr, Fpop=Fpop)
+      t1 <- survive(t1, Fpop=Fpop)
+
       print(NLcount(tApr))
 
       tcount <- tcount+1
