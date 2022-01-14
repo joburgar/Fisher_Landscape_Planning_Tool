@@ -91,64 +91,28 @@ km_surv_estimates <- read.csv("data/km_surv_estimates.csv", header=TRUE)
 ################################################################################
 # *** Step 1. START ***
 # t0 = April
+# function SET_UP_WORLD - create patches and fishers
 # function FIND_MATE - assign status of nearby mates to females (based on distance of nearby males)
 # function DENNING - assign 1 or 0 if female dens (based on nearby mates and published probabilities)
 # function KITS_PRODUCED - kits produced (based on two preceding functions and published probabilities)
 # simple scenario is to start with equal numbers of adult males and females, all on quality habitat with established territories
 
-###--- AGENTS
-# There are two types of 'agents' in NetLogoR: patches and turtles
-# Patches cannot move (i.e., landbase) while turtles can (i.e., fishers)
 
-# Create a square landscape of 20 by 20 cells (400 cells total)
-# Each cell is assumed to be the same size as one fisher territory
-# Cell values are randomly chosen either 1 or 2
-# Assume 0 = habitat unsuitable for fisher territory; 1 = suitable fisher habitat
-# Create the patches
-land <- createWorld(minPxcor = 1, maxPxcor = 20,
-                    minPycor = 1, maxPycor = 20,
-                    sample(c(0, 1), 400, replace = TRUE))
-plot(land) # visualize the landscape
+###--- SET-UP WORLD
+w1 <- set_up_world(nfishers=100)
 
-# randomly select 40 "good" habitat cells for adult female fishers
-rtmp <- world2raster(land)
-fishers_start <- as.data.frame(sampleStratified(rtmp, size=60, xy=TRUE)) %>% filter(layer==1)
-fishers_start <- as.matrix(fishers_start[c("x","y")])
-
-# Start with a landscape of reproductively capable females and males
-# Create 40 adult fishers, all with established territories
-# Place the fishers on "good" habitat
-nfishers = 60
-t0 <- createTurtles(n = nfishers, coords=fishers_start, breed="adult")
-
-# assign each turtle as a female with an established territory
-t0 <- turtlesOwn(turtles = t0, tVar = c("sex"), tVal = rep(c("F","M"), each=nfishers/2))
-t0 <- turtlesOwn(turtles = t0, tVar = c("shape"), tVal = rep(c(16,15), each=nfishers/2)) # females are circles, males are squares
-t0 <- turtlesOwn(turtles = t0, tVar = c("disperse"), tVal = c(rep("E", each=nfishers)))
-t0 <- turtlesOwn(turtles = t0, tVar = c("mate_avail"), tVal = c(rep("NA", each=nfishers)))
-t0 <- turtlesOwn(turtles = t0, tVar = c("repro"), tVal = 0)
-
-# create a random age for the fishers
-# randomly assign females with ages from 2.5-8 and males with ages from 2.5-4
-# keep in mind that time steps are 6 months so have ages in 6 month increments
-# the oldest a female fisher can be is 8 or 16 time steps
-# the youngest time step for an adult is 2.5 or 5 time steps (juvenile = up to 2 years of 4 time steps)
-yrs.adult <- c(sample(5:16, nfishers/2, replace=TRUE), sample(5:8, nfishers/2, replace=TRUE))
-t0 <- turtlesOwn(turtles=t0, tVar = c("age"), tVal = yrs.adult/2)
-t0
-
-# Visualize the turtles on the landscape with their respective color
-plot(land)
-points(t0, pch = t0$shape, col = of(agents = t0, var = "color"))
+land <- w1$land
+t0 <- w1$t0
+w1$actual.prop.hab # 0.48 = proportion of "good" habitat
 
 ###--- REPRODUCE
 # check if mates are available for females
 t0 <- find_mate(t0, dx=c(-4:4), dy=c(-4:4)) # give unrealistic mating distance to start off
 t0[t0$mate_avail=="Y"] # number of 30 females able to find a mate with unrealistic distance
 
-# for Central interior population
-t1 <- denning(fishers=t0, denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4]); t1
-t1 <- kits_produced(fishers=t1, ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2]); t1
+# for Boreal population
+t1 <- denning(fishers=t0, denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4]); t1
+t1 <- kits_produced(fishers=t1, ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2]); t1
 
 plot(land)
 points(t1, pch = t1$shape, col = of(agents = t1, var = "color")) # looks the same because kit are at same location as their moms
@@ -162,7 +126,7 @@ age.val <- of(agents=t1, var=c("age"))+0.5
 t2 <- NLset(turtles = t1, agents=turtle(t1, who=t1$who),var="age", val=age.val)
 NLcount(t2)
 
-t2 <- survive(t2)
+t2 <- survive(t2, Fpop="B")
 NLcount(t2)
 
 plot(land)
@@ -186,7 +150,7 @@ age.val <- of(agents=t3, var=c("age"))+0.5
 t3 <- NLset(turtles = t3, agents=turtle(t3, who=t3$who),var="age", val=age.val)
 NLcount(t3)
 
-t3 <- survive(t3)
+t3 <- survive(t3, Fpop="B")
 NLcount(t3)
 
 plot(land)
@@ -207,7 +171,7 @@ age.val <- of(agents=t4, var=c("age"))+0.5
 t4 <- NLset(turtles = t4, agents=turtle(t4, who=t4$who),var="age", val=age.val)
 NLcount(t4)
 
-t4 <- survive(t4)
+t4 <- survive(t4, Fpop="B")
 NLcount(t4)
 
 plot(land)
@@ -225,8 +189,8 @@ points(t4, pch = t4$shape, col = of(agents = t4, var = "color")) # looks the sam
 
 
 # for Central interior population
-t5 <- denning(fishers=t4, denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4])
-t5 <- kits_produced(fishers=t5, ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2])
+t5 <- denning(fishers=t4, denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4])
+t5 <- kits_produced(fishers=t5, ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2])
 
 for(i in 1:30){
   t5 <- disperse(land=land, fishers=t5, dist_mov=1.0)
@@ -238,10 +202,16 @@ age.val <- of(agents=t5, var=c("age"))+0.5
 t5 <- NLset(turtles = t5, agents=turtle(t5, who=t5$who),var="age", val=age.val)
 NLcount(t5)
 
-t5 <- survive(t5)
+t5 <- survive(t5, Fpop="B")
 NLcount(t5)
 
 plot(land)
 points(t5, pch = t5$shape, col = of(agents = t5, var = "color"))
 
 ################################################################################
+# *** Step 6.
+nmix.sim.out <- vector('list', length(list.sims))
+for(i in 1:length(list.sims)){
+  load(paste0("out/nmixsim/",list.sims[i]))
+  nmix.sim.out[[i]] <- nmix.sim
+}
