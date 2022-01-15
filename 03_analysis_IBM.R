@@ -297,7 +297,7 @@ fisher_IBM_simulation <- function(nfishers=200, xlim=c(1,20), ylim=c(1,20), prop
       tOct <- NLset(turtles = tOct, agents=turtle(tOct, who=tOct$who),var="age", val=age.val)
 
       breed.val <- as.data.frame(of(agents=tOct, var=c("breed","age")))
-      breed.val$breed <- case_when(breed.val$age>4 ~ "adult",
+      breed.val$breed <- case_when(breed.val$age>2 ~ "adult",
                                    TRUE ~ as.character(breed.val$breed))
 
       tOct <- NLset(turtles = tOct, agents=turtle(tOct, who=tOct$who),var="breed", val=breed.val$breed)
@@ -320,7 +320,7 @@ fisher_IBM_simulation <- function(nfishers=200, xlim=c(1,20), ylim=c(1,20), prop
       age.val <- of(agents=tApr, var=c("age"))+0.5
       tApr <- NLset(turtles = tApr, agents=turtle(tApr, who=tApr$who),var="age", val=age.val)
 
-      t1 <- survive(t1, Fpop=Fpop)
+      tApr <- survive(tApr, Fpop=Fpop)
 
       print(NLcount(tApr))
 
