@@ -144,7 +144,7 @@ create_study_grid <- function (dsn=dsn, layer=layer, Fpop="Boreal", cellsize=cel
 # cellsize <- 5500 # female fisher home range = 5.5 * 5.5 = 30 km2
 unique(aoi.TSA$TSA_NUMBER_DESCRIPTION)
 
-aoi <- aoi.TSA %>% filter(TSA_NUMBER_DESCRIPTION %in% c("Prince George TSA","Robson Valley TSA", "Mackenzie TSA")) %>% st_transform(crs = 3005) # ensures poly is in Albers
+aoi <- aoi.TSA %>% filter(TSA_NUMBER_DESCRIPTION %in% c("Prince George TSA")) %>% st_transform(crs = 3005) # ensures poly is in Albers
 aoi <- aoi %>%
   summarise(across(geometry, ~ st_union(.))) %>% # to create dissolved aoi
   summarise(across(geometry, ~ st_combine(.)))
