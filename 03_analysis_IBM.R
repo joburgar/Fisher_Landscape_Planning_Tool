@@ -95,8 +95,8 @@ lwdh_surv_estimates <- read.csv("data/lwdh_surv_estimates.csv", header=TRUE)
 
 # create function to loop through functions, allow sub-function specification
 # now that the function is using the cohort survival data, have the survival run on an annual basis, not per time step
-fisher_IBM_simulation <- function(nfishers=200, xlim=c(1,20), ylim=c(1,20), prophab=0.8,  # set_up_world
-                              dx=c(-4:4), dy=c(-4:4),                                     # find_mate
+fisher_IBM_simulation <- function(nfishers=30, xlim=c(1,10), ylim=c(1,10), prophab=0.5,  # set_up_world
+                              dx=c(-2:2), dy=c(-2:2),                                     # find_mate
                               denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
                               ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2],                # kits_produced
                               surv_estimates=lwdh_surv_estimates, Fpop="C",               # survive
@@ -163,10 +163,9 @@ fisher_IBM_simulation <- function(nfishers=200, xlim=c(1,20), ylim=c(1,20), prop
 
     for(tcount in 4:(yrs.to.run*2+3)){
 
-      # *** Step 4.  ESTABLISH / MAINTAIN TERRITORY & SURVIVE ***
+      # *** Step 4.  ESTABLISH / MAINTAIN TERRITORY ***
       # t3 = April to October = keep surviving
       # 4a. function DISPERSE - run through DISPERSE function for individuals without territories, up to 30 times to allow 6 months of movement
-      # 4b. function SURVIVE - add 0.5 to all fishers, kill off individuals who do not survive through this 6 month time step
 
       if(NLcount(tOct)!=0){
 
@@ -186,7 +185,7 @@ fisher_IBM_simulation <- function(nfishers=200, xlim=c(1,20), ylim=c(1,20), prop
       print(NLcount(tOct))
       IBM.sim.out[[tcount]] <- tOct
 
-      # *** Step 5. ESTABLISH / MAINTAIN TERRITORY & REPRODUCE & SCENT TERRITORY (MATE) ***
+      # *** Step 5. ESTABLISH / MAINTAIN TERRITORY & REPRODUCE & SCENT TERRITORY (MATE) & SURVIVE ***
       # t4 = October to April = females with established territory produce kits and find mates for next round
 
       tApr <- denning(fishers=tOct, denLCI=denLCI, denUCI=denUCI)
@@ -219,8 +218,8 @@ fisher_IBM_simulation <- function(nfishers=200, xlim=c(1,20), ylim=c(1,20), prop
     }
 
 
-sim01 <- fisher_IBM_simulation(nfishers=100, xlim=c(1,20), ylim=c(1,20), prophab=1,           # set_up_world
-                                  dx=c(-1:1), dy=c(-1:1),                                     # find_mate
+sim01 <- fisher_IBM_simulation(nfishers=10, xlim=c(1,4), ylim=c(1,4), prophab=0.5,          # set_up_world
+                                  dx=c(-2:2), dy=c(-2:2),                                     # find_mate
                                   denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
                                   ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2],                # kits_produced
                                   surv_estimates=lwdh_surv_estimates, Fpop="C",               # survive
@@ -228,3 +227,5 @@ sim01 <- fisher_IBM_simulation(nfishers=100, xlim=c(1,20), ylim=c(1,20), prophab
                                   yrs.to.run=10)                                              # number of years to run simulation post set up
 
 sim01
+
+?turtlesAt
