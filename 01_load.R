@@ -33,6 +33,7 @@ lapply(list.of.packages, require, character.only = TRUE)
 #####################################################################################
 
 ###--- function to retrieve geodata from BCGW
+droplevels.sfc = function(x, except, exclude, ...) x
 
 retrieve_geodata_aoi <- function (ID=ID){
   aoi.geodata <- bcdc_query_geodata(ID) %>%
@@ -41,6 +42,7 @@ retrieve_geodata_aoi <- function (ID=ID){
   aoi.geodata <- aoi.geodata %>% st_intersection(aoi)
   aoi.geodata$Area_km2 <- st_area(aoi.geodata)*1e-6
   aoi.geodata <- drop_units(aoi.geodata)
+  aoi.geodata <- droplevels.sfc(aoi.geodata, except = geometry)
   return(aoi.geodata)
 }
 
@@ -142,21 +144,32 @@ create_study_grid <- function (dsn=dsn, layer=layer, Fpop="Boreal", cellsize=cel
 # keep in mind that WGS84 lat/long espg = 4326; BC Albers espg = 3005; NAD83 / UTM zone 10N espg = 26910
 
 # cellsize <- 5500 # female fisher home range = 5.5 * 5.5 = 30 km2
-unique(aoi.TSA$TSA_NUMBER_DESCRIPTION)
+# unique(aoi.TSA$TSA_NUMBER_DESCRIPTION)
+#
+# aoi <- aoi.TSA %>% filter(TSA_NUMBER_DESCRIPTION %in% c("Prince George TSA")) %>% st_transform(crs = 3005) # ensures poly is in Albers
+# aoi <- aoi %>%
+#   summarise(across(geometry, ~ st_union(.))) %>% # to create dissolved aoi
+#   summarise(across(geometry, ~ st_combine(.)))
+# aoi_utm <- st_transform(aoi, crs=26910) # to have in metres for specifying grid cell size
+# aoi_grid <- sa_grid <- st_make_grid(st_bbox(aoi_utm), cellsize=5500, square=FALSE) #  grid for entire AOI (rectangle)
+# aoi_grid <- st_intersection(aoi_grid, aoi_utm)
+#
+# st_write(aoi_utm, paste0(getwd(),"/out/aoi_utm.shp"), delete_layer = TRUE)
+# st_write(aoi_grid, paste0(getwd(),"/out/aoi_grid.shp"), delete_layer = TRUE)
 
-aoi <- aoi.TSA %>% filter(TSA_NUMBER_DESCRIPTION %in% c("Prince George TSA")) %>% st_transform(crs = 3005) # ensures poly is in Albers
-aoi <- aoi %>%
-  summarise(across(geometry, ~ st_union(.))) %>% # to create dissolved aoi
-  summarise(across(geometry, ~ st_combine(.)))
-aoi_utm <- st_transform(aoi, crs=26910) # to have in metres for specifying grid cell size
-aoi_grid <- sa_grid <- st_make_grid(st_bbox(aoi_utm), cellsize=5500, square=FALSE) #  grid for entire AOI (rectangle)
-aoi_grid <- st_intersection(aoi_grid, aoi_utm)
 
-sa_points <- st_point_on_surface(sa_grid)  # if using portion of aoi
-sa_points <- st_intersection(sa_points, aoi_utm)
+###--- will want user specified options for downloading layers, using the bcdata search function and then inputting the ID
+# but also will have some pre-loaded options for the ones most likely to be used
+# is it worth downloading on a nightly/weekly/monthly basis to save time when the user is interacting with the app? think so, need to check on good update interval
+
+
+aoi_grid <- st_read(dsn="./out", layer="aoi_grid") %>% st_transform(crs = 3005)
+aoi <- st_read(dsn="./out", layer="aoi_utm") %>% st_transform(crs = 3005)
+aoi
 
 ggplot()+
-  geom_sf(data=aoi_utm)
+  geom_sf(data=aoi, lwd=1, fill=NA)+
+  geom_sf(data=aoi_grid)
 
 # Natural Region District
 # bcdc_search("Natural Region District", res_format = "wms")
@@ -165,6 +178,21 @@ ggplot()+
 # Name: natural-resource-nr-district
 aoi.NRD <- retrieve_geodata_aoi(ID = "0bc73892-e41f-41d0-8d8e-828c16139337")
 unique(aoi.NRD$DISTRICT_NAME) # 15 unique Natural Resource Districts
+aoi.NRD %>% group_by(ORG_UNIT) %>% summarise(sum=Area_km2) %>% st_drop_geometry()
+
+# remove the slivers of area, only map polygons with >10km2
+ggplot()+
+  geom_sf(data=aoi.NRD %>% filter(Area_km2>10), aes(fill=DISTRICT_NAME))
+
+# Timber Supply Area
+# bcdc_search("Timber Supply Area", res_format = "wms")
+# 1: FADM - Timber Supply Area (TSA) (multiple, wms, kml)
+# ID: 8daa29da-d7f4-401c-83ae-d962e3a28980
+# Name: fadm-timber-supply-area-tsa
+aoi.TSA <- retrieve_geodata_aoi(ID = "8daa29da-d7f4-401c-83ae-d962e3a28980")
+ggplot()+
+  geom_sf(data=aoi.TSA %>% filter(Area_km2>10), aes(fill=TSA_NUMBER_DESCRIPTION))
+# slivers of neighbouring TSAs but really only the one (should be as aoi came from one TSA)
 
 # Biogeoclimatic zones
 # bcdc_search("Biogeoclimatic zone", res_format = "wms")
@@ -172,11 +200,26 @@ unique(aoi.NRD$DISTRICT_NAME) # 15 unique Natural Resource Districts
 # ID: f358a53b-ffde-4830-a325-a5a03ff672c3
 # Name: bec-map
 aoi.BEC <- retrieve_geodata_aoi(ID = "f358a53b-ffde-4830-a325-a5a03ff672c3")
+# remove the slivers of area, only map polygons with >10km2
+aoi.BEC$Zone_subzone <- paste0(aoi.BEC$ZONE, aoi.BEC$SUBZONE)
+ggplot()+
+  geom_sf(data=aoi.BEC %>% filter(Area_km2>10), aes(fill=Zone_subzone))
+
+fisher.bec.zones <- c("CWH","ICH","IDF","BWBS","MS","SBPS","SBS")
+fisher.bec.subzones <- c("BWBSdk","BWBSmw","BWBSwk","SBSwk","ICHwc","SBSmc","SBSmh","SBSmk","SBSmm","SBSmw","SBSdh","SBSdk","SBSdw","SBPSxc","SBPSmc","SBPSdc","SBPSmk","IDFdk","IDFmw","IDFdw","IDFww",
+"MSxc","MSxk","MSdv","MSdm","MSdk","MSdc","ICHmk","ICHmw")
+
+sum(unique(aoi.BEC$Zone_subzone) %in% fisher.bec.subzones, na.rm=TRUE) # 11 of the fisher bec subzones, as per the fisher website, in the area
+sum(unique(aoi.BEC$ZONE) %in% fisher.bec.zones, na.rm=TRUE) # 5 of the 7 BEC zones, as per the fisher website
+# not sure if that matters...
 
 # VRI
-bcdc_search("vri", res_format = "wms")
-aoi.VRI <- retrieve_geodata_aoi(ID = "f358a53b-ffde-4830-a325-a5a03ff672c3")
-
+# bcdc_search("vri", res_format = "wms")
+# 1: VRI - 2020 - Forest Vegetation Composite Rank 1 Layer (R1) (fgdb, multiple, wms, kml)
+# ID: 2ebb35d8-c82f-4a17-9c96-612ac3532d55
+# Name: vri-2020-forest-vegetation-composite-rank-1-layer-r1-
+aoi.VRI <- retrieve_geodata_aoi(ID = "2ebb35d8-c82f-4a17-9c96-612ac3532d55")
+# will need to grab this once and save - will take WAY TOO LONG on an as need basis unless going to cell size
 
 
 
@@ -202,9 +245,6 @@ ggplot()+
 # Import BEC, Ecoprovinces, Ecoregions and Ecosections
 #SBSwk in Peace Region only
 
-fisher.bec.zones <- c("CWH","ICH","IDF","BWBS","MS","SBPS","SBS")
-fisher.bec.subzones <- c("BWBSdk|BWBSmw|BWBSwk|SBSwk|ICHwc|SBSmc|SBSmh|SBSmk|SBSmm|SBSmw|SBSdh|SBSdk|SBSdw|SBPSxc|SBPSmc|SBPSdc|SBPSmk|IDFdk|IDFmw|IDFdw|IDFww|
-MSxc|MSxk|MSdv|MSdm|MSdk|MSdc|ICHmk|ICHmw")
 
 aoi.BEC <- bec() %>% st_intersection(aoi) %>% filter(ZONE %in% fisher.bec.zones) %>% filter(grepl(fisher.bec.subzones, MAP_LABEL))
 aoi.BEC %>% count(ZONE) %>% st_drop_geometry()
