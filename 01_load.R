@@ -219,8 +219,17 @@ sum(unique(aoi.BEC$ZONE) %in% fisher.bec.zones, na.rm=TRUE) # 5 of the 7 BEC zon
 # ID: 2ebb35d8-c82f-4a17-9c96-612ac3532d55
 # Name: vri-2020-forest-vegetation-composite-rank-1-layer-r1-
 aoi.VRI <- retrieve_geodata_aoi(ID = "2ebb35d8-c82f-4a17-9c96-612ac3532d55")
-# will need to grab this once and save - will take WAY TOO LONG on an as need basis unless going to cell size
+# will need to either use smaller aoi or grab this once and save - will take WAY TOO LONG on an as need basis unless going to cell size
 
+# Cutblocks
+# bcdc_search("cutblock", res_format = "wms")
+# 1: Harvested Areas of BC (Consolidated Cutblocks) (multiple, fgdb, wms, kml, pdf)
+# ID: b1b647a6-f271-42e0-9cd0-89ec24bce9f7
+# Name: harvested-areas-of-bc-consolidated-cutblocks-
+aoi.CTBLK <- retrieve_geodata_aoi(ID = "b1b647a6-f271-42e0-9cd0-89ec24bce9f7")
+# will need to grab this once and save - will take awhile to process (142959 records and 143 pages) on an as need basis unless going to cell size
+
+save.image("01_load.RData")
 
 
 ###--- workaround to find suitable habitat based on ecoprovince and BEC
