@@ -60,7 +60,6 @@ set_up_world <- function(nfishers=nfishers, xlim=c(1,10), ylim=c(1,10), prophab=
   male.fishers <- t0[t0$sex=="M" & t0$disperse=="E"]
   for(k in 1:NLcount(male.fishers)){
     #k=1; rm(k)
-    patchAt(land, male.fishers[male.fishers$who==5,], dx=c(1:1), dy=c(1:1))
     nearby.male <- turtlesAt(land, turtles = t0,
                              agents = turtle(male.fishers, who = male.fishers[k]$who),
                              dx=c(-1:1), dy=c(-1:1), torus = FALSE)
@@ -73,6 +72,7 @@ set_up_world <- function(nfishers=nfishers, xlim=c(1,10), ylim=c(1,10), prophab=
     }
   }
 
+  # male.fishers
   # create a random age for the fishers
   # randomly assign females with ages from 2.5-8 and males with ages from 2.5-4
   # keep in mind that time steps are 6 months so have ages in 6 month increments
@@ -89,20 +89,20 @@ set_up_world <- function(nfishers=nfishers, xlim=c(1,10), ylim=c(1,10), prophab=
 
 }
 
-set_up_world(nfishers=10)
+
 ###--- REPRODUCE
-find_mate <- function(fishers, dx=c(-4:4), dy=c(-4:4)){
-  # fishers=t0; rm(k)
+find_mate <- function(fishers, dx=c(-2:2), dy=c(-2:2)){
+
   whoMFishers <- fishers[fishers$sex=="F" & fishers$age>1 & fishers$disperse=="E"]$who
 
   if(length(whoMFishers)!=0){
 
     # if the female finds finds an established males within 2 cells (x and y direction) can mate,
     # otherwise (if nearby male fishers==0) no chance for mating
+    # k=1; rm(k)
     for(k in 1:length(whoMFishers)){
       nearby.male <- turtlesAt(land, turtles = fishers[fishers$sex=="M" & fishers$age>0.5], agents = turtle(fishers, who = whoMFishers[k]),
                                dx=dx, dy=dy, torus = FALSE)
-      nearby.male
 
       if(NLcount(nearby.male)>0){ # if there are established male territories nearby (i.e., potential mate(s))
         fishers <- NLset(turtles = fishers, agents = turtle(fishers, who = whoMFishers[k]), var = "mate_avail", val = "Y") # able to mate
