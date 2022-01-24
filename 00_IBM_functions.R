@@ -91,7 +91,7 @@ set_up_world <- function(nfishers=nfishers, xlim=c(1,10), ylim=c(1,10), prophab=
 
 
 ###--- REPRODUCE
-find_mate <- function(fishers, dx=c(-2:2), dy=c(-2:2)){
+find_mate <- function(land=land, fishers=fishers, dx=c(-2:2), dy=c(-2:2)){
 
   whoMFishers <- fishers[fishers$sex=="F" & fishers$age>1 & fishers$disperse=="E"]$who
 
