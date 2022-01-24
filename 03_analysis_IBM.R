@@ -117,7 +117,7 @@ fisher_IBM_simulation <- function(nfishers=30, xlim=c(1,10), ylim=c(1,10), proph
 
     ###--- REPRODUCE
     # check if mates are available for females
-    t0 <- find_mate(t0, dx=dx, dy=dy)
+    t0 <- find_mate(land=land, fishers=t0, dx=dx, dy=dy)
 
     t0 <- denning(fishers=t0, denLCI=denLCI, denUCI=denUCI)
     t0 <- kits_produced(fishers=t0, ltrM=ltrM, ltrSD=ltrSD)
@@ -145,7 +145,7 @@ fisher_IBM_simulation <- function(nfishers=30, xlim=c(1,10), ylim=c(1,10), proph
       t2 <- disperse(land=land, fishers=t2, dist_mov=dist_mov)
     }
 
-    t2 <- find_mate(t2)
+    t2 <- find_mate(land, t2, dx, dy)
 
     age.val <- of(agents=t2, var=c("age"))+0.5
     t2 <- NLset(turtles = t2, agents=turtle(t2, who=t2$who),var="age", val=age.val)
@@ -195,7 +195,7 @@ fisher_IBM_simulation <- function(nfishers=30, xlim=c(1,10), ylim=c(1,10), proph
         tApr <- disperse(land=land, fishers=tApr, dist_mov=dist_mov)
       }
 
-      tApr <- find_mate(tApr)
+      tApr <- find_mate(land, tApr, dx, dy)
 
       age.val <- of(agents=tApr, var=c("age"))+0.5
       tApr <- NLset(turtles = tApr, agents=turtle(tApr, who=tApr$who),var="age", val=age.val)
@@ -218,14 +218,21 @@ fisher_IBM_simulation <- function(nfishers=30, xlim=c(1,10), ylim=c(1,10), proph
     }
 
 
-sim01 <- fisher_IBM_simulation(nfishers=10, xlim=c(1,4), ylim=c(1,4), prophab=0.5,          # set_up_world
+################################################################################
+
+lwdh_surv_estimates
+# trying out higher survival estimates
+# going with mean survival per cohort, not upper and lower confidence intervals
+test.surv <- lwdh_surv_estimates
+test.surv$L95CL <- test.surv$U95CL <- 1
+
+sim01 <- fisher_IBM_simulation(nfishers=20, xlim=c(1,4), ylim=c(1,4), prophab=1,            # set_up_world
                                   dx=c(-2:2), dy=c(-2:2),                                     # find_mate
                                   denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
                                   ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2],                # kits_produced
-                                  surv_estimates=lwdh_surv_estimates, Fpop="C",               # survive
+                                  surv_estimates=test.surv, Fpop="C",                         # survive
                                   dist_mov=1.0,                                               # disperse
                                   yrs.to.run=10)                                              # number of years to run simulation post set up
 
 sim01
 
-?turtlesAt
