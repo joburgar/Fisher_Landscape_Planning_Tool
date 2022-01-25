@@ -18,7 +18,7 @@
 #####################################################################################
 
 ###--- SET-UP WORLD
-set_up_world <- function(nfishers=nfishers, xlim=c(1,10), ylim=c(1,10), prophab=0.5){
+set_up_world <- function(nfishers=nfishers, xlim=xlim, ylim=ylim, prophab=prophab){
   # nfishers=10 # must be divisible by 2 for equal portions of male and female to start
 
   # There are two types of 'agents' in NetLogoR: patches and turtles
@@ -175,7 +175,7 @@ kits_produced <- function(fishers, ltrM=ltrM, ltrSD=ltrSD) {
 # also need to kill off any fishers that are over 8 years (female) and 4 years (male)
 # *** UPDATE - not enough fishers were surviving when using age survival probabilities, changed to cohort level probabilities
 
-survive <- function(fishers, surv_estimates=lwdh_surv_estimates, Fpop="C") {
+survive <- function(fishers, surv_estimates=lwdh_surv_estimates, Fpop="C", Fmaxage=8, Mmaxage=4) {
 
   # fishers=t1
   survFishers <- of(agents = fishers, var = c("who","breed","sex","disperse","age")) # "who" of the fishers before they reproduce
@@ -197,8 +197,8 @@ survive <- function(fishers, surv_estimates=lwdh_surv_estimates, Fpop="C") {
   }
 
   dieWho <- survFishers %>% filter(live!=TRUE) # "who" of fishers which die, based on probability
-  oldM <- survFishers %>% filter(sex=="M" & age>4) # "who" of male fishers who die of 'old age' (i.e., > 4 yrs)
-  oldF <- survFishers %>% filter(sex=="F" & age>8) # "who" of female fishers who die of 'old age' (i.e., > 8 yrs)
+  oldM <- survFishers %>% filter(sex=="M" & age>Mmaxage) # "who" of male fishers who die of 'old age' (i.e., > 4 yrs)
+  oldF <- survFishers %>% filter(sex=="F" & age>Fmaxage) # "who" of female fishers who die of 'old age' (i.e., > 8 yrs)
   dispersing <- survFishers %>% filter(disperse=="D" & age>2) # "who" of dispersing fishers over 2
 
   fishers <- die(fishers, who=c(dieWho$who, oldM$who, oldF$who, dispersing$who))
@@ -224,7 +224,8 @@ disperse <- function(land=land, fishers=fishers, dist_mov=1.0) {
   # And for simplicity, a male fisher can move 2*dist_mov (twice the distance of a female)
   # dist_mov relates to the number of cells (not quite right if fisher moving diagonally across a cell but works for our purposes)
 
-  # fishers=t2
+  # fishers=t1
+  # land=w1$land
   whoDFishers <- fishers[fishers$disperse=="D" & fishers$age>0,]$who
   disperseInd <- turtle(fishers, who = whoDFishers) # fishers who are dispersing (i.e., kits)
 
@@ -232,8 +233,17 @@ disperse <- function(land=land, fishers=fishers, dist_mov=1.0) {
   # The landscape is not wrapped (torus = FALSE)
   # and the fishers can disperse outside of the landscape (out=TRUE)
   disperseInd <- right(disperseInd, angle = runif(n = NLcount(disperseInd), min = 0, max = 360))
-  disperseInd <- fd(turtle(fishers, who=whoDFishers),dist=dist_mov, land, torus = FALSE, out = FALSE) # all kits move 1 cell # this doesn't allow for dispersing fishers
-  dispersePatchF <- patchHere(land, disperseInd) # the coordinates for the cells
+  # patchHere(land, disperseInd)
+  disperseInd <- fd(turtle(disperseInd, who=whoDFishers),dist=dist_mov, land, torus = FALSE, out = TRUE) # all kits move 1 cell # this doesn't allow for dispersing fishers
+  # patchHere(land, disperseInd)
+
+  # if any dispersing fishers have exited the worlds extent, remove them from the simulation
+  fisher.location <- as.data.frame(patchHere(land, disperseInd))
+  fisher.location$who <- disperseInd$who
+  out.of.bounds.fisher <- fisher.location[is.na(fisher.location$pxcor),]$who
+
+  disperseInd <- die(disperseInd, who=out.of.bounds.fisher) # remove fishers who traveled outside worlds extent from dispersing object
+  fishers <- die(fishers, who=out.of.bounds.fisher) # remove fishers who traveled outside worlds extent from main object
 
   ###--- for dispersing FEMALES
   # determine patch information for dispersing females
@@ -291,8 +301,16 @@ disperse <- function(land=land, fishers=fishers, dist_mov=1.0) {
         disperseIndM <- NLset(turtles = disperseIndM, agents = turtle(disperseIndM, who = disperseIndM[k]$who), var = "disperse", val = "D") # otherwise keep dispersing
 
         # move dispersing male one more cell (can move 2 cells for every 1 cell female moves); keep the male moving in the same direction, moving one more dist.mov distance
-        disperseIndTMP <- fd(turtle(disperseIndM, who=disperseIndM[k]$who),dist=dist_mov, land, torus = FALSE, out = TRUE)
+        disperseIndTMP <- fd(turtle(disperseIndM, who=disperseIndM[k]$who),dist=dist_mov, land, torus = FALSE)
         # patchHere(land, disperseIndTMP) # the coordinates for the cells
+
+        # if any dispersing fishers have exited the worlds extent, remove them from the simulation
+        fisher.location <- as.data.frame(patchHere(land, disperseIndTMP))
+        fisher.location$who <- disperseIndTMP$who
+        out.of.bounds.fisher <- fisher.location[is.na(fisher.location$pxcor),]$who
+
+        disperseIndTMP <- die(disperseIndTMP, who=out.of.bounds.fisher) # remove fishers who traveled outside worlds extent from dispersing object
+        fishers <- die(fishers, who=out.of.bounds.fisher) # remove fishers who traveled outside worlds extent from main object
 
         disperseHabitatTMP <- of(land, agents=patchHere(land, disperseIndTMP))
         disperseHabitatTMP[is.na(disperseHabitatTMP)] <- 0
