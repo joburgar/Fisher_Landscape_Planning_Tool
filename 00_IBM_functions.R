@@ -215,7 +215,7 @@ survive <- function(fishers, surv_estimates=lwdh_surv_estimates, Fpop="C", Fmaxa
 # Recall that 1 time step = 6 months or 30 potential moves
 # "D" = disperse; "E" = establish territory
 
-disperse <- function(land=land, fishers=fishers, dist_mov=1.0) {
+disperse <- function(land=land, fishers=fishers, dist_mov=1.0, out=TRUE) {
   # Only want fishers without established territories to move
   # Assume female fisher can move ~35 km in a month, and that each pixel is 5.5 km in length or 7.8 km in diameter
   # Assume a male fisher can move ~70 km in a month
@@ -234,7 +234,7 @@ disperse <- function(land=land, fishers=fishers, dist_mov=1.0) {
   # and the fishers can disperse outside of the landscape (out=TRUE)
   disperseInd <- right(disperseInd, angle = runif(n = NLcount(disperseInd), min = 0, max = 360))
   # patchHere(land, disperseInd)
-  disperseInd <- fd(turtle(disperseInd, who=whoDFishers),dist=dist_mov, land, torus = FALSE, out = TRUE) # all kits move 1 cell # this doesn't allow for dispersing fishers
+  disperseInd <- fd(turtle(disperseInd, who=whoDFishers),dist=dist_mov, land, torus = FALSE, out=out) # all kits move 1 cell # this doesn't allow for dispersing fishers
   # patchHere(land, disperseInd)
 
   # if any dispersing fishers have exited the worlds extent, remove them from the simulation
@@ -301,7 +301,7 @@ disperse <- function(land=land, fishers=fishers, dist_mov=1.0) {
         disperseIndM <- NLset(turtles = disperseIndM, agents = turtle(disperseIndM, who = disperseIndM[k]$who), var = "disperse", val = "D") # otherwise keep dispersing
 
         # move dispersing male one more cell (can move 2 cells for every 1 cell female moves); keep the male moving in the same direction, moving one more dist.mov distance
-        disperseIndTMP <- fd(turtle(disperseIndM, who=disperseIndM[k]$who),dist=dist_mov, land, torus = FALSE)
+        disperseIndTMP <- fd(turtle(disperseIndM, who=disperseIndM[k]$who),dist=dist_mov, land, torus = FALSE, out=out)
         # patchHere(land, disperseIndTMP) # the coordinates for the cells
 
         # if any dispersing fishers have exited the worlds extent, remove them from the simulation
