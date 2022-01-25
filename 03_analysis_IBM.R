@@ -228,7 +228,7 @@ fisher_IBM_simulation_same_world <- function(land=land, t0=t0,                  
                                   ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2],                # kits_produced
                                   surv_estimates=lwdh_surv_estimates, Fpop="C",               # survive
                                   Fmaxage=8, Mmaxage=4,                                      # survive
-                                  dist_mov=1.0,                                               # disperse
+                                  dist_mov=1.0, out=out,                                               # disperse
                                   yrs.to.run=10){                                             # number of years to run simulations ()
 
   # 2 times steps per year so yrs.to.run*2 plus the initial 3 time steps (start in Apr=t0, Oct=t1, Apr=t2)
@@ -265,7 +265,7 @@ fisher_IBM_simulation_same_world <- function(land=land, t0=t0,                  
 
   t2 <- t1
   for(i in 1:30){
-    t2 <- disperse(land=land, fishers=t2, dist_mov=dist_mov)
+    t2 <- disperse(land=land, fishers=t2, dist_mov=dist_mov, out=out)
   }
 
   t2 <- find_mate(land, t2, dx, dy)
@@ -293,7 +293,7 @@ fisher_IBM_simulation_same_world <- function(land=land, t0=t0,                  
     if(NLcount(tOct)!=0){
 
       for(i in 1:30){
-        tOct <- disperse(land=land, fishers=tOct, dist_mov=dist_mov)
+        tOct <- disperse(land=land, fishers=tOct, dist_mov=dist_mov, out=out)
       }
 
       age.val <- of(agents=tOct, var=c("age"))+0.5
@@ -315,7 +315,7 @@ fisher_IBM_simulation_same_world <- function(land=land, t0=t0,                  
       tApr <- kits_produced(fishers=tApr, ltrM=ltrM, ltrSD=ltrSD)
 
       for(i in 1:30){
-        tApr <- disperse(land=land, fishers=tApr, dist_mov=dist_mov)
+        tApr <- disperse(land=land, fishers=tApr, dist_mov=dist_mov, out=out)
       }
 
       tApr <- find_mate(land, tApr, dx, dy)
@@ -367,11 +367,13 @@ sim01
 # Run 100 simulations for each, save as objects
 # Calculate mean # of animals per cell at 10 years for each simulation to produce a heat map
 # Create a figure with mean number of animals (+/- SE) for each time step and graph for each simulation
+test.surv <- lwdh_surv_estimates
+test.surv$L95CL <- test.surv$U95CL <- test.surv$Surv
+test.surv$L95CL <- test.surv$U95CL <- 0.8
 
-# library(tictoc)
 ###--- Run with low habitat (prop hab ~ 0.5)
-w1 <- set_up_world(nfishers=50, xlim=c(1,100), ylim=c(1,100), prophab=0.5)
-tic()
+w1 <- set_up_world(nfishers=20, xlim=c(1,10), ylim=c(1,10), prophab=0.5)
+
 IBM.w1.surv7.sim100 <- vector('list',100)
 test.surv$L95CL <- test.surv$U95CL <- 0.7
 for(i in 1:100){
@@ -381,10 +383,10 @@ for(i in 1:100){
                                                                ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
                                                                surv_estimates=test.surv, Fpop="B",                         # survive
                                                                Fmaxage=8, Mmaxage=4,                                      # survive
-                                                               dist_mov=1.0,                                               # disperse
+                                                               dist_mov=1.0, out=FALSE,                                               # disperse
                                                                yrs.to.run=10)                                              # number of years to run simulation post set up
 }
-toc()
+
 IBM.w1.surv8.sim100 <- vector('list',100)
 test.surv$L95CL <- test.surv$U95CL <- 0.8
 for(i in 1:100){
@@ -394,7 +396,7 @@ for(i in 1:100){
                                                                ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
                                                                surv_estimates=test.surv, Fpop="B",                         # survive
                                                                Fmaxage=8, Mmaxage=4,                                      # survive
-                                                               dist_mov=1.0,                                               # disperse
+                                                               dist_mov=1.0, out=FALSE,                                              # disperse
                                                                yrs.to.run=10)                                              # number of years to run simulation post set up
 }
 
@@ -408,12 +410,12 @@ for(i in 1:100){
                                                                ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
                                                                surv_estimates=test.surv, Fpop="B",                         # survive
                                                                Fmaxage=8, Mmaxage=4,                                      # survive
-                                                               dist_mov=1.0,                                               # disperse
+                                                               dist_mov=1.0,  out=FALSE,                                             # disperse
                                                                yrs.to.run=10)                                              # number of years to run simulation post set up
 }
 
 ###--- Run with medium habitat (prop hab ~ 0.6)
-w2 <- set_up_world(nfishers=50, xlim=c(1,100), ylim=c(1,100), prophab=0.6)
+w2 <- set_up_world(nfishers=20, xlim=c(1,10), ylim=c(1,10), prophab=0.6)
 
 
 IBM.w2.surv7.sim100 <- vector('list',100)
@@ -425,7 +427,7 @@ for(i in 1:100){
                                                                ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
                                                                surv_estimates=test.surv, Fpop="B",                         # survive
                                                                Fmaxage=8, Mmaxage=4,                                      # survive
-                                                               dist_mov=1.0,                                               # disperse
+                                                               dist_mov=1.0, out=FALSE,                                              # disperse
                                                                yrs.to.run=10)                                              # number of years to run simulation post set up
 }
 
@@ -438,7 +440,7 @@ for(i in 1:100){
                                                                ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
                                                                surv_estimates=test.surv, Fpop="B",                         # survive
                                                                Fmaxage=8, Mmaxage=4,                                      # survive
-                                                               dist_mov=1.0,                                               # disperse
+                                                               dist_mov=1.0,  out=FALSE,                                             # disperse
                                                                yrs.to.run=10)                                              # number of years to run simulation post set up
 }
 
@@ -451,12 +453,12 @@ for(i in 1:100){
                                                                ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
                                                                surv_estimates=test.surv, Fpop="B",                         # survive
                                                                Fmaxage=8, Mmaxage=4,                                      # survive
-                                                               dist_mov=1.0,                                               # disperse
+                                                               dist_mov=1.0, out=FALSE,                                               # disperse
                                                                yrs.to.run=10)                                              # number of years to run simulation post set up
 }
 
 ###--- Run with high habitat (prop hab ~ 0.7)
-w3 <- set_up_world(nfishers=50, xlim=c(1,100), ylim=c(1,100), prophab=0.7)
+w3 <- set_up_world(nfishers=20, xlim=c(1,10), ylim=c(1,10), prophab=0.7)
 
 IBM.w3.surv7.sim100 <- vector('list',100)
 test.surv$L95CL <- test.surv$U95CL <- 0.7
@@ -467,7 +469,7 @@ for(i in 1:100){
                                                                ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
                                                                surv_estimates=test.surv, Fpop="B",                         # survive
                                                                Fmaxage=8, Mmaxage=4,                                      # survive
-                                                               dist_mov=1.0,                                               # disperse
+                                                               dist_mov=1.0, out=FALSE,                                               # disperse
                                                                yrs.to.run=10)                                              # number of years to run simulation post set up
 }
 
@@ -480,7 +482,7 @@ for(i in 1:100){
                                                                ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
                                                                surv_estimates=test.surv, Fpop="B",                         # survive
                                                                Fmaxage=8, Mmaxage=4,                                      # survive
-                                                               dist_mov=1.0,                                               # disperse
+                                                               dist_mov=1.0, out=FALSE,                                               # disperse
                                                                yrs.to.run=10)                                              # number of years to run simulation post set up
 }
 
@@ -494,7 +496,20 @@ for(i in 1:100){
                                                                ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
                                                                surv_estimates=test.surv, Fpop="B",                         # survive
                                                                Fmaxage=8, Mmaxage=4,                                      # survive
-                                                               dist_mov=1.0,                                               # disperse
+                                                               dist_mov=1.0, out=FALSE,                                               # disperse
                                                                yrs.to.run=10)                                              # number of years to run simulation post set up
 }
 
+IBM_noescape <- list(w1, w2, w3,
+                     IBM.w1.surv7.sim100,IBM.w1.surv8.sim100,IBM.w1.surv9.sim100,
+                     IBM.w2.surv7.sim100,IBM.w2.surv8.sim100,IBM.w2.surv9.sim100,
+                     IBM.w3.surv7.sim100,IBM.w3.surv8.sim100,IBM.w3.surv9.sim100)
+
+save(IBM_noescape, file="out/IBM_noescape.RData")
+
+# load("03_analysis_IBM.RData")
+# IBM_escape <- list(w1, w2, w3,
+#                      IBM.w1.surv7.sim100,IBM.w1.surv8.sim100,IBM.w1.surv9.sim100,
+#                      IBM.w2.surv7.sim100,IBM.w2.surv8.sim100,IBM.w2.surv9.sim100,
+#                      IBM.w3.surv7.sim100,IBM.w3.surv8.sim100,IBM.w3.surv9.sim100)
+# save(IBM_escape, file="out/IBM_escape.RData")
