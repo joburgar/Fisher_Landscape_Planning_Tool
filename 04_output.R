@@ -23,7 +23,8 @@ R_version <- paste0("R-",version$major,".",version$minor)
 tz = Sys.timezone() # specify timezone in BC
 
 # Load Packages
-list.of.packages <- c("tidyverse", "NetLogoR","nnls","lcmix","MASS","Cairo","PNWColors", "ggplot2")
+list.of.packages <- c("tidyverse", "NetLogoR","nnls","lcmix","MASS","Cairo","PNWColors", "ggplot2",
+                      "sf","raster","rgdal","fasterize")
 # Check you have them and load them
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
@@ -163,7 +164,8 @@ Cairo(file="out/sim_noescape.TS.plot.PNG",
 sim.TS.plot
 dev.off()
 
-### This afternoon, create heatmaps for the w3 outputs
+### Create heatmaps for the w3 outputs
+# keep in mind that WGS84 lat/long espg = 4326; BC Albers espg = 3005; NAD83 / UTM zone 10N espg = 26910
 
 # IBM.w3.surv7.sim100 # Sim10
 # IBM.w3.surv8.sim100 # Sim11
@@ -172,4 +174,47 @@ dev.off()
 # find coordinates for each fisher at 11 year mark
 # create a heat map based on number of times fisher is on pixel
 # need to consider mean # of fishers vs fisher present/absent
-patchHere(w3$land, IBM_noescape[[12]][[1]][[23]])
+
+
+rtmp <- world2raster(w3$land)
+extent(rtmp)
+extent(ftmp.sfp)
+plot(rtmp)
+plot(ftmp.sfp)
+
+
+
+r1000 <- raster()
+r1000 <- setExtent(r1000, rtmp, keepres=TRUE)
+rfisherSum <- fasterize(ftmp.sfp, r1000, field="Fisher", fun="sum", background=0)
+rfisherPrs <- fasterize(ftmp.sfp, r1000, field="Fisher", background=0)
+plot(rfisherSum)
+plot(rfisherPrs)
+
+
+plot(r1000_ftmp)
+
+r100_STUP_values_stack <- stackApply(r100m_STUP_values, indices=1, fun=sum)
+
+?stackApply
+# for 10 x 10 m extent (same as w3)
+# Running into issues with no fishers by the end...although I thought this was sorted???
+# maybe just create rasters / heatmap for 5 years (11 timesteps)
+r1000_list=list()
+for(i in 1:100){
+  ftmp <- as.data.frame(patchHere(w3$land, IBM_noescape[[12]][[1]][[11]]))
+  ftmp$Fisher <- 1
+  ftmp.sf <- st_as_sf(ftmp, coords = c("pxcor", "pycor"))
+  ftmp.sfp <- st_buffer(ftmp.sf, dist=.1)
+
+  r1000_list[[i]] <- fasterize(ftmp.sfp, r1000, field="Fisher", fun="sum", background=0)
+}
+
+r100m_stack = stack(r100m_list)
+r100mbuff_100mpix_stack <- stackApply(r100m_stack, indices=1, fun=sum)
+writeRaster(r100mbuff_100mpix_stack, file="out/r100mbuff_100mpix_species_stack.tif", bylayer=TRUE)
+
+Cairo(file="out/r100mbuff_100mpix_species_stack.PNG", type="png", width=3000, height=2200,pointsize=15,bg="white",dpi=300)
+plot(r100mbuff_100mpix_stack)
+dev.off()
+
