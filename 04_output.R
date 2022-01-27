@@ -121,7 +121,6 @@ ABM.df <- ABM.df %>% mutate(Survival = case_when(Sim %in% c("Sim04", "Sim07", "S
                                                 Sim %in% c("Sim05", "Sim08", "Sim11") ~ 0.8,
                                                 Sim %in% c("Sim06", "Sim09", "Sim12") ~ 0.9))
 
-
 ABM.TS.mean <- ABM.df %>% dplyr::select(-Run) %>% pivot_wider(names_from=TimeStep, values_from=NewCount, values_fn=mean)
 ABM.TS.mean$Param <- "Mean"
 
@@ -152,7 +151,7 @@ sim.TS.plot <- ggplot(data = ABM.TS.use) +
 
 sim.TS.plot
 
-#- Density
+#- Plot
 
 Cairo(file="out/sim_noescape.TS.plot.PNG",
       type="png",
@@ -164,57 +163,115 @@ Cairo(file="out/sim_noescape.TS.plot.PNG",
 sim.TS.plot
 dev.off()
 
+################################################################################
+
 ### Create heatmaps for the w3 outputs
 # keep in mind that WGS84 lat/long espg = 4326; BC Albers espg = 3005; NAD83 / UTM zone 10N espg = 26910
 
-# IBM.w3.surv7.sim100 # Sim10
-# IBM.w3.surv8.sim100 # Sim11
+# IBM.w1.surv9.sim100 # Sim06
+# IBM.w2.surv9.sim100 # Sim09
 # IBM.w3.surv9.sim100 # Sim12
+
+Nozero.runs <- ABM.df %>% filter(TimeStep=="TimeStep_23") %>%
+  filter(Sim %in% c("Sim06","Sim09","Sim12")) %>%
+  group_by(Sim) %>%
+  filter(NewCount!=0)
+
+Sim06_nozero <- Nozero.runs %>% filter(Sim=="Sim06") %>% dplyr::select(Run)
+Sim06_nozero <- unique(Sim06_nozero$Run)
+
+Sim09_nozero <- Nozero.runs %>% filter(Sim=="Sim09") %>% dplyr::select(Run)
+Sim09_nozero <- unique(Sim09_nozero$Run)
+
+Sim12_nozero <- Nozero.runs %>% filter(Sim=="Sim12") %>% dplyr::select(Run)
+Sim12_nozero <- unique(Sim12_nozero$Run)
+
+length(Sim06_nozero); length(Sim09_nozero); length(Sim12_nozero)
 
 # find coordinates for each fisher at 11 year mark
 # create a heat map based on number of times fisher is on pixel
 # need to consider mean # of fishers vs fisher present/absent
 
+# convert the worlds to rasters (for plotting habitat...but doesn't matter for extent)
+rw1 <- world2raster(w1$land)
+rw2 <- world2raster(w2$land)
+rw3 <- world2raster(w3$land)
 
-rtmp <- world2raster(w3$land)
-extent(rtmp)
-extent(ftmp.sfp)
-plot(rtmp)
-plot(ftmp.sfp)
-
-
-
-r1000 <- raster()
-r1000 <- setExtent(r1000, rtmp, keepres=TRUE)
-rfisherSum <- fasterize(ftmp.sfp, r1000, field="Fisher", fun="sum", background=0)
-rfisherPrs <- fasterize(ftmp.sfp, r1000, field="Fisher", background=0)
-plot(rfisherSum)
-plot(rfisherPrs)
+extent(rw1) # extents of three worlds the same so can use the same raster as base
+plot(rw1)
 
 
-plot(r1000_ftmp)
+raster_output <- function(sim_out=sim_out, sim_order=sim_order, sim_use=sim_use, land=land,
+                         TS=TS, rExtent=rExtent, rFun=rFun, sFun=sFun){
+  r <- raster()
+  r <- setExtent(r, rExtent, keepres=TRUE)
 
-r100_STUP_values_stack <- stackApply(r100m_STUP_values, indices=1, fun=sum)
+  r_list=list()
 
-?stackApply
-# for 10 x 10 m extent (same as w3)
-# Running into issues with no fishers by the end...although I thought this was sorted???
-# maybe just create rasters / heatmap for 5 years (11 timesteps)
-r1000_list=list()
-for(i in 1:100){
-  ftmp <- as.data.frame(patchHere(w3$land, IBM_noescape[[12]][[1]][[11]]))
-  ftmp$Fisher <- 1
-  ftmp.sf <- st_as_sf(ftmp, coords = c("pxcor", "pycor"))
-  ftmp.sfp <- st_buffer(ftmp.sf, dist=.1)
+  for(i in 1:length(sim_use)){
+    ftmp <- as.data.frame(patchHere(land, sim_out[[sim_order]][[sim_use[i]]][[TS]]))
+    ftmp$Fisher <- 1
+    ftmp.sf <- st_as_sf(ftmp, coords = c("pxcor", "pycor"))
+    ftmp.sfp <- st_buffer(ftmp.sf, dist=.1)
 
-  r1000_list[[i]] <- fasterize(ftmp.sfp, r1000, field="Fisher", fun="sum", background=0)
+    r_list[[i]] <- fasterize(ftmp.sfp, r, field="Fisher", fun=rFun, background=0)
+  }
+
+  r_stack = stack(r_list)
+  r_stackApply <- stackApply(r_stack, indices=1, fun=sFun)
+  writeRaster(r_stackApply, file=paste0("out/rSim",str_pad(sim_order,2,pad="0"),".tif"), bylayer=TRUE, overwrite=TRUE)
+
+  Fisher_sum <- sum(r_stackApply@data@values)
+  Fisher_se <- se(r_stackApply@data@values)
+
+  return(list(raster=r_stackApply, Fisher_sum=Fisher_sum, Fisher_se=Fisher_se))
+
 }
 
-r100m_stack = stack(r100m_list)
-r100mbuff_100mpix_stack <- stackApply(r100m_stack, indices=1, fun=sum)
-writeRaster(r100mbuff_100mpix_stack, file="out/r100mbuff_100mpix_species_stack.tif", bylayer=TRUE)
+###--- For Sim06 - # IBM.w1.surv9.sim100 # Sim06
 
-Cairo(file="out/r100mbuff_100mpix_species_stack.PNG", type="png", width=3000, height=2200,pointsize=15,bg="white",dpi=300)
-plot(r100mbuff_100mpix_stack)
+rSim06 <- raster_output(sim_out=IBM_noescape, sim_order=6, sim_use=Sim06_nozero,land=w1$land,
+                        TS=23, rExtent=rw1, rFun="sum",sFun="mean")
+
+rSim06
+plot(rSim06$raster)
+
+length(Sim06_nozero)
+w1$t0
+Cairo(file="out/rSim06_title.PNG", type="png", width=3000, height=2200,pointsize=15,bg="white",dpi=300)
+plot(rSim06$raster,
+     main="Estimated Fisher Abundance",
+     sub="Starting with 20 fishers and 45% suitable habitat\nyielded 19.58 \u00B1 0.03 (mean \u00B1 1 SE) fishers after 10 years\n in the 40 (out of 100) simulations where at least 1 fisher survived over the 10 years.")
 dev.off()
 
+###--- For Sim09 - # IBM.w2.surv9.sim100 # Sim09
+
+rSim09 <- raster_output(sim_out=IBM_noescape, sim_order=9, sim_use=Sim09_nozero,land=w2$land,
+                        TS=23, rExtent=rw2, rFun="sum",sFun="mean")
+
+rSim09
+plot(rSim09$raster)
+w2$actual.prop.hab
+length(Sim09_nozero)
+
+Cairo(file="out/rSim09_title.PNG", type="png", width=3000, height=2200,pointsize=15,bg="white",dpi=300)
+plot(rSim09$raster,
+     main="Estimated Fisher Abundance",
+     sub="Starting with 20 fishers and 56% suitable habitat\nyielded 24.36 \u00B1 0.03 (mean \u00B1 1 SE) fishers after 10 years\n in the 77 (out of 100) simulations where at least 1 fisher survived over the 10 years.")
+dev.off()
+
+###--- For Sim12 - # IBM.w3.surv9.sim100 # Sim12
+
+rSim12 <- raster_output(sim_out=IBM_noescape, sim_order=12, sim_use=Sim12_nozero,land=w3$land,
+                        TS=23, rExtent=rw3, rFun="sum",sFun="mean")
+
+rSim12
+plot(rSim12$raster)
+w3$actual.prop.hab
+length(Sim12_nozero)
+
+Cairo(file="out/rSim12_title.PNG", type="png", width=3000, height=2200,pointsize=15,bg="white",dpi=300)
+plot(rSim12$raster,
+     main="Estimated Fisher Abundance",
+     sub="Starting with 20 fishers and 71% suitable habitat\nyielded 19.02 \u00B1 0.03 (mean \u00B1 1 SE) fishers after 10 years\n in the 43 (out of 100) simulations where at least 1 fisher survived over the 10 years.")
+dev.off()
