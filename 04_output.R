@@ -203,11 +203,22 @@ plot(rw1)
 
 raster_output <- function(sim_out=sim_out, sim_order=sim_order, sim_use=sim_use, land=land,
                          TS=TS, rExtent=rExtent, rFun=rFun, sFun=sFun){
+
+  # sim_out=IBM_noescape
+  # sim_order=6
+  # sim_use=Sim06_nozero
+  # land=w1$land
+  # TS=23
+  # rExtent=rw1
+  # rFun="sum"
+  # sFun="sum"
+
   r <- raster()
   r <- setExtent(r, rExtent, keepres=TRUE)
 
   r_list=list()
 
+  # for simulations where at least one fisher survived
   for(i in 1:length(sim_use)){
     ftmp <- as.data.frame(patchHere(land, sim_out[[sim_order]][[sim_use[i]]][[TS]]))
     ftmp$Fisher <- 1
@@ -217,61 +228,73 @@ raster_output <- function(sim_out=sim_out, sim_order=sim_order, sim_use=sim_use,
     r_list[[i]] <- fasterize(ftmp.sfp, r, field="Fisher", fun=rFun, background=0)
   }
 
-  r_stack = stack(r_list)
+  r_zeroes <- raster()
+  r_zeroes <- setExtent(r_zeroes, rExtent, keepres=TRUE)
+  values(r_zeroes) <- 0
+
+  r_zeroes_list=list()
+
+  if(length(sim_use)!=100){
+    for(i in 1:(100-length(sim_use))){
+      r_zeroes_list[[i]] <- r_zeroes
+    }
+  }
+
+  r_stack = stack(r_list, r_zeroes_list)
   r_stackApply <- stackApply(r_stack, indices=1, fun=sFun)
   writeRaster(r_stackApply, file=paste0("out/rSim",str_pad(sim_order,2,pad="0"),".tif"), bylayer=TRUE, overwrite=TRUE)
 
-  Fisher_sum <- sum(r_stackApply@data@values)
-  Fisher_se <- se(r_stackApply@data@values)
+  Fisher_Nmean <- mean(r_stackApply@data@values)
+  Fisher_Nse <- se(r_stackApply@data@values)
 
-  return(list(raster=r_stackApply, Fisher_sum=Fisher_sum, Fisher_se=Fisher_se))
+  return(list(raster=r_stackApply, Fisher_Nmean=Fisher_Nmean, Fisher_Nse=Fisher_Nse))
 
 }
 
 ###--- For Sim06 - # IBM.w1.surv9.sim100 # Sim06
 
 rSim06 <- raster_output(sim_out=IBM_noescape, sim_order=6, sim_use=Sim06_nozero,land=w1$land,
-                        TS=23, rExtent=rw1, rFun="sum",sFun="mean")
+                        TS=23, rExtent=rw1, rFun="sum",sFun="sum")
 
 rSim06
 plot(rSim06$raster)
 
 length(Sim06_nozero)
 w1$t0
-Cairo(file="out/rSim06_title.PNG", type="png", width=3000, height=2200,pointsize=15,bg="white",dpi=300)
+Cairo(file="out/rSim06_title.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
 plot(rSim06$raster,
-     main="Estimated Fisher Abundance",
-     sub="Starting with 20 fishers and 45% suitable habitat\nyielded 19.58 \u00B1 0.03 (mean \u00B1 1 SE) fishers after 10 years\n in the 40 (out of 100) simulations where at least 1 fisher survived over the 10 years.")
+     main="Estimated Fisher Abundance over 100 Simulations",
+     sub="Starting with 20 fishers and 45% suitable habitat\npredicted 7.8 \u00B1 1.2 (mean \u00B1 1 SE) fishers after 10 years.")
 dev.off()
 
 ###--- For Sim09 - # IBM.w2.surv9.sim100 # Sim09
 
 rSim09 <- raster_output(sim_out=IBM_noescape, sim_order=9, sim_use=Sim09_nozero,land=w2$land,
-                        TS=23, rExtent=rw2, rFun="sum",sFun="mean")
+                        TS=23, rExtent=rw2, rFun="sum",sFun="sum")
 
 rSim09
 plot(rSim09$raster)
 w2$actual.prop.hab
 length(Sim09_nozero)
 
-Cairo(file="out/rSim09_title.PNG", type="png", width=3000, height=2200,pointsize=15,bg="white",dpi=300)
+Cairo(file="out/rSim09_title.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
 plot(rSim09$raster,
-     main="Estimated Fisher Abundance",
-     sub="Starting with 20 fishers and 56% suitable habitat\nyielded 24.36 \u00B1 0.03 (mean \u00B1 1 SE) fishers after 10 years\n in the 77 (out of 100) simulations where at least 1 fisher survived over the 10 years.")
+     main="Estimated Fisher Abundance over 100 Simulations",
+     sub="Starting with 20 fishers and 56% suitable habitat\npredicted 18.8 \u00B1 2.3 (mean \u00B1 1 SE) fishers after 10 years.")
 dev.off()
 
 ###--- For Sim12 - # IBM.w3.surv9.sim100 # Sim12
 
 rSim12 <- raster_output(sim_out=IBM_noescape, sim_order=12, sim_use=Sim12_nozero,land=w3$land,
-                        TS=23, rExtent=rw3, rFun="sum",sFun="mean")
+                        TS=23, rExtent=rw3, rFun="sum",sFun="sum")
 
 rSim12
 plot(rSim12$raster)
 w3$actual.prop.hab
 length(Sim12_nozero)
 
-Cairo(file="out/rSim12_title.PNG", type="png", width=3000, height=2200,pointsize=15,bg="white",dpi=300)
+Cairo(file="out/rSim12_title.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
 plot(rSim12$raster,
-     main="Estimated Fisher Abundance",
-     sub="Starting with 20 fishers and 71% suitable habitat\nyielded 19.02 \u00B1 0.03 (mean \u00B1 1 SE) fishers after 10 years\n in the 43 (out of 100) simulations where at least 1 fisher survived over the 10 years.")
+     main="Estimated Fisher Abundance over 100 Simulations",
+     sub="Starting with 20 fishers and 71% suitable habitat\nyielded 8.2 \u00B1 1.5 (mean \u00B1 1 SE) fishers after 10 years.")
 dev.off()
