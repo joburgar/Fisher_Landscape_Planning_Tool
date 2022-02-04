@@ -99,10 +99,12 @@ rf_surv_estimates <- read.csv("data/rf_surv_estimates.csv", header=TRUE)
 
 ################################################################################
 
+
 # create function to loop through functions, allow sub-function specification
 # now that the function is using the cohort survival data, have the survival run on an annual basis, not per time step
-fisher_IBM_simulation <- function(nfishers=nfishers, xlim=xlim, ylim=ylim, prophab=prophab,  # set_up_world
-                              dx=dx, dy=dy,                                     # find_mate
+fisher_IBM_simulation <- function(nMales=nMales, maxAgeMale=maxAgeMale, nFemales=nFemales, maxAgeFemale=maxAgeFemale,
+                                  xlim=xlim, ylim=ylim, prophab=prophab,  # set_up_world
+                              fmdx=fmdx, fmdy=fmdy,                                     # find_mate
                               denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
                               ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2],                # kits_produced
                               surv_estimates=lwdh_surv_estimates, Fpop="C",               # survive
@@ -118,13 +120,13 @@ fisher_IBM_simulation <- function(nfishers=nfishers, xlim=xlim, ylim=ylim, proph
     # t0 = October to April = kits born
 
     ###--- SET-UP WORLD
-    w1 <- set_up_world(nfishers=nfishers, xlim=xlim, ylim=ylim, prophab=prophab)
+    w1 <- set_up_world(nMales=nMales, maxAgeMale=maxAgeMale, nFemales=nFemales, maxAgeFemale=maxAgeFemale, xlim=xlim, ylim=ylim, prophab=prophab)
     land <- w1$land
     t0 <- w1$t0
 
     ###--- REPRODUCE
     # check if mates are available for females
-    t0 <- find_mate(land=land, fishers=t0, dx=dx, dy=dy)
+    t0 <- find_mate(land=land, fishers=t0, fmdx=fmdx, fmdy=fmdy)
 
     t0 <- denning(fishers=t0, denLCI=denLCI, denUCI=denUCI)
     t0 <- kits_produced(fishers=t0, ltrM=ltrM, ltrSD=ltrSD)
@@ -152,7 +154,7 @@ fisher_IBM_simulation <- function(nfishers=nfishers, xlim=xlim, ylim=ylim, proph
       t2 <- disperse(land=land, fishers=t2, dist_mov=dist_mov)
     }
 
-    t2 <- find_mate(land, t2, dx, dy)
+    t2 <- find_mate(land, t2, fmdx, fmdy)
 
     age.val <- of(agents=t2, var=c("age"))+0.5
     t2 <- NLset(turtles = t2, agents=turtle(t2, who=t2$who),var="age", val=age.val)
@@ -229,11 +231,11 @@ fisher_IBM_simulation <- function(nfishers=nfishers, xlim=xlim, ylim=ylim, proph
 # create function to loop through functions, allow sub-function specification
 # now that the function is using the cohort survival data, have the survival run on an annual basis, not per time step
 fisher_IBM_simulation_same_world <- function(land=land, t0=t0,                                # import world
-                                  dx=c(-1:1), dy=c(-1:1),                                     # find_mate
+                                  fmdx=c(-2:2), fmdy=c(-2:2),                                     # find_mate
                                   denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
                                   ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2],                # kits_produced
-                                  surv_estimates=lwdh_surv_estimates, Fpop="C",               # survive
-                                  Fmaxage=8, Mmaxage=4,                                      # survive
+                                  surv_estimates=rf_surv_estimates, Fpop="C",               # survive
+                                  maxAgeMale=maxAgeMale, maxAgeFemale=maxAgeFemale,                                      # survive
                                   dist_mov=1.0, out=out,                                               # disperse
                                   yrs.to.run=10){                                             # number of years to run simulations ()
 
@@ -246,7 +248,7 @@ fisher_IBM_simulation_same_world <- function(land=land, t0=t0,                  
 
   ###--- REPRODUCE
   # check if mates are available for females
-  t0 <- find_mate(land=land, fishers=t0, dx=dx, dy=dy)
+  t0 <- find_mate(land=land, fishers=t0, fmdx=fmdx, fmdy=fmdy)
 
   t0 <- denning(fishers=t0, denLCI=denLCI, denUCI=denUCI)
   t0 <- kits_produced(fishers=t0, ltrM=ltrM, ltrSD=ltrSD)
@@ -274,12 +276,12 @@ fisher_IBM_simulation_same_world <- function(land=land, t0=t0,                  
     t2 <- disperse(land=land, fishers=t2, dist_mov=dist_mov, out=out)
   }
 
-  t2 <- find_mate(land, t2, dx, dy)
+  t2 <- find_mate(land, t2, fmdx, fmdy)
 
   age.val <- of(agents=t2, var=c("age"))+0.5
   t2 <- NLset(turtles = t2, agents=turtle(t2, who=t2$who),var="age", val=age.val)
 
-  t2 <- survive(t2, surv_estimates=surv_estimates, Fpop=Fpop, Fmaxage=Fmaxage, Mmaxage=Mmaxage)
+  t2 <- survive(t2, surv_estimates=surv_estimates, Fpop=Fpop, maxAgeMale=maxAgeMale, maxAgeFemale=maxAgeFemale)
 
 
   print(NLcount(t2))
@@ -324,12 +326,12 @@ fisher_IBM_simulation_same_world <- function(land=land, t0=t0,                  
         tApr <- disperse(land=land, fishers=tApr, dist_mov=dist_mov, out=out)
       }
 
-      tApr <- find_mate(land, tApr, dx, dy)
+      tApr <- find_mate(land, tApr, fmdx, fmdy)
 
       age.val <- of(agents=tApr, var=c("age"))+0.5
       tApr <- NLset(turtles = tApr, agents=turtle(tApr, who=tApr$who),var="age", val=age.val)
 
-      tApr <- survive(tApr, surv_estimates=surv_estimates, Fpop=Fpop, Fmaxage=Fmaxage, Mmaxage=Mmaxage)
+      tApr <- survive(tApr, surv_estimates=surv_estimates, Fpop=Fpop, maxAgeMale=maxAgeMale, maxAgeFemale=maxAgeFemale)
 
       print(NLcount(tApr))
 
@@ -346,25 +348,6 @@ fisher_IBM_simulation_same_world <- function(land=land, t0=t0,                  
 
 }
 
-################################################################################
-
-lwdh_surv_estimates
-# trying out higher survival estimates
-# going with mean survival per cohort, not upper and lower confidence intervals
-test.surv <- lwdh_surv_estimates
-test.surv$L95CL <- test.surv$U95CL <- test.surv$Surv
-test.surv$L95CL <- test.surv$U95CL <- 0.8
-
-sim01 <- fisher_IBM_simulation(nfishers=20, xlim=c(1,10), ylim=c(1,10), prophab=0.6,            # set_up_world
-                                  dx=c(-1:1), dy=c(-1:1),                                     # find_mate
-                                  denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
-                                  ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
-                                  surv_estimates=test.surv, Fpop="B",                         # survive
-                                  Fmaxage=8, Mmaxage=4,                                      # survive
-                                  dist_mov=1.0,                                               # disperse
-                                  yrs.to.run=10)                                              # number of years to run simulation post set up
-
-sim01
 
 ################################################################################
 # Create 3 sets of 100 simulations - vary the proportion of habitat and survival
@@ -373,22 +356,25 @@ sim01
 # Run 100 simulations for each, save as objects
 # Calculate mean # of animals per cell at 10 years for each simulation to produce a heat map
 # Create a figure with mean number of animals (+/- SE) for each time step and graph for each simulation
-test.surv <- lwdh_surv_estimates
+test.surv <- rf_surv_estimates
 test.surv$L95CL <- test.surv$U95CL <- test.surv$Surv
-test.surv$L95CL <- test.surv$U95CL <- 0.8
+test.surv$L95CL <- test.surv$U95CL <- 0.9
+
+rf_surv_estimates
 
 ###--- Run with low habitat (prop hab ~ 0.5)
-w1 <- set_up_world(nfishers=20, xlim=c(1,10), ylim=c(1,10), prophab=0.5)
+w1 <- set_up_world(nMales=7, nFemales=13, maxAgeMale=6, maxAgeFemale=9,
+                   xlim=c(1,10), ylim=c(1,10), prophab=0.5)
 
 IBM.w1.surv7.sim100 <- vector('list',100)
 test.surv$L95CL <- test.surv$U95CL <- 0.7
 for(i in 1:100){
   IBM.w1.surv7.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                                  # set_up_world
-                                                               dx=c(-1:1), dy=c(-1:1),                                     # find_mate
+                                                               fmdx=c(-4:4), fmdy=c(-4:4),                                     # find_mate
                                                                denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
                                                                ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
                                                                surv_estimates=test.surv, Fpop="B",                         # survive
-                                                               Fmaxage=8, Mmaxage=4,                                      # survive
+                                                               maxAgeMale=6, maxAgeFemale=9,                                      # survive
                                                                dist_mov=1.0, out=FALSE,                                               # disperse
                                                                yrs.to.run=10)                                              # number of years to run simulation post set up
 }
