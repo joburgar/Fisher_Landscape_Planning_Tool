@@ -186,6 +186,12 @@ Cairo(file="out/Fpop_PGTSA.PNG",
 Fpop_PGTSA
 dev.off()
 
+Cairo(file="out/Fpop.PNG",type="png",width=3600,height=2400,pointsize=10,bg="white",dpi=300)
+ggplot()+
+  geom_sf(data=aoi.Fpop,aes(fill=Fpop))+
+  scale_fill_manual(values = rev(pnw_palette("Lake",2)))+
+  theme(legend.title = element_blank())
+dev.off()
 # now reduce aoi to proof-of-concept study area (same as grid above - Prince George TSA)
 # female fisher home range = 5.5 * 5.5 = 30 km2
 # the CLUS model (Kyle Lochhead and Tyler Muhly) analyses at ha pixel size and sums up to fisher home range
