@@ -33,7 +33,7 @@ if(length(new.packages)) install.packages(new.packages)
 lapply(list.of.packages, require, character.only = TRUE)
 rm(list.of.packages, new.packages) # for housekeeping
 
-#install.packages("lcmix", repos="http://R-Forge.R-project.org")
+# install.packages("lcmix", repos="http://R-Forge.R-project.org")
 # AGENTS
 # Create a square landscape of 100 by 100 cells (1000 cells total)
 # Cell values are randomly chosen either 1 or 2
