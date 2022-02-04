@@ -100,7 +100,7 @@ set_up_world <- function(nMales=nMales, maxAgeMale=maxAgeMale, nFemales=nFemales
 
 
 ###--- REPRODUCE
-find_mate <- function(land=land, fishers=fishers, dx=c(-2:2), dy=c(-2:2)){
+find_mate <- function(land=land, fishers=fishers, fmdx=c(-2:2), fmdy=c(-2:2)){
 
   whoMFishers <- fishers[fishers$sex=="F" & fishers$age>1 & fishers$disperse=="E"]$who
 
@@ -111,7 +111,7 @@ find_mate <- function(land=land, fishers=fishers, dx=c(-2:2), dy=c(-2:2)){
     # k=1; rm(k)
     for(k in 1:length(whoMFishers)){
       nearby.male <- turtlesAt(land, turtles = fishers[fishers$sex=="M" & fishers$age>0.5], agents = turtle(fishers, who = whoMFishers[k]),
-                               dx=dx, dy=dy, torus = FALSE)
+                               dx=fmdx, dy=fmdy, torus = FALSE)
 
       if(NLcount(nearby.male)>0){ # if there are established male territories nearby (i.e., potential mate(s))
         fishers <- NLset(turtles = fishers, agents = turtle(fishers, who = whoMFishers[k]), var = "mate_avail", val = "Y") # able to mate
@@ -132,7 +132,8 @@ denning <- function(fishers, denLCI=denLCI, denUCI=denUCI) {
   whoFishers <- of(agents = fishers, var = c("who","breed","sex","mate_avail")) # "who" of the fishers before they reproduce
   whoAFFishers <- whoFishers %>% filter(breed=="adult" & sex=="F" & mate_avail=="Y") %>% dplyr::select(who)
 
-  repro <- rbinom(n = nrow(whoAFFishers), size=1, prob=denLCI:denUCI) # prob can be a range - confidence intervals?
+  repro <- runif(1, min=denLCI, max=denUCI) # after discussion on 3-Feb-2022, decided to try runif to keep value within 95% CIs as denning rate already includes some chance of finding mate (so need to up the probabilty)
+  # repro <- rbinom(n = nrow(whoAFFishers), size=1, prob=denLCI:denUCI) # prob can be a range - use confidence intervals
   whoAFFishers$repro <- repro
 
   fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=whoAFFishers$who), var = "repro", val = whoAFFishers$repro)
@@ -184,7 +185,7 @@ kits_produced <- function(fishers, ltrM=ltrM, ltrSD=ltrSD) {
 # also need to kill off any fishers that are over 8 years (female) and 4 years (male)
 # *** UPDATE - not enough fishers were surviving when using age survival probabilities, changed to cohort level probabilities
 
-survive <- function(fishers, surv_estimates=lwdh_surv_estimates, Fpop="C", Fmaxage=8, Mmaxage=4) {
+survive <- function(fishers, surv_estimates=lwdh_surv_estimates, Fpop="C", maxAgeMale=6, maxAgeFemale=9) {
 
   # fishers=t1
   survFishers <- of(agents = fishers, var = c("who","breed","sex","disperse","age")) # "who" of the fishers before they reproduce
@@ -206,8 +207,8 @@ survive <- function(fishers, surv_estimates=lwdh_surv_estimates, Fpop="C", Fmaxa
   }
 
   dieWho <- survFishers %>% filter(live!=TRUE) # "who" of fishers which die, based on probability
-  oldM <- survFishers %>% filter(sex=="M" & age>Mmaxage) # "who" of male fishers who die of 'old age' (i.e., > 4 yrs)
-  oldF <- survFishers %>% filter(sex=="F" & age>Fmaxage) # "who" of female fishers who die of 'old age' (i.e., > 8 yrs)
+  oldM <- survFishers %>% filter(sex=="M" & age>maxAgeMale) # "who" of male fishers who die of 'old age' (i.e., > 4 yrs)
+  oldF <- survFishers %>% filter(sex=="F" & age>maxAgeFemale) # "who" of female fishers who die of 'old age' (i.e., > 8 yrs)
   dispersing <- survFishers %>% filter(disperse=="D" & age>2) # "who" of dispersing fishers over 2
 
   fishers <- die(fishers, who=c(dieWho$who, oldM$who, oldF$who, dispersing$who))
