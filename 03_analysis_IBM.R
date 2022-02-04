@@ -23,8 +23,12 @@ R_version <- paste0("R-",version$major,".",version$minor)
 tz = Sys.timezone() # specify timezone in BC
 
 # Load Packages
+# install.packages("R.methodsS3")
+# install.packages("lcmix", repos="http://R-Forge.R-project.org")
+
 list.of.packages <- c("tidyverse", "NetLogoR","nnls","lcmix","MASS","SpaDES.core","SpaDES.tools",
                       "Cairo","PNWColors")
+
 # Check you have them and load them
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
@@ -35,8 +39,8 @@ source("00_IBM_functions.R")
 
 # Start with a very simple example - habitat patch is either suitable or not suitable
 # Die by 2 if haven’t found a territory
-# Females max age length = 8 (might instead go with survival analysis data)
-# Males max age length = 4 (may also go with survival analysis data)
+# Females max age length = 9 (as per discussion with team - see Rory's spreadsheet)
+# Males max age length = 6 (as per discussion with team - see Rory's spreadsheet)
 # Female territory = 30 km2 (1 pixel / cell)
 # Male territory = 5*female territory (can comprise have 3 female territories) 150-200 km2
 # Female transient animal = 70 km2 Euclidian distance within a couple months
@@ -90,6 +94,8 @@ repro.CI <- read.csv("data/repro.CI.csv", header=TRUE, row.names = 1)
 km_surv_estimates <- read.csv("data/km_surv_estimates.csv", header=TRUE)
 # taken from manuscript, survival binned to cohort
 lwdh_surv_estimates <- read.csv("data/lwdh_surv_estimates.csv", header=TRUE)
+# taken from Rory's updated survival, trapping mortality excluded
+rf_surv_estimates <- read.csv("data/rf_surv_estimates.csv", header=TRUE)
 
 ################################################################################
 
