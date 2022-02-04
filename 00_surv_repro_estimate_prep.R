@@ -34,7 +34,7 @@ lapply(list.of.packages, require, character.only = TRUE)
 # Code to determine confidence intervals from Mean, Standard deviation, and N
 # https://bookdown.org/logan_kelly/r_practice/p09.html
 
-CI_from_meanSDn <- function(mean=mean, sd=sd, n=n, alpha=0.5){
+CI_from_meanSDn <- function(mean=mean, sd=sd, n=n, alpha=0.05){
   sample.mean <- mean
   # print(sample.mean)
 
