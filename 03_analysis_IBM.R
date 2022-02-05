@@ -126,18 +126,16 @@ source("00_IBM_functions.R") # ==> Move this to R folder inside the new module
 # data to read in; already prepped / formatted in 00_surv_repro_estimates_prep.R
 
 # reproductive rates from manuscript
-repro.CI <- read.csv("data/repro.CI.csv", header=TRUE, row.names = 1)
-
+repro.CI <- read.csv(file.path(getwd(), "data/repro.CI.csv"), header=TRUE, row.names = 1) # Missing file...
 # survival probability estimates
 # data from Eric, survival at each time step
-km_surv_estimates <- read.csv("data/km_surv_estimates.csv", header=TRUE)
+km_surv_estimates <- read.csv(file.path(getwd(), "data/km_surv_estimates.csv"), header=TRUE)
 # taken from manuscript, survival binned to cohort
-lwdh_surv_estimates <- read.csv("data/lwdh_surv_estimates.csv", header=TRUE)
+lwdh_surv_estimates <- read.csv(file.path(getwd(), "data/lwdh_surv_estimates.csv"), header=TRUE)
 # taken from Rory's updated survival, trapping mortality excluded
-rf_surv_estimates <- read.csv("data/rf_surv_estimates.csv", header=TRUE)
+rf_surv_estimates <- read.csv(file.path(getwd(), "data/rf_surv_estimates.csv"), header=TRUE)
 
 ################################################################################
-
 
 # create function to loop through functions, allow sub-function specification
 # now that the function is using the cohort survival data, have the survival run on an annual basis, not per time step
