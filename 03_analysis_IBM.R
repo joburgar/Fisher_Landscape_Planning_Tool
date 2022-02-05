@@ -102,13 +102,12 @@ rf_surv_estimates <- read.csv("data/rf_surv_estimates.csv", header=TRUE)
 
 # create function to loop through functions, allow sub-function specification
 # now that the function is using the cohort survival data, have the survival run on an annual basis, not per time step
-fisher_IBM_simulation <- function(nMales=nMales, maxAgeMale=maxAgeMale, nFemales=nFemales, maxAgeFemale=maxAgeFemale,
+fisher_IBM_simulation <- function(nMales=nMales, maxAgeMale=maxAgeMale, nFemales=nFemales, maxAgeFemale=maxAgeFemale,# max age used to set up the world and also for survival
                                   xlim=xlim, ylim=ylim, prophab=prophab,  # set_up_world
                               fmdx=fmdx, fmdy=fmdy,                                     # find_mate
                               denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
                               ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2],                # kits_produced
-                              surv_estimates=lwdh_surv_estimates, Fpop="C",               # survive
-                              Fmaxage=8, Mmaxage=4,                                      # survive
+                              surv_estimates=rf_surv_estimates, Fpop="C",               # survive
                               dist_mov=dist_mov,                                               # disperse
                               yrs.to.run=10){                                             # number of years to run simulations ()
 
@@ -159,7 +158,7 @@ fisher_IBM_simulation <- function(nMales=nMales, maxAgeMale=maxAgeMale, nFemales
     age.val <- of(agents=t2, var=c("age"))+0.5
     t2 <- NLset(turtles = t2, agents=turtle(t2, who=t2$who),var="age", val=age.val)
 
-    t2 <- survive(t2, surv_estimates=surv_estimates, Fpop=Fpop, Fmaxage=Fmaxage, Mmaxage=Mmaxage)
+    t2 <- survive(t2, surv_estimates=surv_estimates, Fpop=Fpop, maxAgeMale=maxAgeMale, maxAgeFemale=maxAgeFemale)
 
 
     print(NLcount(t2))
@@ -209,7 +208,7 @@ fisher_IBM_simulation <- function(nMales=nMales, maxAgeMale=maxAgeMale, nFemales
       age.val <- of(agents=tApr, var=c("age"))+0.5
       tApr <- NLset(turtles = tApr, agents=turtle(tApr, who=tApr$who),var="age", val=age.val)
 
-      tApr <- survive(tApr, surv_estimates=surv_estimates, Fpop=Fpop, Fmaxage=Fmaxage, Mmaxage=Mmaxage)
+      tApr <- survive(tApr, surv_estimates=surv_estimates, Fpop=Fpop, maxAgeMale=maxAgeMale, maxAgeFemale=maxAgeFemale)
 
       print(NLcount(tApr))
 
