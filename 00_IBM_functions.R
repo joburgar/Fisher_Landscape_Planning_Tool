@@ -132,7 +132,7 @@ denning <- function(fishers, denLCI=denLCI, denUCI=denUCI) {
   whoFishers <- of(agents = fishers, var = c("who","breed","sex","mate_avail")) # "who" of the fishers before they reproduce
   whoAFFishers <- whoFishers %>% filter(breed=="adult" & sex=="F" & mate_avail=="Y") %>% dplyr::select(who)
 
-  repro <- runif(1, min=denLCI, max=denUCI) # after discussion on 3-Feb-2022, decided to try runif to keep value within 95% CIs as denning rate already includes some chance of finding mate (so need to up the probabilty)
+  repro <- runif(1, min=denLCI, max=denUCI) # after discussion on 3-Feb-2022, decided to try runif to keep value within 95% CIs as denning rate as already includes some chance of finding mate (so need to up the probabilty)
   # repro <- rbinom(n = nrow(whoAFFishers), size=1, prob=denLCI:denUCI) # prob can be a range - use confidence intervals
   whoAFFishers$repro <- repro
 
@@ -185,7 +185,7 @@ kits_produced <- function(fishers, ltrM=ltrM, ltrSD=ltrSD) {
 # also need to kill off any fishers that are over 8 years (female) and 4 years (male)
 # *** UPDATE - not enough fishers were surviving when using age survival probabilities, changed to cohort level probabilities
 
-survive <- function(fishers, surv_estimates=lwdh_surv_estimates, Fpop="C", maxAgeMale=6, maxAgeFemale=9) {
+survive <- function(fishers, surv_estimates=rf_surv_estimates, Fpop="C", maxAgeMale=6, maxAgeFemale=9) {
 
   # fishers=t1
   survFishers <- of(agents = fishers, var = c("who","breed","sex","disperse","age")) # "who" of the fishers before they reproduce
