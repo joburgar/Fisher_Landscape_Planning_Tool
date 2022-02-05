@@ -65,6 +65,7 @@ install.packages("https://cran.r-project.org/src/contrib/Archive/NetLogoR/NetLog
 
 Require("reproducible")
 Require("SpaDES.core")
+Require("NetLogoR")
 
 setPaths(cachePath = checkPath(file.path(getwd(), "cache"), create = TRUE),
          inputPath = checkPath(file.path(getwd(), "inputs"), create = TRUE),
@@ -126,12 +127,12 @@ source("00_IBM_functions.R") # ==> Move this to R folder inside the new module
 # data to read in; already prepped / formatted in 00_surv_repro_estimates_prep.R
 
 # reproductive rates from manuscript
-repro.CI <- read.csv(file.path(getwd(), "data/repro.CI.csv"), header=TRUE, row.names = 1) # Missing file...
+repro.CI <- read.csv(file.path(getwd(), "data/repro.CI.csv"), header=TRUE, row.names = 1)
 # survival probability estimates
 # data from Eric, survival at each time step
 km_surv_estimates <- read.csv(file.path(getwd(), "data/km_surv_estimates.csv"), header=TRUE)
 # taken from manuscript, survival binned to cohort
-lwdh_surv_estimates <- read.csv(file.path(getwd(), "data/lwdh_surv_estimates.csv"), header=TRUE)
+# lwdh_surv_estimates <- read.csv(file.path(getwd(), "data/lwdh_surv_estimates.csv"), header=TRUE) # Missing file, but not used!...
 # taken from Rory's updated survival, trapping mortality excluded
 rf_surv_estimates <- read.csv(file.path(getwd(), "data/rf_surv_estimates.csv"), header=TRUE)
 
