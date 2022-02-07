@@ -48,7 +48,7 @@ set_up_world <- function(nMales=nMales, maxAgeMale=maxAgeMale, nFemales=nFemales
   actual.prop.hab <- numhabitatcells/numcells
 
   nfishers = nMales + nFemales
-  fishers_start <- as.data.frame(sampleStratified(rtmp, size=nfishers, xy=TRUE, )) %>% filter(layer==1)
+  fishers_start <- as.data.frame(sampleStratified(rtmp, size=nfishers, xy=TRUE, )) %>% dplyr::filter(layer==1)
   fishers_start <- as.matrix(fishers_start[c("x","y")])
 
   # Start with a landscape of adult females and males, all on "good" habitat
@@ -98,9 +98,8 @@ set_up_world <- function(nMales=nMales, maxAgeMale=maxAgeMale, nFemales=nFemales
 
 }
 
-
 ###--- REPRODUCE
-find_mate <- function(land=land, fishers=fishers, fmdx=c(-2:2), fmdy=c(-2:2)){
+find_mate <- function(land=land, fishers=fishers, fmdx=c(-4:4), fmdy=c(-4:4)){
 
   whoMFishers <- fishers[fishers$sex=="F" & fishers$age>1 & fishers$disperse=="E"]$who
 
@@ -125,15 +124,18 @@ find_mate <- function(land=land, fishers=fishers, fmdx=c(-2:2), fmdy=c(-2:2)){
 }
 
 
-denning <- function(fishers, denLCI=denLCI, denUCI=denUCI) {
+denning <- function(fishers=fishers, denLCI=denLCI, denUCI=denUCI) {
 
   # Random selection for which adult females reproduce, based on denning mean and SD (Central Interior)
   # fishers=t0; rm(fishers)
   whoFishers <- of(agents = fishers, var = c("who","breed","sex","mate_avail")) # "who" of the fishers before they reproduce
   whoAFFishers <- whoFishers %>% filter(breed=="adult" & sex=="F" & mate_avail=="Y") %>% dplyr::select(who)
 
-  repro <- runif(1, min=denLCI, max=denUCI) # after discussion on 3-Feb-2022, decided to try runif to keep value within 95% CIs as denning rate as already includes some chance of finding mate (so need to up the probabilty)
-  # repro <- rbinom(n = nrow(whoAFFishers), size=1, prob=denLCI:denUCI) # prob can be a range - use confidence intervals
+
+  # denMC=repro.CI$drC[1], densdC=repro.CI$drC[2]
+  # repro <- runif(n = nrow(whoAFFishers), min=denLCI, max=denUCI) # after discussion on 3-Feb-2022, decided to try runif # issue is that not binary so have to make decision on what threshold to use.... might just up the chance of a female finding a mate instead
+  # repro <- rnorm(n = nrow(whoAFFishers), mean=denMC, sd=densdC) # after discussion on 3-Feb-2022, decided to try rnorm with mean and standard deviation # this way have some probabilities >1 so could use a higher threshold...still thinking upping the distance for females to find a mate might be the best approach
+  repro <- rbinom(n = nrow(whoAFFishers), size=1, prob=denLCI:denUCI) # prob can be a range - use confidence intervals
   whoAFFishers$repro <- repro
 
   fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=whoAFFishers$who), var = "repro", val = whoAFFishers$repro)
@@ -142,7 +144,7 @@ denning <- function(fishers, denLCI=denLCI, denUCI=denUCI) {
 }
 
 
-kits_produced <- function(fishers, ltrM=ltrM, ltrSD=ltrSD) {
+kits_produced <- function(fishers=fishers, ltrM=ltrM, ltrSD=ltrSD) {
 
   # Random selection for which adult females reproduce, based on denning mean and SD (Central Interior)
   # fishers=t1; rm(fishers)
@@ -185,7 +187,7 @@ kits_produced <- function(fishers, ltrM=ltrM, ltrSD=ltrSD) {
 # also need to kill off any fishers that are over 8 years (female) and 4 years (male)
 # *** UPDATE - not enough fishers were surviving when using age survival probabilities, changed to cohort level probabilities
 
-survive <- function(fishers, surv_estimates=rf_surv_estimates, Fpop="C", maxAgeMale=6, maxAgeFemale=9) {
+survive <- function(fishers=fishers, surv_estimates=rf_surv_estimates, Fpop="C", maxAgeMale=6, maxAgeFemale=9) {
 
   # fishers=t1
   survFishers <- of(agents = fishers, var = c("who","breed","sex","disperse","age")) # "who" of the fishers before they reproduce
