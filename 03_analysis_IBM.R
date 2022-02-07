@@ -354,153 +354,120 @@ fisher_IBM_simulation_same_world <- function(land=land, t0=t0,                  
 # Low, medium and high survival = 0.7, 0.8, 0.9
 # Run 100 simulations for each, save as objects
 # Calculate mean # of animals per cell at 10 years for each simulation to produce a heat map
+
 # Create a figure with mean number of animals (+/- SE) for each time step and graph for each simulation
-test.surv <- rf_surv_estimates
-test.surv$L95CL <- test.surv$U95CL <- test.surv$Surv
-test.surv$L95CL <- test.surv$U95CL <- 0.9
+# test.surv <- rf_surv_estimates
+# test.surv$L95CL <- test.surv$U95CL <- test.surv$Surv
+# test.surv$L95CL <- test.surv$U95CL <- 0.9
 
 rf_surv_estimates
 
+################################################################################
+###--- RUN FOR BOREAL
 ###--- Run with low habitat (prop hab ~ 0.5)
 w1 <- set_up_world(nMales=7, nFemales=13, maxAgeMale=6, maxAgeFemale=9,
                    xlim=c(1,10), ylim=c(1,10), prophab=0.5)
 
-IBM.w1.surv7.sim100 <- vector('list',100)
-test.surv$L95CL <- test.surv$U95CL <- 0.7
+
+IBM.w1.rfsurv.sim100 <- vector('list',100)
 for(i in 1:100){
-  IBM.w1.surv7.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                                  # set_up_world
-                                                               fmdx=c(-4:4), fmdy=c(-4:4),                                     # find_mate
+  IBM.w1.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                                  # set_up_world
+                                                               fmdx=c(-3:3), fmdy=c(-3:3),                                     # find_mate
                                                                denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
                                                                ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
-                                                               surv_estimates=test.surv, Fpop="B",                         # survive
+                                                               surv_estimates=rf_surv_estimates, Fpop="B",                         # survive
                                                                maxAgeMale=6, maxAgeFemale=9,                                      # survive
                                                                dist_mov=1.0, out=FALSE,                                               # disperse
                                                                yrs.to.run=10)                                              # number of years to run simulation post set up
 }
 
-IBM.w1.surv8.sim100 <- vector('list',100)
-test.surv$L95CL <- test.surv$U95CL <- 0.8
+###--- Run with medium habitat (prop hab ~ 0.6)
+w2 <- set_up_world(nMales=7, nFemales=13, maxAgeMale=6, maxAgeFemale=9,
+                   xlim=c(1,10), ylim=c(1,10), prophab=0.6)
+
+IBM.w2.rfsurv.sim100 <- vector('list',100)
 for(i in 1:100){
-  IBM.w1.surv8.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                                  # set_up_world
-                                                               dx=c(-1:1), dy=c(-1:1),                                     # find_mate
+  IBM.w2.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w2$land, t0=w2$t0,                                  # set_up_world
+                                                               fmdx=c(-3:3), fmdy=c(-3:3),                                     # find_mate
                                                                denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
                                                                ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
-                                                               surv_estimates=test.surv, Fpop="B",                         # survive
-                                                               Fmaxage=8, Mmaxage=4,                                      # survive
+                                                               surv_estimates=rf_surv_estimates, Fpop="B",                         # survive
+                                                               maxAgeMale=6, maxAgeFemale=9,                                      # survive
                                                                dist_mov=1.0, out=FALSE,                                              # disperse
                                                                yrs.to.run=10)                                              # number of years to run simulation post set up
 }
 
 
-IBM.w1.surv9.sim100 <- vector('list',100)
-test.surv$L95CL <- test.surv$U95CL <- 0.9
+###--- Run with high habitat (prop hab ~ 0.7)
+w3 <- set_up_world(nMales=7, nFemales=13, maxAgeMale=6, maxAgeFemale=9,
+                   xlim=c(1,10), ylim=c(1,10), prophab=0.7)
+
+IBM.w3.rfsurv.sim100 <- vector('list',100)
 for(i in 1:100){
-  IBM.w1.surv9.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                                  # set_up_world
-                                                               dx=c(-1:1), dy=c(-1:1),                                     # find_mate
+  IBM.w3.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w3$land, t0=w3$t0,                                  # set_up_world
+                                                               fmdx=c(-3:3), fmdy=c(-3:3),                                     # find_mate
                                                                denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
                                                                ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
-                                                               surv_estimates=test.surv, Fpop="B",                         # survive
-                                                               Fmaxage=8, Mmaxage=4,                                      # survive
+                                                               surv_estimates=rf_surv_estimates, Fpop="B",                         # survive
+                                                               maxAgeMale=6, maxAgeFemale=9,                                      # survive
                                                                dist_mov=1.0,  out=FALSE,                                             # disperse
                                                                yrs.to.run=10)                                              # number of years to run simulation post set up
+}
+
+
+Boreal_noescape_rfsurv <- list(w1, w2, w3,
+                     IBM.w1.rfsurv.sim100,IBM.w2.rfsurv.sim100,IBM.w3.rfsurv.sim100)
+
+save(Boreal_noescape_rfsurv, file="out/Boreal_noescape_rfsurv.RData")
+
+################################################################################
+###--- RUN FOR CENTRAL INTERIOR
+# use the same worlds as with Boreal
+
+CI.w1.rfsurv.sim100 <- vector('list',100)
+for(i in 1:100){
+  CI.w1.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                                  # set_up_world
+                                                                fmdx=c(-3:3), fmdy=c(-3:3),                                     # find_mate
+                                                                denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
+                                                                ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2],                # kits_produced
+                                                                surv_estimates=rf_surv_estimates, Fpop="C",                         # survive
+                                                                maxAgeMale=6, maxAgeFemale=9,                                      # survive
+                                                                dist_mov=1.0, out=FALSE,                                               # disperse
+                                                                yrs.to.run=10)                                              # number of years to run simulation post set up
 }
 
 ###--- Run with medium habitat (prop hab ~ 0.6)
-w2 <- set_up_world(nfishers=20, xlim=c(1,10), ylim=c(1,10), prophab=0.6)
 
-
-IBM.w2.surv7.sim100 <- vector('list',100)
-test.surv$L95CL <- test.surv$U95CL <- 0.7
+CI.w2.rfsurv.sim100 <- vector('list',100)
 for(i in 1:100){
-  IBM.w2.surv7.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w2$land, t0=w2$t0,                                  # set_up_world
-                                                               dx=c(-1:1), dy=c(-1:1),                                     # find_mate
-                                                               denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
-                                                               ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
-                                                               surv_estimates=test.surv, Fpop="B",                         # survive
-                                                               Fmaxage=8, Mmaxage=4,                                      # survive
-                                                               dist_mov=1.0, out=FALSE,                                              # disperse
-                                                               yrs.to.run=10)                                              # number of years to run simulation post set up
+  CI.w2.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w2$land, t0=w2$t0,                                  # set_up_world
+                                                              fmdx=c(-3:3), fmdy=c(-3:3),                                     # find_mate
+                                                              denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
+                                                              ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2],                # kits_produced
+                                                              surv_estimates=rf_surv_estimates, Fpop="C",                         # survive
+                                                              maxAgeMale=6, maxAgeFemale=9,                                      # survive
+                                                              dist_mov=1.0, out=FALSE,                                              # disperse
+                                                              yrs.to.run=10)                                              # number of years to run simulation post set up
 }
 
-IBM.w2.surv8.sim100 <- vector('list',100)
-test.surv$L95CL <- test.surv$U95CL <- 0.8
-for(i in 1:100){
-  IBM.w2.surv8.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w2$land, t0=w2$t0,                                  # set_up_world
-                                                               dx=c(-1:1), dy=c(-1:1),                                     # find_mate
-                                                               denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
-                                                               ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
-                                                               surv_estimates=test.surv, Fpop="B",                         # survive
-                                                               Fmaxage=8, Mmaxage=4,                                      # survive
-                                                               dist_mov=1.0,  out=FALSE,                                             # disperse
-                                                               yrs.to.run=10)                                              # number of years to run simulation post set up
-}
-
-IBM.w2.surv9.sim100 <- vector('list',100)
-test.surv$L95CL <- test.surv$U95CL <- 0.9
-for(i in 1:100){
-  IBM.w2.surv9.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w2$land, t0=w2$t0,                                  # set_up_world
-                                                               dx=c(-1:1), dy=c(-1:1),                                     # find_mate
-                                                               denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
-                                                               ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
-                                                               surv_estimates=test.surv, Fpop="B",                         # survive
-                                                               Fmaxage=8, Mmaxage=4,                                      # survive
-                                                               dist_mov=1.0, out=FALSE,                                               # disperse
-                                                               yrs.to.run=10)                                              # number of years to run simulation post set up
-}
 
 ###--- Run with high habitat (prop hab ~ 0.7)
-w3 <- set_up_world(nfishers=20, xlim=c(1,10), ylim=c(1,10), prophab=0.7)
 
-IBM.w3.surv7.sim100 <- vector('list',100)
-test.surv$L95CL <- test.surv$U95CL <- 0.7
+CI.w3.rfsurv.sim100 <- vector('list',100)
 for(i in 1:100){
-  IBM.w3.surv7.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w3$land, t0=w3$t0,                                  # set_up_world
-                                                               dx=c(-1:1), dy=c(-1:1),                                     # find_mate
-                                                               denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
-                                                               ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
-                                                               surv_estimates=test.surv, Fpop="B",                         # survive
-                                                               Fmaxage=8, Mmaxage=4,                                      # survive
-                                                               dist_mov=1.0, out=FALSE,                                               # disperse
-                                                               yrs.to.run=10)                                              # number of years to run simulation post set up
-}
-
-IBM.w3.surv8.sim100 <- vector('list',100)
-test.surv$L95CL <- test.surv$U95CL <- 0.8
-for(i in 1:100){
-  IBM.w3.surv8.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w3$land, t0=w3$t0,                                  # set_up_world
-                                                               dx=c(-1:1), dy=c(-1:1),                                     # find_mate
-                                                               denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
-                                                               ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
-                                                               surv_estimates=test.surv, Fpop="B",                         # survive
-                                                               Fmaxage=8, Mmaxage=4,                                      # survive
-                                                               dist_mov=1.0, out=FALSE,                                               # disperse
-                                                               yrs.to.run=10)                                              # number of years to run simulation post set up
+  CI.w3.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w3$land, t0=w3$t0,                                  # set_up_world
+                                                                fmdx=c(-3:3), fmdy=c(-3:3),                                     # find_mate
+                                                                denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
+                                                                ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2],                # kits_produced
+                                                                surv_estimates=rf_surv_estimates, Fpop="C",                         # survive
+                                                                maxAgeMale=6, maxAgeFemale=9,                                      # survive
+                                                                dist_mov=1.0,  out=FALSE,                                             # disperse
+                                                                yrs.to.run=10)                                              # number of years to run simulation post set up
 }
 
 
-IBM.w3.surv9.sim100 <- vector('list',100)
-test.surv$L95CL <- test.surv$U95CL <- 0.9
-for(i in 1:100){
-  IBM.w3.surv9.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w3$land, t0=w3$t0,                                  # set_up_world
-                                                               dx=c(-1:1), dy=c(-1:1),                                     # find_mate
-                                                               denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
-                                                               ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
-                                                               surv_estimates=test.surv, Fpop="B",                         # survive
-                                                               Fmaxage=8, Mmaxage=4,                                      # survive
-                                                               dist_mov=1.0, out=FALSE,                                               # disperse
-                                                               yrs.to.run=10)                                              # number of years to run simulation post set up
-}
+CI_noescape_rfsurv <- list(w1, w2, w3,
+                               CI.w1.rfsurv.sim100, CI.w2.rfsurv.sim100, CI.w3.rfsurv.sim100)
 
-IBM_noescape <- list(w1, w2, w3,
-                     IBM.w1.surv7.sim100,IBM.w1.surv8.sim100,IBM.w1.surv9.sim100,
-                     IBM.w2.surv7.sim100,IBM.w2.surv8.sim100,IBM.w2.surv9.sim100,
-                     IBM.w3.surv7.sim100,IBM.w3.surv8.sim100,IBM.w3.surv9.sim100)
+save(CI_noescape_rfsurv, file="out/CI_noescape_rfsurv.RData")
 
-save(IBM_noescape, file="out/IBM_noescape.RData")
-
-# load("03_analysis_IBM.RData")
-# IBM_escape <- list(w1, w2, w3,
-#                      IBM.w1.surv7.sim100,IBM.w1.surv8.sim100,IBM.w1.surv9.sim100,
-#                      IBM.w2.surv7.sim100,IBM.w2.surv8.sim100,IBM.w2.surv9.sim100,
-#                      IBM.w3.surv7.sim100,IBM.w3.surv8.sim100,IBM.w3.surv9.sim100)
-# save(IBM_escape, file="out/IBM_escape.RData")
