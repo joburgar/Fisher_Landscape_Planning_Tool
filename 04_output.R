@@ -36,24 +36,26 @@ source("00_IBM_functions.R")
 # Low, medium and high habitat = 0.5, 0.6, and 0.7 (same world set up, get actual values)
 # Low, medium and high survival = 0.7, 0.8, 0.9
 
-load("out/IBM_noescape.RData")
-w1 <- IBM_noescape[[1]]; w1$actual.prop.hab # 0.45
-w2 <- IBM_noescape[[2]]; w2$actual.prop.hab # 0.56
-w3 <- IBM_noescape[[3]]; w3$actual.prop.hab # 0.71
+load("out/CI_noescape_rfsurv.RData")
+w1 <- CI_noescape_rfsurv[[1]]; w1$actual.prop.hab # 0.52
+w2 <- CI_noescape_rfsurv[[2]]; w2$actual.prop.hab # 0.67
+w3 <- CI_noescape_rfsurv[[3]]; w3$actual.prop.hab # 0.77
+
+load("out/Boreal_noescape_rfsurv.RData")
 
 ###--- plot the simulated landbases
-Cairo(file="out/IBM_noescape_w1.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
-plot(w1$land, main="Simulated Landbase\n45% Suitable Habitat")
+Cairo(file="out/BCI_noescape_w1.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
+plot(w1$land, main="Simulated Landbase\n52% Suitable Habitat")
 points(w1$t0, pch = w1$t0$shape, col = of(agents = w1$t0, var = "color"))
 dev.off()
 
-Cairo(file="out/IBM_noescape_w2.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
-plot(w2$land, main="Simulated Landbase\n56% Suitable Habitat")
+Cairo(file="out/BCI_noescape_w2.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
+plot(w2$land, main="Simulated Landbase\n67% Suitable Habitat")
 points(w2$t0, pch = w2$t0$shape, col = of(agents = w2$t0, var = "color"))
 dev.off()
 
-Cairo(file="out/IBM_noescape_w3.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
-plot(w3$land, main="Simulated Landbase\n71% Suitable Habitat")
+Cairo(file="out/BCI_noescape_w3.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
+plot(w3$land, main="Simulated Landbase\n77% Suitable Habitat")
 points(w3$t0, pch = w3$t0$shape, col = of(agents = w3$t0, var = "color"))
 dev.off()
 
@@ -87,39 +89,43 @@ sim_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=numsims){
 
 # Now format all of the simulated output from lists into one df with number of fisher per time step
 # create the dataframe
-ABM.df <- as.data.frame(array(NA,c(9*2300,4)))
-colnames(ABM.df) <- c("Run","TimeStep","NewCount","Sim")
+B_ABM.df <- CI_ABM.df <- as.data.frame(array(NA,c(3*2300,4)))
+colnames(B_ABM.df) <- colnames(CI_ABM.df) <- c("Run","TimeStep","NewCount","Sim")
 
+# loop to put in all of the values
+# Central Interior
 # starting point of data frame
 a=1
 b=2300
-
-# loop to put in all of the values
-for(i in 4:12){
-  ABM.df[a:b,] <- sim_output(sim_out=IBM_noescape, sim_order=i, numsims=100)
+for(i in 4:6){
+  CI_ABM.df[a:b,] <- sim_output(sim_out=CI_noescape_rfsurv, sim_order=i, numsims=100)
   a=a+2300
   b=b+2300
 }
 
+# Boreal
+# starting point of data frame
+a=1
+b=2300
+for(i in 4:6){
+  B_ABM.df[a:b,] <- sim_output(sim_out=Boreal_noescape_rfsurv, sim_order=i, numsims=100)
+  a=a+2300
+  b=b+2300
+}
+
+CI_ABM.df$Pop <- "Central Interior"
+B_ABM.df$Pop <- "Boreal"
 
 ###---
-# IBM.w1.surv7.sim100 # Sim04
-# IBM.w1.surv8.sim100 # Sim05
-# IBM.w1.surv9.sim100 # Sim06
-# IBM.w2.surv7.sim100 # Sim07
-# IBM.w2.surv8.sim100 # Sim08
-# IBM.w2.surv9.sim100 # Sim09
-# IBM.w3.surv7.sim100 # Sim10
-# IBM.w3.surv8.sim100 # Sim11
-# IBM.w3.surv9.sim100 # Sim12
+# IBM.w1.rfsurv.sim100 # Sim04
+# IBM.w2.rfsurv.sim100 # Sim05
+# IBM.w3.rfsurv.sim100 # Sim06
 
-ABM.df <- ABM.df %>% mutate(Prophab = case_when(Sim %in% c("Sim04", "Sim05", "Sim06") ~ w1$actual.prop.hab,
-                                                Sim %in% c("Sim07", "Sim08", "Sim09") ~ w2$actual.prop.hab,
-                                                Sim %in% c("Sim10", "Sim11", "Sim12") ~ w3$actual.prop.hab))
+ABM.df <- rbind(CI_ABM.df, B_ABM.df)
 
-ABM.df <- ABM.df %>% mutate(Survival = case_when(Sim %in% c("Sim04", "Sim07", "Sim10") ~ 0.7,
-                                                Sim %in% c("Sim05", "Sim08", "Sim11") ~ 0.8,
-                                                Sim %in% c("Sim06", "Sim09", "Sim12") ~ 0.9))
+ABM.df <- ABM.df %>% mutate(Prophab = case_when(Sim %in% c("Sim04") ~ w1$actual.prop.hab,
+                                                Sim %in% c("Sim05") ~ w2$actual.prop.hab,
+                                                Sim %in% c("Sim06") ~ w3$actual.prop.hab))
 
 ABM.TS.mean <- ABM.df %>% dplyr::select(-Run) %>% pivot_wider(names_from=TimeStep, values_from=NewCount, values_fn=mean)
 ABM.TS.mean$Param <- "Mean"
@@ -146,14 +152,14 @@ sim.TS.plot <- ggplot(data = ABM.TS.use) +
   theme(axis.text.x = element_blank()) +
   xlab("Time Step in 6 Month Intervals over 10 years") +
   ylab("Number of Fishers Alive (Mean \u00B1 1 SE)")+ # \u00B1 is ± in unicode
-  ggtitle("Simulations of Fisher Populations (100 Runs)\nBy Proportion of Suitable Habitat and Survival Rate")+
-  facet_wrap(~Prophab+Survival)
+  ggtitle("Simulations of Fisher Populations (100 Runs)\nBy Population and Proportion of Suitable Habitat")+
+  facet_wrap(~Pop+Prophab)
 
 sim.TS.plot
 
 #- Plot
 
-Cairo(file="out/sim_noescape.TS.plot.PNG",
+Cairo(file="out/BCI_sim_noescape.TS.plot.PNG",
       type="png",
       width=3000,
       height=2200,
@@ -168,25 +174,30 @@ dev.off()
 ### Create heatmaps for the w3 outputs
 # keep in mind that WGS84 lat/long espg = 4326; BC Albers espg = 3005; NAD83 / UTM zone 10N espg = 26910
 
-# IBM.w1.surv9.sim100 # Sim06
-# IBM.w2.surv9.sim100 # Sim09
-# IBM.w3.surv9.sim100 # Sim12
-
 Nozero.runs <- ABM.df %>% filter(TimeStep=="TimeStep_23") %>%
-  filter(Sim %in% c("Sim06","Sim09","Sim12")) %>%
   group_by(Sim) %>%
   filter(NewCount!=0)
 
-Sim06_nozero <- Nozero.runs %>% filter(Sim=="Sim06") %>% dplyr::select(Run)
-Sim06_nozero <- unique(Sim06_nozero$Run)
+nozerosims <- function(sim=Sim, pop=Pop){
 
-Sim09_nozero <- Nozero.runs %>% filter(Sim=="Sim09") %>% dplyr::select(Run)
-Sim09_nozero <- unique(Sim09_nozero$Run)
+  nozerosims <- Nozero.runs %>% filter(Sim==sim & Pop==pop) %>% dplyr::select(Run)
+  nozerosims <- unique(nozerosims$Run)
 
-Sim12_nozero <- Nozero.runs %>% filter(Sim=="Sim12") %>% dplyr::select(Run)
-Sim12_nozero <- unique(Sim12_nozero$Run)
+  return(nozerosims)
+}
 
-length(Sim06_nozero); length(Sim09_nozero); length(Sim12_nozero)
+Bph52_nozero <- nozerosims(sim="Sim04", pop="Boreal")
+Bph67_nozero <- nozerosims(sim="Sim05", pop="Boreal")
+Bph77_nozero <- nozerosims(sim="Sim06", pop="Boreal")
+
+CIph52_nozero <- nozerosims(sim="Sim04", pop="Central Interior")
+CIph67_nozero <- nozerosims(sim="Sim05", pop="Central Interior")
+CIph77_nozero <- nozerosims(sim="Sim06", pop="Central Interior")
+
+
+length(Bph52_nozero); length(Bph67_nozero); length(Bph77_nozero) # 52, 78, 83 reached 10 years
+length(CIph52_nozero); length(CIph67_nozero); length(CIph77_nozero) # none reached 10 years
+
 
 # find coordinates for each fisher at 11 year mark
 # create a heat map based on number of times fisher is on pixel
@@ -225,7 +236,8 @@ raster_output <- function(sim_out=sim_out, sim_order=sim_order, sim_use=sim_use,
     ftmp.sf <- st_as_sf(ftmp, coords = c("pxcor", "pycor"))
     ftmp.sfp <- st_buffer(ftmp.sf, dist=.1)
 
-    r_list[[i]] <- fasterize(ftmp.sfp, r, field="Fisher", fun=rFun, background=0)
+    # r_list[[i]] <- fasterize(ftmp.sfp, r, field="Fisher", fun=rFun, background=0)
+    r_list[[i]] <- rasterize(ftmp.sfp, r, field="Fisher", fun=rFun, background=0) # interim work around until terra and new raster package uploaded
   }
 
   r_zeroes <- raster()
@@ -251,50 +263,50 @@ raster_output <- function(sim_out=sim_out, sim_order=sim_order, sim_use=sim_use,
 
 }
 
-###--- For Sim06 - # IBM.w1.surv9.sim100 # Sim06
-
-rSim06 <- raster_output(sim_out=IBM_noescape, sim_order=6, sim_use=Sim06_nozero,land=w1$land,
+###--- For Sim04 in Boreal
+# Bph52_nozero
+rBph52 <- raster_output(sim_out=Boreal_noescape_rfsurv, sim_order=4, sim_use=Bph52_nozero,land=w1$land,
                         TS=23, rExtent=rw1, rFun="sum",sFun="sum")
 
-rSim06
-plot(rSim06$raster)
+rBph52
+plot(rBph52$raster)
 
-length(Sim06_nozero)
+length(Bph52_nozero) # 52
 w1$t0
-Cairo(file="out/rSim06_title.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
-plot(rSim06$raster,
+Cairo(file="out/rBph52_title.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+plot(rBph52$raster,
      main="Estimated Fisher Abundance over 100 Simulations",
-     sub="Starting with 20 fishers and 45% suitable habitat\npredicted 7.8 \u00B1 1.2 (mean \u00B1 1 SE) fishers after 10 years.")
+     sub="Starting with 20 fishers and 52% suitable habitat\npredicted 27.9 \u00B1 2.6 (mean \u00B1 1 SE) fishers after 10 years.")
 dev.off()
 
-###--- For Sim09 - # IBM.w2.surv9.sim100 # Sim09
-
-rSim09 <- raster_output(sim_out=IBM_noescape, sim_order=9, sim_use=Sim09_nozero,land=w2$land,
+###--- For Sim05 in Boreal
+# Bph67_nozero
+rBph67 <- raster_output(sim_out=Boreal_noescape_rfsurv, sim_order=5, sim_use=Bph67_nozero,land=w2$land,
                         TS=23, rExtent=rw2, rFun="sum",sFun="sum")
 
-rSim09
-plot(rSim09$raster)
-w2$actual.prop.hab
-length(Sim09_nozero)
+rBph67
+plot(rBph67$raster)
 
-Cairo(file="out/rSim09_title.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
-plot(rSim09$raster,
+length(Bph67_nozero) # 78
+w2$t0
+Cairo(file="out/rBph67_title.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+plot(rBph67$raster,
      main="Estimated Fisher Abundance over 100 Simulations",
-     sub="Starting with 20 fishers and 56% suitable habitat\npredicted 18.8 \u00B1 2.3 (mean \u00B1 1 SE) fishers after 10 years.")
+     sub="Starting with 20 fishers and 67% suitable habitat\npredicted 54.3 \u00B1 6.5 (mean \u00B1 1 SE) fishers after 10 years.")
 dev.off()
 
-###--- For Sim12 - # IBM.w3.surv9.sim100 # Sim12
-
-rSim12 <- raster_output(sim_out=IBM_noescape, sim_order=12, sim_use=Sim12_nozero,land=w3$land,
+###--- For Sim06 in Boreal
+# Bph77_nozero
+rBph77 <- raster_output(sim_out=Boreal_noescape_rfsurv, sim_order=6, sim_use=Bph77_nozero,land=w3$land,
                         TS=23, rExtent=rw3, rFun="sum",sFun="sum")
 
-rSim12
-plot(rSim12$raster)
-w3$actual.prop.hab
-length(Sim12_nozero)
+rBph77
+plot(rBph77$raster)
 
-Cairo(file="out/rSim12_title.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
-plot(rSim12$raster,
+length(Bph77_nozero) # 83
+w3$t0
+Cairo(file="out/rBph77_title.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+plot(rBph77$raster,
      main="Estimated Fisher Abundance over 100 Simulations",
-     sub="Starting with 20 fishers and 71% suitable habitat\nyielded 8.2 \u00B1 1.5 (mean \u00B1 1 SE) fishers after 10 years.")
+     sub="Starting with 20 fishers and 77% suitable habitat\npredicted 69.7 \u00B1 6.6 (mean \u00B1 1 SE) fishers after 10 years.")
 dev.off()
