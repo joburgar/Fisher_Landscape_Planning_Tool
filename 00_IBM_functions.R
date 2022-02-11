@@ -242,11 +242,11 @@ disperse <- function(land=land, fishers=fishers, dist_mov=1.0, out=TRUE) {
   disperseInd <- turtle(fishers, who = whoDFishers) # fishers who are dispersing (i.e., kits)
 
   # Have each fisher move 1 step in random heading
-  # The landscape is not wrapped (torus = FALSE)
+  # The landscape is not wrapped (torus = FALSE); or try with torus wrapped and OUT=TRUE
   # and the fishers can disperse outside of the landscape (out=TRUE)
   disperseInd <- right(disperseInd, angle = runif(n = NLcount(disperseInd), min = 0, max = 360))
   # patchHere(land, disperseInd)
-  disperseInd <- fd(turtle(disperseInd, who=whoDFishers),dist=dist_mov, land, torus = FALSE, out=out) # all kits move 1 cell # this doesn't allow for dispersing fishers
+  disperseInd <- fd(turtle(disperseInd, who=whoDFishers),dist=dist_mov, land, torus = TRUE, out=out) # all kits move 1 cell # this doesn't allow for dispersing fishers
   # patchHere(land, disperseInd)
 
   # if any dispersing fishers have exited the worlds extent, remove them from the simulation
@@ -305,7 +305,7 @@ disperse <- function(land=land, fishers=fishers, dist_mov=1.0, out=TRUE) {
       # check if any established male fisher is nearby (within 2 cells east:west and 2 cells north:south to consider within male territory)
       # k=2
       dispserseInd.neighbour <- turtlesAt(land, turtles = fishers[fishers$sex=="M" & fishers$disperse=="E"], agents = turtle(disperseIndM, who = disperseIndM[k]$who),
-                                          dx=c(-1:1), dy=c(-1:1), torus = FALSE)
+                                          dx=c(-1:1), dy=c(-1:1), torus = TRUE)
 
       if(disperseHabitatM[k]==1 & NLcount(dispserseInd.neighbour)==0){ # if the habitat is good and there are no other established male territories nearby
         disperseIndM <- NLset(turtles = disperseIndM, agents = turtle(disperseIndM, who = disperseIndM[k]$who), var = "disperse", val = "E") # then establish
@@ -313,7 +313,7 @@ disperse <- function(land=land, fishers=fishers, dist_mov=1.0, out=TRUE) {
         disperseIndM <- NLset(turtles = disperseIndM, agents = turtle(disperseIndM, who = disperseIndM[k]$who), var = "disperse", val = "D") # otherwise keep dispersing
 
         # move dispersing male one more cell (can move 2 cells for every 1 cell female moves); keep the male moving in the same direction, moving one more dist.mov distance
-        disperseIndTMP <- fd(turtle(disperseIndM, who=disperseIndM[k]$who),dist=dist_mov, land, torus = FALSE, out=out)
+        disperseIndTMP <- fd(turtle(disperseIndM, who=disperseIndM[k]$who),dist=dist_mov, land, torus = TRUE, out=out)
         # patchHere(land, disperseIndTMP) # the coordinates for the cells
 
         # if any dispersing fishers have exited the worlds extent, remove them from the simulation
@@ -328,7 +328,7 @@ disperse <- function(land=land, fishers=fishers, dist_mov=1.0, out=TRUE) {
         disperseHabitatTMP[is.na(disperseHabitatTMP)] <- 0
 
         dispserseInd.neighbourTMP <- turtlesAt(land, fishers[fishers$sex=="M" & fishers$disperse=="E"], agents = turtle(disperseIndM, who = disperseIndTMP$who),
-                                               dx=c(-1:1), dy=c(-1:1), torus = FALSE)
+                                               dx=c(-1:1), dy=c(-1:1), torus = TRUE)
         if(disperseHabitatTMP==1 & is.na(NLcount(dispserseInd.neighbourTMP))==0){ # if the habitat is good and there are no other established male territories nearby
           disperseIndM <- NLset(turtles = disperseIndM, agents = turtle(disperseIndM, who = disperseIndTMP$who), var = "disperse", val = "E") # then establish
         } else {
