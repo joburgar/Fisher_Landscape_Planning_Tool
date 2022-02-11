@@ -25,7 +25,7 @@ set_up_world <- function(nMales=nMales, maxAgeMale=maxAgeMale, nFemales=nFemales
   # maxAgeMale = 6 # Rory's spreadsheet notes that fishers
   # nFemales = 13 # Rory's VORTEX table suggests ~65% female and 35% male in population
   # maxAgeFemale = 9
-  # xlim = ylim = c(0,10)
+  # xlim = ylim = c(1,10)
   # prophab = 0.7
   # There are two types of 'agents' in NetLogoR: patches and turtles
   # Patches cannot move (i.e., landbase) while turtles can (i.e., fishers)
@@ -80,13 +80,66 @@ set_up_world <- function(nMales=nMales, maxAgeMale=maxAgeMale, nFemales=nFemales
 
   # male.fishers
   # create a random age for the fishers
-  # randomly assign females with ages from 2.5-8 and males with ages from 2.5-4
+  # randomly assign females with ages from 2.5-8 and males with ages from 2.5-5
+  # assign ages to one year less lifespan to remove potential of fishers dying off during set up (first year)
   # keep in mind that time steps are 6 months so have ages in 6 month increments
-  # the oldest a female fisher can be is 8 or 16 time steps
+  # the oldest a female fisher can be is 9 or 16 time steps
   # the youngest time step for an adult is 2.5 or 5 time steps (juvenile = up to 2 years of 4 time steps)
   yrs.male <- sample(5:((maxAgeMale-1)*2), nMales, replace=TRUE)
   yrs.female <- sample(5:((maxAgeFemale-1)*2), nFemales, replace=TRUE)
   yrs.adult <- c((yrs.female/2),(yrs.male/2))
+
+  t0 <- turtlesOwn(turtles=t0, tVar = c("age"), tVal = yrs.adult)
+
+  # Visualize the turtles on the landscape with their respective color
+  plot(land)
+  points(t0, pch = t0$shape, col = of(agents = t0, var = "color"))
+
+  return(list("land"=land, "t0"=t0, "actual.prop.hab"=actual.prop.hab))
+
+}
+
+
+###--- SET-UP WORLD for female only IBM
+set_up_world_FEMALE <- function(nFemales=nFemales, maxAgeFemale=maxAgeFemale,xlim=xlim, ylim=ylim, prophab=prophab){
+  # nFemales = 20
+  # maxAgeFemale = 9
+  # xlim = ylim = c(1,10)
+  # prophab = 0.7
+  # There are two types of 'agents' in NetLogoR: patches and turtles
+  # Patches cannot move (i.e., landbase) while turtles can (i.e., fishers)
+
+  # Create a landscape with coordinates equal to xlim and ylim (default is 20*20 square landscape)
+  # Each cell is assumed to be the same size as one fisher territory
+  # Cell values are randomly chosen either 0 or 1
+  # Assume 0 = habitat unsuitable for fisher territory; 1 = suitable fisher habitat
+  # with the proportion of suitable "good" habitat (1) given in function (default = 0.5)
+  # Create the patches
+  numcells <- (xlim[2]-xlim[1]+1) * (ylim[2]-ylim[1]+1)
+
+  land <- createWorld(minPxcor = xlim[1], maxPxcor = xlim[2],
+                      minPycor = ylim[1], maxPycor = ylim[2],
+                      rbinom(numcells, 1, prophab))
+
+  # randomly select "good" habitat cells for each fishers
+  rtmp <- world2raster(land)
+  numhabitatcells <- sum(rtmp@data@values) # number of "good" habitat cells
+  actual.prop.hab <- numhabitatcells/numcells
+
+  nfishers = nFemales
+  fishers_start <- as.data.frame(sampleStratified(rtmp, size=nfishers, xy=TRUE, )) %>% dplyr::filter(layer==1)
+  fishers_start <- as.matrix(fishers_start[c("x","y")])
+
+  # Start with a landscape of adult females and males, all on "good" habitat
+
+  t0 <- createTurtles(n = nfishers, coords=fishers_start, breed="adult")
+
+  # assign 50:50 sex ratio, all females have an established territory, males do if >2 cells from another male
+  t0 <- turtlesOwn(turtles = t0, tVar = c("shape"), tVal =16) # females are circles, males are squares
+  t0 <- turtlesOwn(turtles = t0, tVar = c("disperse"), tVal = c(rep("E", each=nfishers)))
+  t0 <- turtlesOwn(turtles = t0, tVar = c("repro"), tVal = 0)
+
+  yrs.adult <- (sample(5:((maxAgeFemale-1)*2), nfishers, replace=TRUE))/2
 
   t0 <- turtlesOwn(turtles=t0, tVar = c("age"), tVal = yrs.adult)
 
@@ -144,13 +197,30 @@ denning <- function(fishers=fishers, denLCI=denLCI, denUCI=denUCI) {
 }
 
 
+denning_FEMALE <- function(fishers=fishers, denLCI=denLCI, denUCI=denUCI) {
+
+  # Random selection for which adult females reproduce, based on denning mean and SD (Central Interior)
+  # fishers=test$t0; rm(fishers)
+  whoFishers <- of(agents = fishers, var = c("who","breed")) # "who" of the fishers before they reproduce
+  whoAFFishers <- whoFishers %>% filter(breed=="adult") %>% dplyr::select(who)
+
+
+  # denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4]
+  repro <- rbinom(n = nrow(whoAFFishers), size=1, prob=denLCI:denUCI) # prob can be a range - use confidence intervals
+  whoAFFishers$repro <- repro
+
+  fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=whoAFFishers$who), var = "repro", val = whoAFFishers$repro)
+
+  return(fishers)
+}
+
 kits_produced <- function(fishers=fishers, ltrM=ltrM, ltrSD=ltrSD) {
 
   # Random selection for which adult females reproduce, based on denning mean and SD (Central Interior)
   # fishers=t1; rm(fishers)
-  whoFishers <- of(agents = fishers, var = c("who","mate_avail","repro")) # "who" of the fishers before they reproduce
-  reproWho <- whoFishers %>% filter(repro==1) %>% dplyr::select(who) # "who" of fishers which reproduce
-  reproInd <- turtle(fishers, who = reproWho$who) # fishers which reproduce
+  whoFishers <- as.data.frame(of(agents = fishers, var = c("who","repro"))) # "who" of the fishers before they reproduce
+  reproWho <- whoFishers[whoFishers$repro==1,]$who # "who" of fishers which reproduce
+  reproInd <- turtle(fishers, who = reproWho) # fishers which reproduce
 
   # if there is at least one fisher reproducing
   # have those fishers have offspring, based on the mean and sd of litter size for Central Interior
@@ -175,6 +245,42 @@ kits_produced <- function(fishers=fishers, ltrM=ltrM, ltrSD=ltrSD) {
     fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "repro", val = 0) # just born so time step 0
 
   }
+
+  return(fishers)
+}
+
+
+kits_produced_FEMALE <- function(fishers=fishers, ltrM=ltrM, ltrSD=ltrSD) {
+  # ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2]
+
+  # Random selection for which adult females reproduce, based on denning mean and SD (Central Interior)
+  # fishers=t1; rm(fishers)
+  whoFishers <- as.data.frame(of(agents = fishers, var = c("who","repro"))) # "who" of the fishers before they reproduce
+  reproWho <- whoFishers[whoFishers$repro==1,]$who # "who" of fishers which reproduce
+  reproInd <- turtle(fishers, who = reproWho) # fishers which reproduce
+
+  # if there is at least one fisher reproducing
+  # have those fishers have offspring, based on the mean and sd of litter size for Central Interior
+  if (NLcount(reproInd) != 0) {
+    fishers <- hatch(turtles = fishers, who = reproWho, n=round(rnorm(n=1, mean=ltrM, sd=ltrSD)),breed="juvenile") # litter size based on Central Interior data
+
+    whoNewFishers <- of(agents = fishers, var = "who") # "who" of the turtles after they reproduced
+    whoOffspring <- fishers[fishers$breed=="juvenile",]$who # "who" of offspring
+    offspring <- turtle(turtles = fishers, who = whoOffspring)
+
+    # assign 50/50 male/female offspring, assign them all as dispersing
+    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "disperse", val = "D")
+    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "age", val = 0) # just born so time step 0
+    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "repro", val = 0) # just born so time step 0
+
+  }
+
+  # kill of half juveniles (males) as female only model
+  newborn <- as.data.frame(of(agents = fishers, var=c("who","age"))) # "who" of the newborns
+  newbornWho <- newborn[newborn$age==0,]$who # "who" of newborns
+  newborn.Female <- length(newbornWho)/2
+  newbornDIE <- newbornWho[(newborn.Female+1):length(newbornWho)] # half the newborns = females
+  fishers <- die(fishers, who=newbornDIE)
 
   return(fishers)
 }
@@ -217,6 +323,38 @@ survive <- function(fishers=fishers, surv_estimates=rf_surv_estimates, Fpop="C",
 
   return(fishers)
 }
+
+
+survive_FEMALE <- function(fishers=fishers, surv_estimates=rf_surv_estimates, Fpop="C", maxAgeFemale=9) {
+
+  # fishers=t1
+  survFishers <- of(agents = fishers, var = c("who","breed","disperse","age")) # "who" of the fishers before they reproduce
+  survFishers$Cohort <- toupper(paste0(rep(Fpop,times=nrow(survFishers)),rep("F",times=nrow(survFishers)),survFishers$sex,substr(survFishers$breed,1,1)))
+
+  # survFishers <- left_join(survFishers,surv_estimates %>% dplyr::select(-Time_step, -age_6mnths, -Time),
+  #                          by=c("Cohort", "age"))
+
+  survFishers <- as.data.frame(left_join(survFishers,surv_estimates,by=c("Cohort")))
+
+  survFishers[is.na(survFishers)] <- 0
+  survFishers$live <- NA
+
+  for(i in 1:nrow(survFishers)){
+    # i=1
+    if(survFishers[i,]$age!=0){ # can't kill off juveniles that haven't reached 6 months
+      survFishers[i,]$live <- rbinom(n=1, size=1, prob=survFishers[i,]$L95CL:survFishers[i,]$U95CL)
+    }
+  }
+
+  dieWho <- survFishers %>% filter(live!=TRUE) # "who" of fishers which die, based on probability
+  oldF <- survFishers %>% filter(age>maxAgeFemale) # "who" of female fishers who die of 'old age' (i.e., > 8 yrs)
+  dispersing <- survFishers %>% filter(disperse=="D" & age>2) # "who" of dispersing fishers over 2
+
+  fishers <- die(fishers, who=c(dieWho$who, oldF$who, dispersing$who))
+
+  return(fishers)
+}
+
 
 ###--- DISPERSE
 # Have the female fisher move 30 cells within dispersal season and the male fisher move 60 cells
@@ -342,6 +480,74 @@ disperse <- function(land=land, fishers=fishers, dist_mov=1.0, out=TRUE) {
     valdisperseIndM <- of(agents=disperseIndM, var=c("heading","xcor","ycor", "prevX","prevY","disperse"))
     fishers <- NLset(turtles = fishers, agents=turtle(fishers, who=disperseIndM$who),var=c("heading","xcor","ycor","prevX","prevY","disperse"), val=valdisperseIndM)
   }
+
+  return(fishers)
+
+}
+
+
+disperse_FEMALE <- function(land=land, fishers=fishers, dist_mov=1.0, out=TRUE) {
+  # Only want fishers without established territories to move
+  # Assume female fisher can move ~35 km in a month, and that each pixel is 5.5 km in length or 7.8 km in diameter
+  # For ease of calculations, assume a dist_mov of 1.0 is one pixel
+  # This means that a female fisher can move between 5-6 pixels per month or 30-36 pixels in each time step
+  # dist_mov relates to the number of cells (not quite right if fisher moving diagonally across a cell but works for our purposes)
+
+  # fishers=t1
+  # land=w1$land
+  whoDFishers <- fishers[fishers$disperse=="D" & fishers$age>0,]$who
+  disperseInd <- turtle(fishers, who = whoDFishers) # fishers who are dispersing (i.e., kits)
+
+  # Have each fisher move 1 step in random heading
+  # The landscape is not wrapped (torus = FALSE); or try with torus wrapped and OUT=TRUE
+  # and the fishers can disperse outside of the landscape (out=TRUE)
+  disperseInd <- right(disperseInd, angle = runif(n = NLcount(disperseInd), min = 0, max = 360))
+  # patchHere(land, disperseInd)
+  disperseInd <- fd(turtle(disperseInd, who=whoDFishers),dist=dist_mov, land, torus = TRUE, out=out) # all kits move 1 cell # this doesn't allow for dispersing fishers
+  # patchHere(land, disperseInd)
+
+  # if any dispersing fishers have exited the worlds extent, remove them from the simulation
+  fisher.location <- as.data.frame(patchHere(land, disperseInd))
+  fisher.location$who <- disperseInd$who
+  out.of.bounds.fisher <- fisher.location[is.na(fisher.location$pxcor),]$who
+
+  disperseInd <- die(disperseInd, who=out.of.bounds.fisher) # remove fishers who traveled outside worlds extent from dispersing object
+  fishers <- die(fishers, who=out.of.bounds.fisher) # remove fishers who traveled outside worlds extent from main object
+
+  ###--- for dispersing FEMALES
+  # determine patch information for dispersing females
+  # only run the loop if there are dispersing females
+  if(NLcount(disperseInd)!=0){
+    disperseIndF <- turtle(disperseInd, who = disperseInd$who) # identify those dispersing (i.e., female kits)
+    disperseHabitatF <- of(land, agents=patchHere(land, disperseIndF)) # identify habitat quality of current location
+    disperseHabitatF[is.na(disperseHabitatF)] <- 0 # any NA habitat (i.e., outside of world is NOT suitable)
+    dispersePatchF <- patchHere(land, disperseIndF) # the coordinates for the cells
+    dispersePatchF[is.na(dispersePatchF)] <- 0
+
+    # run loop to determine if females are dispersing
+    # if the female kit finds a good quality cell (1) that is NOT occupied by another female (occupancy==1) can stay,
+    # otherwise (if habitat = 0 OR occupancy>1) kit keeps moving
+    # "D" = disperse; "E" = establish territory
+
+    for(k in 1:NLcount(disperseIndF)){
+      # check how many fishers are currently on the cell
+      # k=3
+      disperseInd.patch.occ <- turtlesOn(world = land, turtles = disperseIndF[k],
+                                         agents = patch(land, dispersePatchF[k,1], dispersePatchF[k,2]))
+
+      if(disperseHabitatF[k]==1 & NLcount(disperseInd.patch.occ)==1){ # if the habitat is good and there is only one turtle on the patch
+        disperseIndF <- NLset(turtles = disperseIndF, agents = turtle(disperseIndF, who = disperseIndF[k]$who), var = "disperse", val = "E") # then establish
+      } else {
+        disperseIndF <- NLset(turtles = disperseIndF, agents = turtle(disperseIndF, who = disperseIndF[k]$who), var = "disperse", val = "D") # otherwise keep dispersing
+      }
+    }
+
+    # now have updated object with kits dispersing or establishing
+    # add the new values to the existing fishers 'turtle' object
+    valdisperseIndF <- of(agents=disperseIndF, var=c("heading","xcor","ycor", "prevX","prevY","disperse"))
+    fishers <- NLset(turtles = fishers, agents=turtle(fishers, who=disperseIndF$who),var=c("heading","xcor","ycor","prevX","prevY","disperse"), val=valdisperseIndF)
+  }
+
 
   return(fishers)
 
