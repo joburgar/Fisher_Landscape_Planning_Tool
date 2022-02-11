@@ -250,9 +250,9 @@ w1 <- set_up_world(nMales=7, nFemales=13, maxAgeMale=6, maxAgeFemale=9,
                    xlim=c(1,10), ylim=c(1,10), prophab=0.5)
 
 
-IBM.w1.rfsurv.sim100 <- vector('list',100)
+B.w1.rfsurv.sim100 <- vector('list',100)
 for(i in 1:100){
-  IBM.w1.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                                  # set_up_world
+  B.w1.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                                  # set_up_world
                                                                fmdx=c(-3:3), fmdy=c(-3:3),                                     # find_mate
                                                                denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
                                                                ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
@@ -266,9 +266,9 @@ for(i in 1:100){
 w2 <- set_up_world(nMales=7, nFemales=13, maxAgeMale=6, maxAgeFemale=9,
                    xlim=c(1,10), ylim=c(1,10), prophab=0.6)
 
-IBM.w2.rfsurv.sim100 <- vector('list',100)
+B.w2.rfsurv.sim100 <- vector('list',100)
 for(i in 1:100){
-  IBM.w2.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w2$land, t0=w2$t0,                                  # set_up_world
+  B.w2.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w2$land, t0=w2$t0,                                  # set_up_world
                                                                fmdx=c(-3:3), fmdy=c(-3:3),                                     # find_mate
                                                                denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
                                                                ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
@@ -284,9 +284,9 @@ w3 <- set_up_world(nMales=7, nFemales=13, maxAgeMale=6, maxAgeFemale=9,
                    xlim=c(1,10), ylim=c(1,10), prophab=0.7)
 
 start_time <- Sys.time()
-IBM.w3.rfsurv.sim100 <- vector('list',100)
+B.w3.rfsurv.sim100 <- vector('list',100)
 for(i in 1:100){
-  IBM.w3.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w3$land, t0=w3$t0,                                  # set_up_world
+  B.w3.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w3$land, t0=w3$t0,                                  # set_up_world
                                                                fmdx=c(-3:3), fmdy=c(-3:3),                                     # find_mate
                                                                denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
                                                                ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
@@ -299,7 +299,7 @@ end_time <- Sys.time()
 
 
 Boreal_escape_rfsurv <- list(w1, w2, w3,
-                     IBM.w1.rfsurv.sim100,IBM.w2.rfsurv.sim100,IBM.w3.rfsurv.sim100)
+                     B.w1.rfsurv.sim100,B.w2.rfsurv.sim100,B.w3.rfsurv.sim100)
 
 save(Boreal_escape_rfsurv, file="out/Boreal_escape_rfsurv.RData")
 
@@ -307,9 +307,9 @@ save(Boreal_escape_rfsurv, file="out/Boreal_escape_rfsurv.RData")
 ###--- RUN FOR CENTRAL INTERIOR
 # use the same worlds as with Boreal
 
-CI.w1.rfsurv.sim100 <- vector('list',100)
+C.w1.rfsurv.sim100 <- vector('list',100)
 for(i in 1:100){
-  CI.w1.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                                  # set_up_world
+  C.w1.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                                  # set_up_world
                                                                 fmdx=c(-3:3), fmdy=c(-3:3),                                     # find_mate
                                                                 denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
                                                                 ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2],                # kits_produced
@@ -321,9 +321,9 @@ for(i in 1:100){
 
 ###--- Run with medium habitat (prop hab ~ 0.6)
 
-CI.w2.rfsurv.sim100 <- vector('list',100)
+C.w2.rfsurv.sim100 <- vector('list',100)
 for(i in 1:100){
-  CI.w2.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w2$land, t0=w2$t0,                                  # set_up_world
+  C.w2.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w2$land, t0=w2$t0,                                  # set_up_world
                                                               fmdx=c(-3:3), fmdy=c(-3:3),                                     # find_mate
                                                               denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
                                                               ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2],                # kits_produced
@@ -336,9 +336,9 @@ for(i in 1:100){
 
 ###--- Run with high habitat (prop hab ~ 0.7)
 
-CI.w3.rfsurv.sim100 <- vector('list',100)
+C.w3.rfsurv.sim100 <- vector('list',100)
 for(i in 1:100){
-  CI.w3.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w3$land, t0=w3$t0,                                  # set_up_world
+  C.w3.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w3$land, t0=w3$t0,                                  # set_up_world
                                                                 fmdx=c(-3:3), fmdy=c(-3:3),                                     # find_mate
                                                                 denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
                                                                 ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2],                # kits_produced
@@ -349,8 +349,8 @@ for(i in 1:100){
 }
 
 
-CI_escape_rfsurv <- list(w1, w2, w3,
-                               CI.w1.rfsurv.sim100, CI.w2.rfsurv.sim100, CI.w3.rfsurv.sim100)
+Columbian_escape_rfsurv <- list(w1, w2, w3,
+                               C.w1.rfsurv.sim100, C.w2.rfsurv.sim100, C.w3.rfsurv.sim100)
 
-save(CI_escape_rfsurv, file="out/CI_escape_rfsurv.RData")
+save(Columbian_escape_rfsurv, file="out/Columbian_escape_rfsurv.RData")
 
