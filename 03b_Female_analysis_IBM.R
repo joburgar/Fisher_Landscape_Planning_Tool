@@ -341,6 +341,7 @@ for(i in 1:100){
 
 end_time <- Sys.time()
 
+# end_time - start_time
 
 Boreal_escape_FEMALE <- list(w1, w2, w3,B.w1.FEMALE.sim100,B.w2.FEMALE.sim100,B.w3.FEMALE.sim100)
 
