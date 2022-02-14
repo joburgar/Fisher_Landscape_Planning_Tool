@@ -36,28 +36,34 @@ source("00_IBM_functions.R")
 # Low, medium and high habitat = 0.5, 0.6, and 0.7 (same world set up, get actual values)
 # Low, medium and high survival = 0.7, 0.8, 0.9
 
-load("out/CI_escape_rfsurv.RData")
-w1 <- CI_escape_rfsurv[[1]]; w1$actual.prop.hab # 0.49
-w2 <- CI_escape_rfsurv[[2]]; w2$actual.prop.hab # 0.59
-w3 <- CI_escape_rfsurv[[3]]; w3$actual.prop.hab # 0.70
 
-load("out/Boreal_escape_rfsurv.RData")
+load("out/Columbian_escape_FEMALE.RData")
+w1 <- Columbian_escape_FEMALE[[1]]; w1$actual.prop.hab # 0.48
+w2 <- Columbian_escape_FEMALE[[2]]; w2$actual.prop.hab # 0.63
+w3 <- Columbian_escape_FEMALE[[3]]; w3$actual.prop.hab # 0.71
+
+load("out/Boreal_escape_FEMALE.RData")
 
 ###--- plot the simulated landbases
-Cairo(file="out/BCI_escape_w1.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
-plot(w1$land, main="Simulated Landbase\n49% Suitable Habitat")
+Cairo(file="out/BCI_Fescape_w1.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
+plot(w1$land, main=c(paste0("Simulated Landbase"),paste0(w1$actual.prop.hab*100,"% Suitable Habitat")))
 points(w1$t0, pch = w1$t0$shape, col = of(agents = w1$t0, var = "color"))
 dev.off()
 
-Cairo(file="out/BCI_escape_w2.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
-plot(w2$land, main="Simulated Landbase\n59% Suitable Habitat")
+Cairo(file="out/BCI_Fescape_w2.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
+plot(w2$land, main=c(paste0("Simulated Landbase"),paste0(w2$actual.prop.hab*100,"% Suitable Habitat")))
 points(w2$t0, pch = w2$t0$shape, col = of(agents = w2$t0, var = "color"))
 dev.off()
 
-Cairo(file="out/BCI_escape_w3.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
-plot(w3$land, main="Simulated Landbase\n70% Suitable Habitat")
+Cairo(file="out/BCI_Fescape_w3.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
+plot(w3$land, main=c(paste0("Simulated Landbase"),paste0(w3$actual.prop.hab*100,"% Suitable Habitat")))
 points(w3$t0, pch = w3$t0$shape, col = of(agents = w3$t0, var = "color"))
 dev.off()
+
+Cairo(file="out/BCI_Fescape_w3_nofisher.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
+plot(w3$land, main=c(paste0("Simulated Landbase"),paste0(w3$actual.prop.hab*100,"% Suitable Habitat")))
+dev.off()
+
 
 # Run 100 simulations for each, save as objects
 # Calculate mean # of animals per cell at 10 years for each simulation to produce a heat map
@@ -89,16 +95,16 @@ sim_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=numsims){
 
 # Now format all of the simulated output from lists into one df with number of fisher per time step
 # create the dataframe
-B_ABM.df <- CI_ABM.df <- as.data.frame(array(NA,c(3*2300,4)))
-colnames(B_ABM.df) <- colnames(CI_ABM.df) <- c("Run","TimeStep","NewCount","Sim")
+B_ABM.df <- C_ABM.df <- as.data.frame(array(NA,c(3*2300,4)))
+colnames(B_ABM.df) <- colnames(C_ABM.df) <- c("Run","TimeStep","NewCount","Sim")
 
 # loop to put in all of the values
-# Central Interior
+# Columbian
 # starting point of data frame
 a=1
 b=2300
 for(i in 4:6){
-  CI_ABM.df[a:b,] <- sim_output(sim_out=CI_escape_rfsurv, sim_order=i, numsims=100)
+  C_ABM.df[a:b,] <- sim_output(sim_out=Columbian_escape_FEMALE, sim_order=i, numsims=100)
   a=a+2300
   b=b+2300
 }
@@ -108,12 +114,12 @@ for(i in 4:6){
 a=1
 b=2300
 for(i in 4:6){
-  B_ABM.df[a:b,] <- sim_output(sim_out=Boreal_escape_rfsurv, sim_order=i, numsims=100)
+  B_ABM.df[a:b,] <- sim_output(sim_out=Boreal_escape_FEMALE, sim_order=i, numsims=100)
   a=a+2300
   b=b+2300
 }
 
-CI_ABM.df$Pop <- "Columbian"
+C_ABM.df$Pop <- "Columbian"
 B_ABM.df$Pop <- "Boreal"
 
 ###---
@@ -121,7 +127,7 @@ B_ABM.df$Pop <- "Boreal"
 # IBM.w2.rfsurv.sim100 # Sim05
 # IBM.w3.rfsurv.sim100 # Sim06
 
-ABM.df <- rbind(CI_ABM.df, B_ABM.df)
+ABM.df <- rbind(C_ABM.df, B_ABM.df)
 
 ABM.df <- ABM.df %>% mutate(Prophab = case_when(Sim %in% c("Sim04") ~ w1$actual.prop.hab,
                                                 Sim %in% c("Sim05") ~ w2$actual.prop.hab,
@@ -147,9 +153,7 @@ ABM.TS <- rbind(ABM.TS.mean, ABM.TS.se, ABM.TS.LCL, ABM.TS.UCL)
 ABM.TS.df <- ABM.TS %>% pivot_longer(cols = TimeStep_01:TimeStep_23,names_to = "TimeStep",values_to = "Value" )
 ABM.TS.df <- ABM.TS.df %>% pivot_wider(names_from = Param, values_from = Value)
 
-
 ABM.TS.use <- ABM.TS.df %>% filter(!TimeStep %in% c("TimeStep_01", "TimeStep_02"))
-
 
 ABM.TS.use$TimeStepNum <- as.numeric(substr(ABM.TS.use$TimeStep,10,11))
 
@@ -173,7 +177,7 @@ sim.TS.plot
 
 #- Plot
 
-Cairo(file="out/BCI_sim_escape.TS.plot_CL.PNG",
+Cairo(file="out/BCI_sim_escape_FEMALE.TS.plot_CL.PNG",
       type="png",
       width=3000,
       height=2200,
@@ -199,7 +203,7 @@ sim.TS.plot_se <- ggplot(data = ABM.TS.use) +
 sim.TS.plot_se
 
 #- Plot
-Cairo(file="out/BCI_sim_escape.TS.plot_SE.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+Cairo(file="out/BCI_sim_escape_FEMALE.TS.plot_SE.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
 sim.TS.plot_se
 dev.off()
 
