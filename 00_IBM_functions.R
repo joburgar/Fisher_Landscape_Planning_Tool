@@ -255,27 +255,18 @@ repro_FEMALE <- function(fishers=fishers, repro_estimates=repro.CI, Fpop="C") {
   ltrSD=repro.CI[repro.CI$Pop==Fpop & repro.CI$Param=="sd",]$ls
 
   # if there is at least one fisher reproducing
-  # have those fishers have offspring, based on the mean and sd of litter size for Central Interior
+  # have those fishers have offspring, based on the mean and sd of empirical data
   if (NLcount(reproInd) != 0) {
-    fishers <- hatch(turtles = fishers, who = reproWho, n=round(rnorm(n=1, mean=ltrM, sd=ltrSD)),breed="juvenile") # litter size based on Central Interior data
+    fishers <- hatch(turtles = fishers, who = reproWho, n=round(rnorm(n=1, mean=ltrM, sd=ltrSD)/2),breed="juvenile") # litter size based on empirical data (divided by 2 for female only model)
 
-    whoNewFishers <- of(agents = fishers, var = "who") # "who" of the turtles after they reproduced
-    whoOffspring <- fishers[fishers$breed=="juvenile",]$who # "who" of offspring
-    offspring <- turtle(turtles = fishers, who = whoOffspring)
+    # assign all of the offsprig as dispersing, change repro and age values to reflect newborn kits rather than their moms
+    allFishers <- of(agents=fishers, var="who")
+    offspring <- allFishers[!(allFishers %in% whoFishers$who)]
 
-    # assign 50/50 male/female offspring, assign them all as dispersing
-    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "disperse", val = "D")
-    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "age", val = 0) # just born so time step 0
-    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring$who), var = "repro", val = 0) # just born so time step 0
-
+    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring), var = "disperse", val = "D")
+    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring), var = "age", val = 0) # just born so time step 0
+    fishers <- NLset(turtles = fishers, agents = turtle(fishers, who=offspring), var = "repro", val = 0) # just born so time step 0
   }
-
-  # kill of half juveniles (males) as female only model
-  newborn <- as.data.frame(of(agents = fishers, var=c("who","age"))) # "who" of the newborns
-  newbornWho <- newborn[newborn$age==0,]$who # "who" of newborns
-  newborn.Female <- length(newbornWho)/2
-  newbornDIE <- newbornWho[(newborn.Female+1):length(newbornWho)] # half the newborns = females
-  fishers <- die(fishers, who=newbornDIE)
 
   return(fishers)
 }
@@ -320,7 +311,6 @@ survive <- function(fishers=fishers, surv_estimates=rf_surv_estimates, Fpop="C",
 survive_FEMALE <- function(fishers=fishers, surv_estimates=rf_surv_estimates, Fpop="C", maxAgeFemale=9) {
 
   # fishers=t1; fishers=tApr
-  if(NLcount(fishers)!=0){
   survFishers <- of(agents = fishers, var = c("who","breed","disperse","age")) # "who" of the fishers before they reproduce
   survFishers$Cohort <- toupper(paste0(rep(Fpop,times=nrow(survFishers)),rep("F",times=nrow(survFishers)),survFishers$sex,substr(survFishers$breed,1,1)))
 
@@ -330,7 +320,6 @@ survive_FEMALE <- function(fishers=fishers, surv_estimates=rf_surv_estimates, Fp
   survFishers$live <- NA
 
   for(i in 1:nrow(survFishers)){
-    # i=1
     if(survFishers[i,]$age!=0){ # can't kill off juveniles that haven't reached 6 months
       survFishers[i,]$live <- rbinom(n=1, size=1, prob=survFishers[i,]$L95CL:survFishers[i,]$U95CL)
     }
@@ -341,11 +330,7 @@ survive_FEMALE <- function(fishers=fishers, surv_estimates=rf_surv_estimates, Fp
   dispersing <- survFishers %>% filter(disperse=="D" & age>2) # "who" of dispersing fishers over 2
 
   fishers <- die(fishers, who=c(dieWho$who, oldF$who, dispersing$who))
-
   return(fishers)
-  } else {
-    return(fishers)
-  }
 }
 
 
@@ -486,8 +471,8 @@ disperse_FEMALE <- function(land=land, fishers=fishers, dist_mov=1.0, out=TRUE, 
   # This means that a female fisher can move between 5-6 pixels per month or 30-36 pixels in each time step
   # dist_mov relates to the number of cells (not quite right if fisher moving diagonally across a cell but works for our purposes)
 
-  # fishers=t1
-  # land=w1$land
+  # fishers=tmp$t0
+  # land=tmp$land
   whoDFishers <- fishers[fishers$disperse=="D" & fishers$age>0,]$who
   disperseInd <- turtle(fishers, who = whoDFishers) # fishers who are dispersing (i.e., kits)
 
@@ -524,7 +509,7 @@ disperse_FEMALE <- function(land=land, fishers=fishers, dist_mov=1.0, out=TRUE, 
 
     for(k in 1:NLcount(disperseIndF)){
       # check how many fishers are currently on the cell
-      # k=3
+      # k=1
       disperseInd.patch.occ <- turtlesOn(world = land, turtles = disperseIndF[k],
                                          agents = patch(land, dispersePatchF[k,1], dispersePatchF[k,2]))
 

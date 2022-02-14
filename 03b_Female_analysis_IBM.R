@@ -127,6 +127,8 @@ repro.CI <- read.csv("data/repro.CI.csv", header=TRUE)
 # taken from Rory's updated survival, trapping mortality excluded
 rf_surv_estimates <- read.csv("data/rf_surv_estimates.csv", header=TRUE)
 
+tmp <- set_up_world_FEMALE(nFemales=10, maxAgeFemale = 9, xlim=c(1,10), ylim=c(1,10), prophab=0.7)
+
 ################################################################################
 
 
@@ -145,11 +147,9 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
   # *** Step 1. START ***
   # The assumption is that there is 100% survival during the first year (i.e., the set up), at the first time step no fishers die
   # •	t0 = October to April = kits are born; need to run through the reproduce functions
-  # i.	t0 <- denning(fishers=t0, denLCI=denLCI, denUCI=denUCI)
-  # ii.	t0 <- kits_produced(fishers=t0, ltrM=ltrM, ltrSD=ltrSD)
-  # •	all fishers age 0.5 years
+  # i.	t0 <- repro(fishers=t0, repro_estimates=repro.CI, Fpop="C")
 
-  # t0=w1$t0
+  # t0=tmp$t0; land=tmp$land
   t0 <- repro_FEMALE(fishers=t0, repro_estimates=repro_estimates, Fpop=Fpop)
 
   print(NLcount(t0))
@@ -158,10 +158,13 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
   # *** Step 2. AGE ***
   # •	The assumption is that there is 100% survival during the first year (i.e., the set up), at the second time step no fishers die
   # •	t1 = April to October = kits kicked out of natal territory
-  # •	all fishers age 0.5 years
+  # •	all fishers age 1 year (to make up fro the Oct to Apr to Oct from start of t0)
 
-  age.val <- of(agents=t0, var=c("age"))+0.5
+  age.val <- of(agents=t0, var=c("age"))+1
   t1 <- NLset(turtles = t0, agents=turtle(t0, who=t0$who),var="age", val=age.val)
+
+  # plot(land)
+  # points(t1, pch = t1$shape, col = of(agents = t1, var = "color"))
 
   print(NLcount(t1))
   IBM.sim.out[[2]] <- t1 # time step ends at October
@@ -174,19 +177,22 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
   # •	at the end of this time step, all fishers subject to mortality; run through the survive function
   # i.	t2 <- survive(fishers=t2, surv_estimates=rf_surv_estimates, Fpop=Fpop, maxAgeFemale=maxAgeFemale)
 
-  # land=w1$land; dist_mov=1; out=TRUE; torus=TRUE
-
   t2 <- t1
   for(i in 1:30){
     t2 <- disperse_FEMALE(land=land, fishers=t2, dist_mov=dist_mov, out=out, torus=torus)
   }
 
+  # patchHere(land, t2)
+  # plot(land)
+  # points(t2, pch = t2$shape, col = of(agents = t2, var = "color"))
+
   age.val <- of(agents=t2, var=c("age"))+0.5
   t2 <- NLset(turtles = t2, agents=turtle(t2, who=t2$who),var="age", val=age.val)
 
-  # Fpop="C"; maxAgeFemale=9; surv_estimates=rf_surv_estimates
   t2 <- survive_FEMALE(t2, surv_estimates=surv_estimates, Fpop=Fpop, maxAgeFemale=maxAgeFemale)
 
+  # plot(land)
+  # points(t2, pch = t2$shape, col = of(agents = t2, var = "color"))
 
   print(NLcount(t2))
   IBM.sim.out[[3]] <- t2 # time step ends at April
@@ -196,7 +202,7 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
 
   tOct <- t2
 
-  for(tcount in 4:(yrs.to.run*2+3)){
+  for(tcount in 4:(yrs.to.run*2+2)){
 
     #    # *** Step 4.  ESTABLISH / MAINTAIN TERRITORY ***
     # •	t3 = April to October = keep surviving
@@ -204,7 +210,6 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
     # i.	TOct <- disperse(land=land, fishers=tOct, dist_mov=dist_mov, out=FALSE)
     # •	all fishers age 0.5 years
     # •	update the fisher table to change juveniles to adults as they age out of (i.e., age > 2)
-
 
     if(NLcount(tOct)!=0){
 
@@ -220,9 +225,13 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
                                    TRUE ~ as.character(breed.val$breed))
 
       tOct <- NLset(turtles = tOct, agents=turtle(tOct, who=tOct$who),var="breed", val=breed.val$breed)
-
       print(NLcount(tOct))
       IBM.sim.out[[tcount]] <- tOct
+    } else {
+      IBM.sim.out[[tcount]] <- 0 }
+
+    # plot(land)
+    # points(tOct, pch = tOct$shape, col = of(agents = tOct, var = "color"))
 
       # *** Step 5. ESTABLISH / MAINTAIN TERRITORY & REPRODUCE & SCENT TERRITORY (MATE) & SURVIVE ***
       # •	t4 = October to April = females with established territory produce kits
@@ -238,9 +247,12 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
       # t3 = April to October = keep surviving
       # 4a. function DISPERSE - run through DISPERSE function for individuals without territories, up to 30 times to allow 6 months of movement
 
+    tcount <- tcount+1
+    tApr <- tOct
 
-      # repro_estimates=repro.CI
-      tApr <- repro_FEMALE(fishers=tOct, repro_estimates=repro_estimates, Fpop=Fpop)
+    if(NLcount(tApr)!=0){
+
+      tApr <- repro_FEMALE(fishers=tApr, repro_estimates=repro_estimates, Fpop=Fpop)
 
       for(i in 1:30){
         tApr <- disperse_FEMALE(land=land, fishers=tApr, dist_mov=dist_mov, out=out, torus=torus)
@@ -249,21 +261,23 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
       age.val <- of(agents=tApr, var=c("age"))+0.5
       tApr <- NLset(turtles = tApr, agents=turtle(tApr, who=tApr$who),var="age", val=age.val)
 
-      tApr <- survive_FEMALE(tApr, surv_estimates=surv_estimates, Fpop=Fpop, maxAgeFemale=maxAgeFemale)
+      tApr <- survive_FEMALE(fishers=tApr, surv_estimates=surv_estimates, Fpop=Fpop, maxAgeFemale=maxAgeFemale)
+
+      patchHere(land, tApr)
+      plot(land)
+      points(tApr, pch = tApr$shape, col = of(agents = tApr, var = "color"))
 
       print(NLcount(tApr))
 
-      tcount <- tcount+1
       IBM.sim.out[[tcount]] <- tApr
 
-      tOct <- tApr
-
     } else {
-      IBM.sim.out[[tcount]] <- 0 }
-  }
+        IBM.sim.out[[tcount]] <- 0 }
 
-  return(IBM.sim.out)
+    tOct <- tApr
 
+    }
+   return(IBM.sim.out)
 }
 
 
@@ -271,12 +285,11 @@ w1 <- set_up_world_FEMALE(nFemales=20, maxAgeFemale=9,xlim=c(1,10), ylim=c(1,10)
 w1
 
 test <- FEMALE_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                 # import world
-                                         repro_estimates=repro.CI, Fpop="C",    # reproduction
+                                         repro_estimates=repro.CI, Fpop="B",    # reproduction
                                          surv_estimates=rf_surv_estimates,      # survive
                                          maxAgeFemale=9,                        # survive
                                          dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
                                          yrs.to.run=10)
-
 
 ################################################################################
 # Create 3 sets of 100 simulations - vary the proportion of habitat and survival
@@ -285,12 +298,20 @@ test <- FEMALE_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                
 # Run 100 simulations for each, save as objects
 # Calculate mean # of animals per cell at 10 years for each simulation to produce a heat map
 
+rf_surv_estimates
+
+
 # Create a figure with mean number of animals (+/- SE) for each time step and graph for each simulation
 # test.surv <- rf_surv_estimates
 # test.surv$L95CL <- test.surv$U95CL <- test.surv$Surv
 # test.surv$L95CL <- test.surv$U95CL <- 0.9
 
-rf_surv_estimates
+FEMALE_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                # import world
+                                 repro_estimates=repro.CI, Fpop="B",    # reproduction
+                                 surv_estimates=rf_surv_estimates,      # survive
+                                 maxAgeFemale=9,                        # survive
+                                 dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
+                                 yrs.to.run=10)
 
 ################################################################################
 ###--- RUN FOR BOREAL
