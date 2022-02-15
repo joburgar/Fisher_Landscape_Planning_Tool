@@ -15,24 +15,69 @@
 # script to simulate Individual Based Model (IBM) spatial data for female fisher only
 # written by Joanna Burgar (Joanna.Burgar@gov.bc.ca) - 11-Jan-2022
 #####################################################################################
-version$major
-version$minor
-R_version <- paste0("R-",version$major,".",version$minor)
+# version$major
+# version$minor
+# R_version <- paste0("R-",version$major,".",version$minor)
+# .libPaths(paste0("C:/Program Files/R/",R_version,"/library")) # to ensure reading/writing libraries from C drive
+# ==> This is not reproducible as not everyone will be in the same directory or computing system. This won't work on Linux, for example. The best way is to pass relative path (i.e., ~) and let a library manager package (i.e., Require) install the packages in a library that is project related. This way you won't be bombed if packages are updated and break backward compatibility when your project is running fine. You update your library ONLY if you want. You should have a separate one for each project.
 
-.libPaths(paste0("C:/Program Files/R/",R_version,"/library")) # to ensure reading/writing libraries from C drive
-tz = Sys.timezone() # specify timezone in BC
+# Set your main wd path
+setwd(file.path(getwd(), "Fisher_Landscape_Planning_Tool"))
+
+# 1. Installing SpaDES
+if(!require("Require")){
+  install.packages("Require")
+}
+library("Require")
+
+setLibPaths(file.path(getwd(), "libraries/4.1/")) 
+Require("PredictiveEcology/SpaDES.install@development")
+if (!dir.exists(file.path(.libPaths()[1], "raster"))){
+  install.packages("terra", type = "source")
+  install.packages("raster", type = "source")
+}
+
+if(!Require("SpaDES.core")){
+  installSpaDES(upgrade = FALSE)
+}
+
+# tz = Sys.timezone() # specify timezone in BC # notUsed
 
 # Load Packages
 # install.packages("R.methodsS3")
-# install.packages("lcmix", repos="http://R-Forge.R-project.org")
 
-list.of.packages <- c("tidyverse", "NetLogoR","nnls","lcmix","MASS","SpaDES.core","SpaDES.tools",
-                      "Cairo","PNWColors")
+list.of.packages <- c("tidyverse", "nnls","MASS","SpaDES.core","SpaDES.tools",
+                      "Cairo","PNWColors", "Hmisc")
 
 # Check you have them and load them
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
-lapply(list.of.packages, require, character.only = TRUE)
+if(length(new.packages) != 0) 
+  lapply(list.of.packages, Require, character.only = TRUE)
+
+if (!Require("lcmix"))
+  Require("lcmix", repos="http://R-Forge.R-project.org")
+
+# NetLogoR is not available on CRAN for R 4.1, but can be downloaded ans installed from here:
+if (!Require("NetLogoR"))
+  install.packages("https://cran.r-project.org/src/contrib/Archive/NetLogoR/NetLogoR_0.3.9.tar.gz",
+                   repos=NULL, method="libcurl")
+
+Require("reproducible")
+Require("SpaDES.core")
+Require("NetLogoR")
+Require("magrittr")
+Require("raster")
+Require("dplyr")
+
+setPaths(cachePath = checkPath(file.path(getwd(), "cache"), create = TRUE),
+         inputPath = checkPath(file.path(getwd(), "inputs"), create = TRUE),
+         outputPath = checkPath(file.path(getwd(), "outputs"), create = TRUE),
+         modulePath = checkPath(file.path(getwd(), "modules"), create = TRUE),
+         rasterPath = checkPath(file.path(getwd(), "tempDir"), create = TRUE))
+
+Require::pkgSnapshot() # Use this to be able to install packages from this file
+# i.e., automatically generates list of installed packages and versions that can
+# be used to install. :)
 
 # for(i in 1:length(list.of.packages)){
 #   print(packageDescription(list.of.packages[i], fields=c("Package","Version")))
@@ -64,7 +109,6 @@ lapply(list.of.packages, require, character.only = TRUE)
 #
 # Package: PNWColors
 # Version: 0.1.0
-
 
 source("00_IBM_functions.R")
 #####################################################################################
