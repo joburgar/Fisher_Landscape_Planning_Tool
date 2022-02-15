@@ -15,52 +15,52 @@
 # script to produce outputs of Individual Based Models (IBMs) for fisher
 # written by Joanna Burgar (Joanna.Burgar@gov.bc.ca) - 25-Jan-2022
 #####################################################################################
-version$major
-version$minor
-R_version <- paste0("R-",version$major,".",version$minor)
-
-.libPaths(paste0("C:/Program Files/R/",R_version,"/library")) # to ensure reading/writing libraries from C drive
-tz = Sys.timezone() # specify timezone in BC
-
-# Load Packages
-list.of.packages <- c("tidyverse", "NetLogoR","nnls","lcmix","MASS","Cairo","PNWColors", "ggplot2",
-                      "sf","raster","rgdal")
-# Check you have them and load them
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
-lapply(list.of.packages, require, character.only = TRUE)
-
-source("00_IBM_functions.R")
+# version$major
+# version$minor
+# R_version <- paste0("R-",version$major,".",version$minor)
+# 
+# .libPaths(paste0("C:/Program Files/R/",R_version,"/library")) # to ensure reading/writing libraries from C drive
+# tz = Sys.timezone() # specify timezone in BC
+# 
+# # Load Packages
+# list.of.packages <- c("tidyverse", "NetLogoR","nnls","lcmix","MASS","Cairo","PNWColors", "ggplot2",
+#                       "sf","raster","rgdal")
+# # Check you have them and load them
+# new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+# if(length(new.packages)) install.packages(new.packages)
+# lapply(list.of.packages, require, character.only = TRUE)
+# 
+# source("00_IBM_functions.R")
 #####################################################################################
 # Create 3 sets of 100 simulations - vary the proportion of habitat and survival
 # Low, medium and high habitat = 0.5, 0.6, and 0.7 (same world set up, get actual values)
 # Low, medium and high survival = 0.7, 0.8, 0.9
 
 
-load("out/Columbian_escape_FEMALE.RData")
+load("outputs/Columbian_escape_FEMALE.RData")
 w1 <- Columbian_escape_FEMALE[[1]]; w1$actual.prop.hab # 0.48
 w2 <- Columbian_escape_FEMALE[[2]]; w2$actual.prop.hab # 0.63
 w3 <- Columbian_escape_FEMALE[[3]]; w3$actual.prop.hab # 0.71
 
-load("out/Boreal_escape_FEMALE.RData")
+load("outputs/Boreal_escape_FEMALE.RData")
 
 ###--- plot the simulated landbases
-Cairo(file="out/BCI_Fescape_w1.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
+Cairo(file="outputs/BCI_Fescape_w1.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
 plot(w1$land, main=c(paste0("Simulated Landbase"),paste0(w1$actual.prop.hab*100,"% Suitable Habitat")))
 points(w1$t0, pch = w1$t0$shape, col = of(agents = w1$t0, var = "color"))
 dev.off()
 
-Cairo(file="out/BCI_Fescape_w2.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
+Cairo(file="outputs/BCI_Fescape_w2.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
 plot(w2$land, main=c(paste0("Simulated Landbase"),paste0(w2$actual.prop.hab*100,"% Suitable Habitat")))
 points(w2$t0, pch = w2$t0$shape, col = of(agents = w2$t0, var = "color"))
 dev.off()
 
-Cairo(file="out/BCI_Fescape_w3.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
+Cairo(file="outputs/BCI_Fescape_w3.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
 plot(w3$land, main=c(paste0("Simulated Landbase"),paste0(w3$actual.prop.hab*100,"% Suitable Habitat")))
 points(w3$t0, pch = w3$t0$shape, col = of(agents = w3$t0, var = "color"))
 dev.off()
 
-Cairo(file="out/BCI_Fescape_w3_nofisher.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
+Cairo(file="outputs/BCI_Fescape_w3_nofisher.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
 plot(w3$land, main=c(paste0("Simulated Landbase"),paste0(w3$actual.prop.hab*100,"% Suitable Habitat")))
 dev.off()
 
@@ -177,7 +177,7 @@ sim.TS.plot
 
 #- Plot
 
-Cairo(file="out/BCI_sim_escape_FEMALE.TS.plot_CL.PNG",
+Cairo(file="outputs/BCI_sim_escape_FEMALE.TS.plot_CL.PNG",
       type="png",
       width=3000,
       height=2200,
@@ -203,7 +203,7 @@ sim.TS.plot_se <- ggplot(data = ABM.TS.use) +
 sim.TS.plot_se
 
 #- Plot
-Cairo(file="out/BCI_sim_escape_FEMALE.TS.plot_SE.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+Cairo(file="outputs/BCI_sim_escape_FEMALE.TS.plot_SE.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
 sim.TS.plot_se
 dev.off()
 
@@ -292,7 +292,7 @@ raster_output <- function(sim_out=sim_out, sim_order=sim_order, sim_use=sim_use,
 
   r_stack = stack(r_list, r_zeroes_list)
   r_stackApply <- stackApply(r_stack, indices=1, fun=sFun)
-  writeRaster(r_stackApply, file=paste0("out/rSim",str_pad(sim_order,2,pad="0"),".tif"), bylayer=TRUE, overwrite=TRUE)
+  writeRaster(r_stackApply, file=paste0("outputs/rSim",str_pad(sim_order,2,pad="0"),".tif"), bylayer=TRUE, overwrite=TRUE)
 
   Fisher_Nmean <- mean(r_stackApply@data@values)
   Fisher_Nse <- se(r_stackApply@data@values)
@@ -311,7 +311,7 @@ plot(rBph49$raster)
 
 length(Bph49_nozero) # 59
 # w1$t0
-Cairo(file="out/rBph49_title.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+Cairo(file="outputs/rBph49_title.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
 plot(rBph49$raster,
      main="Estimated Fisher Abundance over 100 Simulations",
      sub="Starting with 20 fishers and 49% suitable habitat\npredicted 26.3 \u00B1 2.8 (mean \u00B1 1 SE) fishers after 10 years.")
@@ -326,7 +326,7 @@ plot(rBph59$raster)
 
 length(Bph59_nozero) # 55
 # w2$t0
-Cairo(file="out/rBph59_title.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+Cairo(file="outputs/rBph59_title.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
 plot(rBph59$raster,
      main="Estimated Fisher Abundance over 100 Simulations",
      sub="Starting with 20 fishers and 59% suitable habitat\npredicted 22.5 \u00B1 1.9 (mean \u00B1 1 SE) fishers after 10 years.")
@@ -342,7 +342,7 @@ plot(rBph70$raster)
 
 length(Bph70_nozero) # 84
 # w3$t0
-Cairo(file="out/rBph70_title.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+Cairo(file="outputs/rBph70_title.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
 plot(rBph70$raster,
      main="Estimated Fisher Abundance over 100 Simulations",
      sub="Starting with 20 fishers and 70% suitable habitat\npredicted 62.7 \u00B1 4.7 (mean \u00B1 1 SE) fishers after 10 years.")
