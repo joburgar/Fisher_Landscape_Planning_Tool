@@ -59,13 +59,15 @@ if (!Require("lcmix"))
   Require("lcmix", repos="http://R-Forge.R-project.org")
 
 # NetLogoR is not available on CRAN for R 4.1, but can be downloaded ans installed from here:
-
-install.packages("https://cran.r-project.org/src/contrib/Archive/NetLogoR/NetLogoR_0.3.9.tar.gz",
+if (!Require("NetLogoR"))
+  install.packages("https://cran.r-project.org/src/contrib/Archive/NetLogoR/NetLogoR_0.3.9.tar.gz",
                  repos=NULL, method="libcurl")
 
 Require("reproducible")
 Require("SpaDES.core")
 Require("NetLogoR")
+Require("magrittr")
+Require("raster")
 
 setPaths(cachePath = checkPath(file.path(getwd(), "cache"), create = TRUE),
          inputPath = checkPath(file.path(getwd(), "inputs"), create = TRUE),
@@ -151,7 +153,137 @@ rf_surv_estimates <- read.csv(file.path(getwd(), "data/rf_surv_estimates.csv"), 
 ################################################################################
 
 # create function to loop through functions, allow sub-function specification
-# now that the function is using the cohort survival data, have the survival run on an annual basis, not per time step
+# now that the function is using the cohort survival data, have the survival run 
+# on an annual basis, not per time step
+fisher_IBM_simulation <- function(nMales=nMales, maxAgeMale=maxAgeMale, 
+                                  nFemales=nFemales, maxAgeFemale=maxAgeFemale,# max age used to set up the world and also for survival
+                                  xlim=xlim, ylim=ylim, prophab=prophab,  # set_up_world
+                              fmdx=fmdx, fmdy=fmdy,                                     # find_mate
+                              denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
+                              ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2],                # kits_produced
+                              surv_estimates=rf_surv_estimates, Fpop="C",               # survive
+                              dist_mov=dist_mov,                                               # disperse
+                              yrs.to.run=10){                                             # number of years to run simulations ()
+
+  # 2 times steps per year so yrs.to.run*2 plus the initial 3 time steps (start in Apr=t0, Oct=t1, Apr=t2)
+    IBM.sim.out <- vector('list', (yrs.to.run*2)+3)
+
+    # *** Step 1. START ***
+    # assume 100% survival during first year for set up
+    # t0 = October to April = kits born
+
+    ###--- SET-UP WORLD
+    w1 <- set_up_world(nMales=nMales, maxAgeMale=maxAgeMale, nFemales=nFemales, maxAgeFemale=maxAgeFemale, xlim=xlim, ylim=ylim, prophab=prophab)
+    land <- w1$land
+    t0 <- w1$t0
+
+    ###--- REPRODUCE
+    # check if mates are available for females
+    t0 <- find_mate(land=land, fishers=t0, fmdx=fmdx, fmdy=fmdy)
+
+    t0 <- denning(fishers=t0, denLCI=denLCI, denUCI=denUCI)
+    t0 <- kits_produced(fishers=t0, ltrM=ltrM, ltrSD=ltrSD)
+
+    print(NLcount(t0))
+    IBM.sim.out[[1]] <- t0 # time step ends at April
+
+    # *** Step 2. AGE ***
+    # t1 = April to October = kits kicked out of natal territory
+    # let all individuals survive these 6 months, only step here is to add 0.5 in age to all fishers
+
+    age.val <- of(agents=t0, var=c("age"))+0.5
+    t1 <- NLset(turtles = t0, agents=turtle(t0, who=t0$who),var="age", val=age.val)
+
+    print(NLcount(t1))
+    IBM.sim.out[[2]] <- t1 # time step ends at October
+
+    # *** Step 3. ESTABLISH / MAINTAIN TERRITORY & SCENT TERRITORY (MATE) & SURVIVE ***
+    # t2 = October to April = females with established territory find mate
+    # 3a. function DISPERSE - run through DISPERSE function for individuals without territories, up to 30 times to allow 6 months of movement
+    # 3b. function FIND_MATE - for female fishers with ESTABLISHED territory, if male is within 2 cells in either direction or 8 adjacent cells plus same cell, assign mated status (i.e., if male is in same cell or ± 1 cell either via xlim and/or ylim)
+
+    t2 <- t1
+    for(i in 1:30){
+      t2 <- disperse(land=land, fishers=t2, dist_mov=dist_mov)
+    }
+
+    t2 <- find_mate(land, t2, fmdx, fmdy)
+
+    age.val <- of(agents=t2, var=c("age"))+0.5
+    t2 <- NLset(turtles = t2, agents=turtle(t2, who=t2$who),var="age", val=age.val)
+
+    t2 <- survive(t2, surv_estimates=surv_estimates, Fpop=Fpop, maxAgeMale=maxAgeMale, maxAgeFemale=maxAgeFemale)
+
+
+    print(NLcount(t2))
+    IBM.sim.out[[3]] <- t2 # time step ends at April
+
+
+  ################################################################################
+
+    tOct <- t2
+
+    for(tcount in 4:(yrs.to.run*2+3)){
+
+      # *** Step 4.  ESTABLISH / MAINTAIN TERRITORY ***
+      # t3 = April to October = keep surviving
+      # 4a. function DISPERSE - run through DISPERSE function for individuals without territories, up to 30 times to allow 6 months of movement
+
+      if(NLcount(tOct)!=0){
+
+      for(i in 1:30){
+        tOct <- disperse(land=land, fishers=tOct, dist_mov=dist_mov)
+      }
+
+      age.val <- of(agents=tOct, var=c("age"))+0.5
+      tOct <- NLset(turtles = tOct, agents=turtle(tOct, who=tOct$who),var="age", val=age.val)
+
+      breed.val <- as.data.frame(of(agents=tOct, var=c("breed","age")))
+      breed.val$breed <- case_when(breed.val$age>2 ~ "adult",
+                                   TRUE ~ as.character(breed.val$breed))
+
+      tOct <- NLset(turtles = tOct, agents=turtle(tOct, who=tOct$who),var="breed", val=breed.val$breed)
+
+      print(NLcount(tOct))
+      IBM.sim.out[[tcount]] <- tOct
+
+      # *** Step 5. ESTABLISH / MAINTAIN TERRITORY & REPRODUCE & SCENT TERRITORY (MATE) & SURVIVE ***
+      # t4 = October to April = females with established territory produce kits and find mates for next round
+
+      tApr <- denning(fishers=tOct, denLCI=denLCI, denUCI=denUCI)
+      tApr <- kits_produced(fishers=tApr, ltrM=ltrM, ltrSD=ltrSD)
+
+      for(i in 1:30){
+        tApr <- disperse(land=land, fishers=tApr, dist_mov=dist_mov)
+      }
+
+      tApr <- find_mate(land, tApr, dx, dy)
+
+      age.val <- of(agents=tApr, var=c("age"))+0.5
+      tApr <- NLset(turtles = tApr, agents=turtle(tApr, who=tApr$who),var="age", val=age.val)
+
+      tApr <- survive(tApr, surv_estimates=surv_estimates, Fpop=Fpop, maxAgeMale=maxAgeMale, maxAgeFemale=maxAgeFemale)
+
+      print(NLcount(tApr))
+
+      tcount <- tcount+1
+      IBM.sim.out[[tcount]] <- tApr
+
+      tOct <- tApr
+
+      } else {
+        IBM.sim.out[[tcount]] <- 0 }
+    }
+
+      return(IBM.sim.out)
+
+    }
+
+
+
+# create function to loop through functions, allow sub-function specification
+# now that the function is using the cohort survival data, have the survival run 
+# on an annual basis, not per time step
 fisher_IBM_simulation_same_world <- function(land=land, t0=t0,                                # import world
                                   fmdx=c(-2:2), fmdy=c(-2:2),                                     # find_mate
                                   denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
