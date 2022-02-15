@@ -68,6 +68,8 @@ Require("NetLogoR")
 Require("magrittr")
 Require("raster")
 Require("dplyr")
+Require("Cairo")
+Require("stringr")
 
 setPaths(cachePath = checkPath(file.path(getwd(), "cache"), create = TRUE),
          inputPath = checkPath(file.path(getwd(), "inputs"), create = TRUE),
@@ -410,7 +412,7 @@ end_time <- Sys.time()
 
 Boreal_escape_FEMALE <- list(w1, w2, w3,B.w1.FEMALE.sim100,B.w2.FEMALE.sim100,B.w3.FEMALE.sim100)
 
-save(Boreal_escape_FEMALE, file="out/Boreal_escape_FEMALE.RData")
+save(Boreal_escape_FEMALE, file="outputs/Boreal_escape_FEMALE.RData")
 
 ################################################################################
 ###--- RUN FOR CENTRAL INTERIOR
@@ -452,4 +454,4 @@ for(i in 1:100){
 
 Columbian_escape_FEMALE <- list(w1, w2, w3,C.w1.FEMALE.sim100,C.w2.FEMALE.sim100,C.w3.FEMALE.sim100)
 
-save(Columbian_escape_FEMALE, file="out/Columbian_escape_FEMALE.RData")
+save(Columbian_escape_FEMALE, file="outputs/Columbian_escape_FEMALE.RData")
