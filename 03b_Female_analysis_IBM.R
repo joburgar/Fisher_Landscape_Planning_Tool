@@ -66,7 +66,7 @@ lapply(list.of.packages, require, character.only = TRUE)
 # Version: 0.1.0
 
 
-source("00_IBM_functions.R")
+source("00b_Female_IBM_functions.R")
 #####################################################################################
 
 # Start with a very simple example - habitat patch is either suitable or not suitable
@@ -127,10 +127,10 @@ repro.CI <- read.csv("data/repro.CI.csv", header=TRUE)
 # taken from Rory's updated survival, trapping mortality excluded
 rf_surv_estimates <- read.csv("data/rf_surv_estimates.csv", header=TRUE)
 
-tmp <- set_up_world_FEMALE(nFemales=10, maxAgeFemale = 9, xlim=c(1,10), ylim=c(1,10), prophab=0.7)
-
+# tmp <- set_up_world_FEMALE(nFemales=10, maxAgeFemale = 9, xlim=c(1,10), ylim=c(1,10), prophab=0.7)
+# t0=tmp$t0
+# land=tmp$land
 ################################################################################
-
 
 # create function to loop through functions, allow sub-function specification
 # now that the function is using the cohort survival data, have the survival run on an annual basis, not per time step
@@ -142,7 +142,7 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
                                              yrs.to.run=10){                                             # number of years to run simulations ()
 
   # 2 times steps per year so yrs.to.run*2 plus the initial 3 time steps (start in Apr=t0, Oct=t1, Apr=t2)
-  IBM.sim.out <- vector('list', (yrs.to.run*2)+3)
+  IBM.sim.out <- vector('list', yrs.to.run+2)
 
   # *** Step 1. START ***
   # The assumption is that there is 100% survival during the first year (i.e., the set up), at the first time step no fishers die
@@ -166,8 +166,8 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
   # plot(land)
   # points(t1, pch = t1$shape, col = of(agents = t1, var = "color"))
 
-  print(NLcount(t1))
-  IBM.sim.out[[2]] <- t1 # time step ends at October
+  # print(NLcount(t1))
+  # IBM.sim.out[[2]] <- t1 # time step ends at October
 
   # *** Step 3. ESTABLISH / MAINTAIN TERRITORY & SCENT TERRITORY (MATE) & SURVIVE ***
   # •	 t2 = October to April = females with established territory find mate
@@ -195,14 +195,14 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
   # points(t2, pch = t2$shape, col = of(agents = t2, var = "color"))
 
   print(NLcount(t2))
-  IBM.sim.out[[3]] <- t2 # time step ends at April
+  IBM.sim.out[[2]] <- t2 # time step ends at April
 
 
   ################################################################################
 
   tOct <- t2
 
-  for(tcount in 4:(yrs.to.run*2+2)){
+  for(tcount in 3:(yrs.to.run+2)){
 
     #    # *** Step 4.  ESTABLISH / MAINTAIN TERRITORY ***
     # •	t3 = April to October = keep surviving
@@ -225,10 +225,11 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
                                    TRUE ~ as.character(breed.val$breed))
 
       tOct <- NLset(turtles = tOct, agents=turtle(tOct, who=tOct$who),var="breed", val=breed.val$breed)
-      print(NLcount(tOct))
-      IBM.sim.out[[tcount]] <- tOct
-    } else {
-      IBM.sim.out[[tcount]] <- 0 }
+    # print(NLcount(tOct))
+    #   IBM.sim.out[[tcount]] <- tOct
+    # } else {
+    #   IBM.sim.out[[tcount]] <- 0
+      }
 
     # plot(land)
     # points(tOct, pch = tOct$shape, col = of(agents = tOct, var = "color"))
@@ -247,7 +248,6 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
       # t3 = April to October = keep surviving
       # 4a. function DISPERSE - run through DISPERSE function for individuals without territories, up to 30 times to allow 6 months of movement
 
-    tcount <- tcount+1
     tApr <- tOct
 
     if(NLcount(tApr)!=0){
@@ -263,9 +263,9 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
 
       tApr <- survive_FEMALE(fishers=tApr, surv_estimates=surv_estimates, Fpop=Fpop, maxAgeFemale=maxAgeFemale)
 
-      patchHere(land, tApr)
-      plot(land)
-      points(tApr, pch = tApr$shape, col = of(agents = tApr, var = "color"))
+      # patchHere(land, tApr)
+      # plot(land)
+      # points(tApr, pch = tApr$shape, col = of(agents = tApr, var = "color"))
 
       print(NLcount(tApr))
 
@@ -284,12 +284,12 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
 w1 <- set_up_world_FEMALE(nFemales=20, maxAgeFemale=9,xlim=c(1,10), ylim=c(1,10), prophab=0.5)
 w1
 
-test <- FEMALE_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                 # import world
-                                         repro_estimates=repro.CI, Fpop="B",    # reproduction
-                                         surv_estimates=rf_surv_estimates,      # survive
-                                         maxAgeFemale=9,                        # survive
-                                         dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
-                                         yrs.to.run=10)
+# test <- FEMALE_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                 # import world
+#                                          repro_estimates=repro.CI, Fpop="B",    # reproduction
+#                                          surv_estimates=rf_surv_estimates,      # survive
+#                                          maxAgeFemale=9,                        # survive
+#                                          dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
+#                                          yrs.to.run=10)
 
 ################################################################################
 # Create 3 sets of 100 simulations - vary the proportion of habitat and survival
@@ -316,8 +316,7 @@ FEMALE_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                # import
 ################################################################################
 ###--- RUN FOR BOREAL
 ###--- Run with low habitat (prop hab ~ 0.5)
-w1 <- set_up_world(nMales=7, nFemales=13, maxAgeMale=6, maxAgeFemale=9,
-                   xlim=c(1,10), ylim=c(1,10), prophab=0.5)
+w1 <- set_up_world_FEMALE(nFemales=20, maxAgeFemale=9, xlim=c(1,10), ylim=c(1,10), prophab=0.5)
 
 B.w1.FEMALE.sim100 <- vector('list',100)
 for(i in 1:100){
@@ -330,8 +329,8 @@ for(i in 1:100){
 }
 
 ###--- Run with medium habitat (prop hab ~ 0.6)
-w2 <- set_up_world(nMales=7, nFemales=13, maxAgeMale=6, maxAgeFemale=9,
-                   xlim=c(1,10), ylim=c(1,10), prophab=0.6)
+w2 <- set_up_world_FEMALE(nFemales=20, maxAgeFemale=9, xlim=c(1,10), ylim=c(1,10), prophab=0.6)
+
 
 B.w2.FEMALE.sim100 <- vector('list',100)
 for(i in 1:100){
@@ -346,8 +345,7 @@ for(i in 1:100){
 
 
 ###--- Run with high habitat (prop hab ~ 0.7)
-w3 <- set_up_world(nMales=7, nFemales=13, maxAgeMale=6, maxAgeFemale=9,
-                   xlim=c(1,10), ylim=c(1,10), prophab=0.7)
+w3 <- set_up_world_FEMALE(nFemales=20, maxAgeFemale=9, xlim=c(1,10), ylim=c(1,10), prophab=0.7)
 
 start_time <- Sys.time()
 B.w3.FEMALE.sim100 <- vector('list',100)
@@ -364,9 +362,9 @@ end_time <- Sys.time()
 
 # end_time - start_time
 
-Boreal_escape_FEMALE <- list(w1, w2, w3,B.w1.FEMALE.sim100,B.w2.FEMALE.sim100,B.w3.FEMALE.sim100)
+Boreal_escape_FEMALE_bern <- list(w1, w2, w3,B.w1.FEMALE.sim100,B.w2.FEMALE.sim100,B.w3.FEMALE.sim100)
 
-save(Boreal_escape_FEMALE, file="out/Boreal_escape_FEMALE.RData")
+save(Boreal_escape_FEMALE_bern, file="out/Boreal_escape_FEMALE_bern.RData")
 
 ################################################################################
 ###--- RUN FOR CENTRAL INTERIOR
@@ -406,6 +404,6 @@ for(i in 1:100){
 }
 
 
-Columbian_escape_FEMALE <- list(w1, w2, w3,C.w1.FEMALE.sim100,C.w2.FEMALE.sim100,C.w3.FEMALE.sim100)
+Columbian_escape_FEMALE_bern <- list(w1, w2, w3,C.w1.FEMALE.sim100,C.w2.FEMALE.sim100,C.w3.FEMALE.sim100)
 
-save(Columbian_escape_FEMALE, file="out/Columbian_escape_FEMALE.RData")
+save(Columbian_escape_FEMALE_bern, file="out/Columbian_escape_FEMALE_bern.RData")
