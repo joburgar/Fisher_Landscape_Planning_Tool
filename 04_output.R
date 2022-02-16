@@ -30,19 +30,19 @@
 # if(length(new.packages)) install.packages(new.packages)
 # lapply(list.of.packages, require, character.only = TRUE)
 # 
-# source("00_IBM_functions.R")
+# source("00b_Female_IBM_functions.R")
 #####################################################################################
 # Create 3 sets of 100 simulations - vary the proportion of habitat and survival
 # Low, medium and high habitat = 0.5, 0.6, and 0.7 (same world set up, get actual values)
 # Low, medium and high survival = 0.7, 0.8, 0.9
 
 
-load("outputs/Columbian_escape_FEMALE.RData")
-w1 <- Columbian_escape_FEMALE[[1]]; w1$actual.prop.hab # 0.48
-w2 <- Columbian_escape_FEMALE[[2]]; w2$actual.prop.hab # 0.63
-w3 <- Columbian_escape_FEMALE[[3]]; w3$actual.prop.hab # 0.71
+load("out/Boreal_escape_FEMALE_bern.RData")
+w1 <- Boreal_escape_FEMALE_bern[[1]]; w1$actual.prop.hab # 0.52
+w2 <- Boreal_escape_FEMALE_bern[[2]]; w2$actual.prop.hab # 0.65
+w3 <- Boreal_escape_FEMALE_bern[[3]]; w3$actual.prop.hab # 0.69
 
-load("outputs/Boreal_escape_FEMALE.RData")
+load("out/Columbian_escape_FEMALE_bern.RData")
 
 ###--- plot the simulated landbases
 Cairo(file="outputs/BCI_Fescape_w1.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
@@ -69,9 +69,11 @@ dev.off()
 # Calculate mean # of animals per cell at 10 years for each simulation to produce a heat map
 # Create a figure with mean number of animals (+/- SE) for each time step and graph for each simulation
 
-sim_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=numsims){
-  ABM.df <- as.data.frame(array(NA,c(200,23)))
-  colnames(ABM.df) <- paste0("TimeStep_",str_pad(seq_len(23),2,pad="0"))
+sim_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=numsims, yrs_sim=yrs_sim){
+  num.runs <- yrs_sim + 2
+  ABM.df <- as.data.frame(array(NA,c(2*numsims,num.runs)))
+
+  colnames(ABM.df) <- paste0("TimeStep_",str_pad(seq_len(num.runs),2,pad="0"))
   for(i in 1:numsims){
     ABM.df[i,] <- unlist(lapply(lapply(sim_out[[sim_order]][[i]], as.array), ncol)) # if 14 then know that has at least one fisher
     ABM.df[i+numsims,] <- unlist(lapply(lapply(sim_out[[sim_order]][[i]], as.array), nrow)) # if 14 then know that has at least one fisher
@@ -80,7 +82,7 @@ sim_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=numsims){
   ABM.df$Type <- rep(c("Pfisher","Count"), each=numsims)
   ABM.df$Run <- rep(seq_len(numsims), times=2)
 
-  ABM.df <- ABM.df %>% pivot_longer(cols = TimeStep_01:TimeStep_23,names_to = "TimeStep",values_to = "Value" )
+  ABM.df <- ABM.df %>% pivot_longer(cols = TimeStep_01:TimeStep_12,names_to = "TimeStep",values_to = "Value" )
   ABM.df <- ABM.df %>% pivot_wider(names_from = Type, values_from = Value)
 
   ABM.df$NewCount <- as.numeric(ABM.df$Count)
@@ -95,38 +97,34 @@ sim_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=numsims){
 
 # Now format all of the simulated output from lists into one df with number of fisher per time step
 # create the dataframe
-B_ABM.df <- C_ABM.df <- as.data.frame(array(NA,c(3*2300,4)))
+B_ABM.df <- C_ABM.df <- as.data.frame(array(NA,c(3600,4)))
 colnames(B_ABM.df) <- colnames(C_ABM.df) <- c("Run","TimeStep","NewCount","Sim")
 
 # loop to put in all of the values
 # Columbian
 # starting point of data frame
 a=1
-b=2300
+b=1200
 for(i in 4:6){
-  C_ABM.df[a:b,] <- sim_output(sim_out=Columbian_escape_FEMALE, sim_order=i, numsims=100)
-  a=a+2300
-  b=b+2300
+  C_ABM.df[a:b,] <- sim_output(sim_out=Columbian_escape_FEMALE_bern, sim_order=i, numsims=100, yrs_sim=10)
+  a=a+1200
+  b=b+1200
 }
 
 # Boreal
 # starting point of data frame
 a=1
-b=2300
+b=1200
 for(i in 4:6){
-  B_ABM.df[a:b,] <- sim_output(sim_out=Boreal_escape_FEMALE, sim_order=i, numsims=100)
-  a=a+2300
-  b=b+2300
+  B_ABM.df[a:b,] <- sim_output(sim_out=Boreal_escape_FEMALE_bern, sim_order=i, numsims=100, yrs_sim=10)
+  a=a+1200
+  b=b+1200
 }
 
 C_ABM.df$Pop <- "Columbian"
 B_ABM.df$Pop <- "Boreal"
 
 ###---
-# IBM.w1.rfsurv.sim100 # Sim04
-# IBM.w2.rfsurv.sim100 # Sim05
-# IBM.w3.rfsurv.sim100 # Sim06
-
 ABM.df <- rbind(C_ABM.df, B_ABM.df)
 
 ABM.df <- ABM.df %>% mutate(Prophab = case_when(Sim %in% c("Sim04") ~ w1$actual.prop.hab,
@@ -150,7 +148,7 @@ ABM.TS.UCL$Param <- "UCL"
 
 ABM.TS <- rbind(ABM.TS.mean, ABM.TS.se, ABM.TS.LCL, ABM.TS.UCL)
 
-ABM.TS.df <- ABM.TS %>% pivot_longer(cols = TimeStep_01:TimeStep_23,names_to = "TimeStep",values_to = "Value" )
+ABM.TS.df <- ABM.TS %>% pivot_longer(cols = TimeStep_01:TimeStep_12,names_to = "TimeStep",values_to = "Value" )
 ABM.TS.df <- ABM.TS.df %>% pivot_wider(names_from = Param, values_from = Value)
 
 ABM.TS.use <- ABM.TS.df %>% filter(!TimeStep %in% c("TimeStep_01", "TimeStep_02"))
@@ -163,7 +161,7 @@ sim.TS.plot <- ggplot(data = ABM.TS.use) +
   theme_bw() + theme(strip.background = element_rect(fill = "white", colour = "white")) +
   theme(panel.grid = element_blank())+
   geom_ribbon(aes(x = TimeStepNum, ymin = LCL, ymax = UCL), fill = "#2c6184") +
-  geom_vline(xintercept = 11, col="darkgrey", lty=4) +
+  geom_vline(xintercept = 7, col="darkgrey", lty=4) +
   geom_line(aes(x = TimeStepNum, y = Mean)) +
   # geom_errorbar(aes(x = TimeStepNum, y = Mean, ymin=Mean-SE, ymax= Mean+SE),
   #               width=.2, position=position_dodge(0.05)) +
@@ -177,7 +175,7 @@ sim.TS.plot
 
 #- Plot
 
-Cairo(file="outputs/BCI_sim_escape_FEMALE.TS.plot_CL.PNG",
+Cairo(file="out/BCI_sim_escape_FEMALE_bern.TS.plot_CL.PNG",
       type="png",
       width=3000,
       height=2200,
@@ -190,7 +188,7 @@ dev.off()
 sim.TS.plot_se <- ggplot(data = ABM.TS.use) +
   theme_bw() + theme(strip.background = element_rect(fill = "white", colour = "white")) +
   theme(panel.grid = element_blank())+
-  geom_vline(xintercept = "TimeStep_11", col="grey", lty=4) +
+  geom_vline(xintercept = "TimeStep_07", col="grey", lty=4) +
   geom_point(aes(x = TimeStep, y = Mean), size=2) +
   geom_errorbar(aes(x = TimeStep, y = Mean, ymin=Mean-SE, ymax= Mean+SE),
                 width=.2, position=position_dodge(0.05)) +
@@ -203,7 +201,7 @@ sim.TS.plot_se <- ggplot(data = ABM.TS.use) +
 sim.TS.plot_se
 
 #- Plot
-Cairo(file="outputs/BCI_sim_escape_FEMALE.TS.plot_SE.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+Cairo(file="out/BCI_sim_escape_FEMALE_bern.TS.plot_SE.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
 sim.TS.plot_se
 dev.off()
 
@@ -212,7 +210,7 @@ dev.off()
 ### Create heatmaps for the w3 outputs
 # keep in mind that WGS84 lat/long espg = 4326; BC Albers espg = 3005; NAD83 / UTM zone 10N espg = 26910
 
-Nozero.runs <- ABM.df %>% filter(TimeStep=="TimeStep_23") %>%
+Nozero.runs <- ABM.df %>% filter(TimeStep=="TimeStep_12") %>%
   group_by(Sim) %>%
   filter(NewCount!=0)
 
@@ -224,17 +222,17 @@ nozerosims <- function(sim=Sim, pop=Pop){
   return(nozerosims)
 }
 
-Bph49_nozero <- nozerosims(sim="Sim04", pop="Boreal")
-Bph59_nozero <- nozerosims(sim="Sim05", pop="Boreal")
-Bph70_nozero <- nozerosims(sim="Sim06", pop="Boreal")
+BL_nozero <- nozerosims(sim="Sim04", pop="Boreal")
+BM_nozero <- nozerosims(sim="Sim05", pop="Boreal")
+BH_nozero <- nozerosims(sim="Sim06", pop="Boreal")
 
-CIph49_nozero <- nozerosims(sim="Sim04", pop="Columbian")
-CIph59_nozero <- nozerosims(sim="Sim05", pop="Columbian")
-CIph70_nozero <- nozerosims(sim="Sim06", pop="Columbian")
+CL_nozero <- nozerosims(sim="Sim04", pop="Columbian")
+CM_nozero <- nozerosims(sim="Sim05", pop="Columbian")
+CH_nozero <- nozerosims(sim="Sim06", pop="Columbian")
 
 
-length(Bph49_nozero); length(Bph59_nozero); length(Bph70_nozero) # 59, 55, 84 reached 10 years
-length(CIph49_nozero); length(CIph59_nozero); length(CIph70_nozero) # none reached 10 years
+length(BL_nozero); length(BM_nozero); length(BH_nozero) # all reach 10 years
+length(CL_nozero); length(CM_nozero); length(CH_nozero) # 1,2,1 reached 10 years
 
 
 # find coordinates for each fisher at 11 year mark
@@ -302,48 +300,59 @@ raster_output <- function(sim_out=sim_out, sim_order=sim_order, sim_use=sim_use,
 }
 
 ###--- For Sim04 in Boreal
-# Bph52_nozero
-rBph49 <- raster_output(sim_out=Boreal_escape_rfsurv, sim_order=4, sim_use=Bph49_nozero,land=w1$land,
-                        TS=23, rExtent=rw1, rFun="sum",sFun="sum")
+# lowest suitable habitat
+rBL <- raster_output(sim_out=Boreal_escape_FEMALE_bern, sim_order=4, sim_use=BL_nozero,land=w1$land,
+                        TS=12, rExtent=rw1, rFun="sum",sFun="sum")
 
-rBph49
-plot(rBph49$raster)
+rBL
+plot(rBL$raster)
 
-length(Bph49_nozero) # 59
+length(BL_nozero) #
 # w1$t0
-Cairo(file="outputs/rBph49_title.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
-plot(rBph49$raster,
-     main="Estimated Fisher Abundance over 100 Simulations",
-     sub="Starting with 20 fishers and 49% suitable habitat\npredicted 26.3 \u00B1 2.8 (mean \u00B1 1 SE) fishers after 10 years.")
+plot(rBL$raster, oma=c(2, 3, 5, 2))
+mytitle = "Estimated Fisher Abundance over 100 Simulations"
+mysubtitle1 = paste0("Starting with 20 fishers and ",w1$actual.prop.hab*100,"% suitable habitat")
+mysubtitle2 = paste0("predicted ",round(rBL$Fisher_Nmean)," \u00B1 ",round(rBL$Fisher_Nse)," (mean \u00B1 1 SE) fishers after 10 years.")
+mtext(side=3, line=3, at=-0.07, adj=0, cex=1, mytitle)
+mtext(side=3, line=2, at=-0.07, adj=0, cex=0.8, mysubtitle1)
+mtext(side=3, line=1, at=-0.07, adj=0, cex=0.8, mysubtitle2)
+Cairo(file="out/rB_escape_F_bern_L.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
 dev.off()
 
 ###--- For Sim05 in Boreal
-rBph59 <- raster_output(sim_out=Boreal_escape_rfsurv, sim_order=5, sim_use=Bph59_nozero,land=w2$land,
-                        TS=23, rExtent=rw2, rFun="sum",sFun="sum")
+rBM <- raster_output(sim_out=Boreal_escape_FEMALE_bern, sim_order=5, sim_use=BM_nozero,land=w2$land,
+                        TS=12, rExtent=rw2, rFun="sum",sFun="sum")
 
-rBph59
-plot(rBph59$raster)
+rBM
+plot(rBM$raster)
 
-length(Bph59_nozero) # 55
-# w2$t0
-Cairo(file="outputs/rBph59_title.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
-plot(rBph59$raster,
-     main="Estimated Fisher Abundance over 100 Simulations",
-     sub="Starting with 20 fishers and 59% suitable habitat\npredicted 22.5 \u00B1 1.9 (mean \u00B1 1 SE) fishers after 10 years.")
+length(BM_nozero) # 55
+
+plot(rBM$raster, oma=c(2, 3, 5, 2))
+mytitle = "Estimated Fisher Abundance over 100 Simulations"
+mysubtitle1 = paste0("Starting with 20 fishers and ",w2$actual.prop.hab*100,"% suitable habitat")
+mysubtitle2 = paste0("predicted ",round(rBM$Fisher_Nmean)," \u00B1 ",round(rBM$Fisher_Nse)," (mean \u00B1 1 SE) fishers after 10 years.")
+mtext(side=3, line=3, at=-0.07, adj=0, cex=1, mytitle)
+mtext(side=3, line=2, at=-0.07, adj=0, cex=0.8, mysubtitle1)
+mtext(side=3, line=1, at=-0.07, adj=0, cex=0.8, mysubtitle2)
+Cairo(file="out/rB_escape_F_bern_M.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
 dev.off()
 
 ###--- For Sim06 in Boreal
-# Bph70_nozero
-rBph70 <- raster_output(sim_out=Boreal_escape_rfsurv, sim_order=6, sim_use=Bph70_nozero,land=w3$land,
-                        TS=23, rExtent=rw3, rFun="sum",sFun="sum")
+rBH <- raster_output(sim_out=Boreal_escape_FEMALE_bern, sim_order=6, sim_use=BH_nozero,land=w3$land,
+                        TS=12, rExtent=rw3, rFun="sum",sFun="sum")
 
-rBph70
-plot(rBph70$raster)
+rBH
+plot(rBH$raster)
 
-length(Bph70_nozero) # 84
+length(BH_nozero) # 84
 # w3$t0
-Cairo(file="outputs/rBph70_title.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
-plot(rBph70$raster,
-     main="Estimated Fisher Abundance over 100 Simulations",
-     sub="Starting with 20 fishers and 70% suitable habitat\npredicted 62.7 \u00B1 4.7 (mean \u00B1 1 SE) fishers after 10 years.")
+Cairo(file="out/rB_escape_F_bern_H.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+plot(rBH$raster, oma=c(2, 3, 5, 2))
+mytitle = "Estimated Fisher Abundance over 100 Simulations"
+mysubtitle1 = paste0("Starting with 20 fishers and ",w2$actual.prop.hab*100,"% suitable habitat")
+mysubtitle2 = paste0("predicted ",round(rBH$Fisher_Nmean)," \u00B1 ",round(rBH$Fisher_Nse)," (mean \u00B1 1 SE) fishers after 10 years.")
+mtext(side=3, line=3, at=-0.07, adj=0, cex=1, mytitle)
+mtext(side=3, line=2, at=-0.07, adj=0, cex=0.8, mysubtitle1)
+mtext(side=3, line=1, at=-0.07, adj=0, cex=0.8, mysubtitle2)
 dev.off()
