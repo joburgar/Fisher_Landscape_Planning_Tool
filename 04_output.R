@@ -38,30 +38,30 @@ lapply(list.of.packages, require, character.only = TRUE)
 # Low, medium and high survival = 0.7, 0.8, 0.9
 
 
-load("out/Boreal_escape_FEMALE_bern.RData")
-w1 <- Boreal_escape_FEMALE_bern[[1]]; w1$actual.prop.hab # 0.52
-w2 <- Boreal_escape_FEMALE_bern[[2]]; w2$actual.prop.hab # 0.65
-w3 <- Boreal_escape_FEMALE_bern[[3]]; w3$actual.prop.hab # 0.69
+load("out/Boreal_escape_FEMALE_cnstntsurv.RData")
+w1 <- Boreal_escape_FEMALE_cnstntsurv[[1]]; w1$actual.prop.hab
+w2 <- Boreal_escape_FEMALE_cnstntsurv[[2]]; w2$actual.prop.hab
+w3 <- Boreal_escape_FEMALE_cnstntsurv[[3]]; w3$actual.prop.hab
 
-load("out/Columbian_escape_FEMALE_bern.RData")
+load("out/Columbian_escape_FEMALE_cnstntsurv.RData")
 
 ###--- plot the simulated landbases
-Cairo(file="out/BCI_Fescape_w1.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
+Cairo(file="out/BCI_Fescape_w1_binom.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
 plot(w1$land, main=c(paste0("Simulated Landbase"),paste0(w1$actual.prop.hab*100,"% Suitable Habitat")))
 points(w1$t0, pch = w1$t0$shape, col = of(agents = w1$t0, var = "color"))
 dev.off()
 
-Cairo(file="out/BCI_Fescape_w2.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
+Cairo(file="out/BCI_Fescape_w2_binom.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
 plot(w2$land, main=c(paste0("Simulated Landbase"),paste0(w2$actual.prop.hab*100,"% Suitable Habitat")))
 points(w2$t0, pch = w2$t0$shape, col = of(agents = w2$t0, var = "color"))
 dev.off()
 
-Cairo(file="out/BCI_Fescape_w3.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
+Cairo(file="out/BCI_Fescape_w3_binom.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
 plot(w3$land, main=c(paste0("Simulated Landbase"),paste0(w3$actual.prop.hab*100,"% Suitable Habitat")))
 points(w3$t0, pch = w3$t0$shape, col = of(agents = w3$t0, var = "color"))
 dev.off()
 
-Cairo(file="out/BCI_Fescape_w3_nofisher.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
+Cairo(file="out/BCI_Fescape_w3_nofisher_binom.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
 plot(w3$land, main=c(paste0("Simulated Landbase"),paste0(w3$actual.prop.hab*100,"% Suitable Habitat")))
 dev.off()
 
@@ -107,7 +107,7 @@ colnames(B_ABM.df) <- colnames(C_ABM.df) <- c("Run","TimeStep","NewCount","Sim")
 a=1
 b=1200
 for(i in 4:6){
-  C_ABM.df[a:b,] <- sim_output(sim_out=Columbian_escape_FEMALE_bern, sim_order=i, numsims=100, yrs_sim=10)
+  C_ABM.df[a:b,] <- sim_output(sim_out=Columbian_escape_FEMALE_cnstntsurv, sim_order=i, numsims=100, yrs_sim=10)
   a=a+1200
   b=b+1200
 }
@@ -117,10 +117,23 @@ for(i in 4:6){
 a=1
 b=1200
 for(i in 4:6){
-  B_ABM.df[a:b,] <- sim_output(sim_out=Boreal_escape_FEMALE_bern, sim_order=i, numsims=100, yrs_sim=10)
+  B_ABM.df[a:b,] <- sim_output(sim_out=Boreal_escape_FEMALE_cnstntsurv, sim_order=i, numsims=100, yrs_sim=10)
   a=a+1200
   b=b+1200
 }
+
+# # Number of adult fishers left at the end of each 10 year run, compared to all fishers
+# for(i in 1:100){
+#   print(c(count(Boreal_escape_FEMALE_cnstntsurv[[5]][[i]][[12]]$breed=="adult"),
+#         length(Boreal_escape_FEMALE_cnstntsurv[[5]][[i]][[12]]$breed)))
+# }
+
+# Number of adult fishers left at the end of each 10 year run, compared to all fishers
+# for(i in 1:100){
+#   print(c(count(Columbian_escape_FEMALE_cnstntsurv[[5]][[i]][[12]]$breed=="adult"),
+#         length(Columbian_escape_FEMALE_cnstntsurv[[5]][[i]][[12]]$breed)))
+# }
+
 
 C_ABM.df$Pop <- "Columbian"
 B_ABM.df$Pop <- "Boreal"
@@ -131,6 +144,10 @@ ABM.df <- rbind(C_ABM.df, B_ABM.df)
 ABM.df <- ABM.df %>% mutate(Prophab = case_when(Sim %in% c("Sim04") ~ w1$actual.prop.hab,
                                                 Sim %in% c("Sim05") ~ w2$actual.prop.hab,
                                                 Sim %in% c("Sim06") ~ w3$actual.prop.hab))
+
+ABM.df <- ABM.df %>% mutate(Survival = case_when(Sim %in% c("Sim04") ~ 0.75,
+                                                Sim %in% c("Sim05") ~ 0.85,
+                                                Sim %in% c("Sim06") ~ 0.95))
 
 ABM.TS.mean <- ABM.df %>% dplyr::select(-Run) %>% pivot_wider(names_from=TimeStep, values_from=NewCount, values_fn=mean)
 ABM.TS.mean$Param <- "Mean"
@@ -167,16 +184,16 @@ sim.TS.plot <- ggplot(data = ABM.TS.use) +
   # geom_errorbar(aes(x = TimeStepNum, y = Mean, ymin=Mean-SE, ymax= Mean+SE),
   #               width=.2, position=position_dodge(0.05)) +
   theme(axis.text.x = element_blank()) +
-  xlab("Time Step in 6 Month Intervals over 10 years") +
+  xlab("Annual Predictions over 10 Years") +
   ylab("Number of Fishers Alive (Mean + 95% Confidence Intervals)")+
-  ggtitle("Simulations of Fisher Populations (100 Runs)\nBy Population and Proportion of Suitable Habitat")+
-  facet_wrap(~Pop+Prophab)
+  ggtitle("Simulations of Fisher Populations (100 Runs)\nBy Population and Survival Rate")+
+  facet_wrap(~Pop+Survival, scales="free")
 
 sim.TS.plot
 
 #- Plot
 
-Cairo(file="out/BCI_sim_escape_FEMALE_bern.TS.plot_CL.PNG",
+Cairo(file="out/BCI_sim_escape_FEMALE_cnstntsurv_CL.PNG",
       type="png",
       width=3000,
       height=2200,
@@ -194,15 +211,15 @@ sim.TS.plot_se <- ggplot(data = ABM.TS.use) +
   geom_errorbar(aes(x = TimeStep, y = Mean, ymin=Mean-SE, ymax= Mean+SE),
                 width=.2, position=position_dodge(0.05)) +
   theme(axis.text.x = element_blank()) +
-  xlab("Time Step in 6 Month Intervals over 10 years") +
+  xlab("Annual Predictions over 10 Years") +
   ylab("Number of Fishers Alive (Mean \u00B1 1 SE)")+ # \u00B1 is ± in unicode
-  ggtitle("Simulations of Fisher Populations (100 Runs)\nBy Population and Proportion of Suitable Habitat")+
-  facet_wrap(~Pop+Prophab)
+  ggtitle("Simulations of Fisher Populations (100 Runs)\nBy Population and Survival Rate")+
+  facet_wrap(~Pop+Survival, scales="free")
 
 sim.TS.plot_se
 
 #- Plot
-Cairo(file="out/BCI_sim_escape_FEMALE_bern.TS.plot_SE.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+Cairo(file="out/BCI_sim_escape_FEMALE_cnstntsurv_SE.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
 sim.TS.plot_se
 dev.off()
 
@@ -233,7 +250,7 @@ CH_nozero <- nozerosims(sim="Sim06", pop="Columbian")
 
 
 length(BL_nozero); length(BM_nozero); length(BH_nozero) # all reach 10 years
-length(CL_nozero); length(CM_nozero); length(CH_nozero) # 1,2,1 reached 10 years
+length(CL_nozero); length(CM_nozero); length(CH_nozero) # 1,0,2 reached 10 years
 
 
 # find coordinates for each fisher at 11 year mark
@@ -302,7 +319,7 @@ raster_output <- function(sim_out=sim_out, sim_order=sim_order, sim_use=sim_use,
 
 ###--- For Sim04 in Boreal
 # lowest suitable habitat
-rBL <- raster_output(sim_out=Boreal_escape_FEMALE_bern, sim_order=4, sim_use=BL_nozero,land=w1$land,
+rBL <- raster_output(sim_out=Boreal_escape_FEMALE_cnstntsurv, sim_order=4, sim_use=BL_nozero,land=w2$land,
                         TS=12, rExtent=rw1, rFun="sum",sFun="sum")
 
 rBL
@@ -310,10 +327,11 @@ plot(rBL$raster)
 
 length(BL_nozero) #
 # w1$t0
-Cairo(file="out/rB_escape_F_bern_L.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+Cairo(file="out/rB_escape_F_cnstntsurv_L.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
 plot(rBL$raster, oma=c(2, 3, 5, 2))
 mytitle = "Estimated Fisher Abundance over 100 Simulations"
-mysubtitle1 = paste0("Starting with 20 fishers and ",w1$actual.prop.hab*100,"% suitable habitat")
+# mysubtitle1 = paste0("Starting with 20 fishers and ",w1$actual.prop.hab*100,"% suitable habitat")
+mysubtitle1 = paste0("Starting with 20 fishers and 75% survival")
 mysubtitle2 = paste0("predicted ",round(rBL$Fisher_Nmean)," \u00B1 ",round(rBL$Fisher_Nse)," (mean \u00B1 1 SE) fishers after 10 years.")
 mtext(side=3, line=3, at=-0.07, adj=0, cex=1, mytitle)
 mtext(side=3, line=2, at=-0.07, adj=0, cex=0.8, mysubtitle1)
@@ -321,7 +339,7 @@ mtext(side=3, line=1, at=-0.07, adj=0, cex=0.8, mysubtitle2)
 dev.off()
 
 ###--- For Sim05 in Boreal
-rBM <- raster_output(sim_out=Boreal_escape_FEMALE_bern, sim_order=5, sim_use=BM_nozero,land=w2$land,
+rBM <- raster_output(sim_out=Boreal_escape_FEMALE_cnstntsurv, sim_order=5, sim_use=BM_nozero,land=w2$land,
                         TS=12, rExtent=rw2, rFun="sum",sFun="sum")
 
 rBM
@@ -329,10 +347,11 @@ plot(rBM$raster)
 
 length(BM_nozero) # 55
 
-Cairo(file="out/rB_escape_F_bern_M.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+Cairo(file="out/rB_escape_F_cnstntsurv_M.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
 plot(rBM$raster, oma=c(2, 3, 5, 2))
 mytitle = "Estimated Fisher Abundance over 100 Simulations"
-mysubtitle1 = paste0("Starting with 20 fishers and ",w2$actual.prop.hab*100,"% suitable habitat")
+# mysubtitle1 = paste0("Starting with 20 fishers and ",w2$actual.prop.hab*100,"% suitable habitat")
+mysubtitle1 = paste0("Starting with 20 fishers and 85% survival")
 mysubtitle2 = paste0("predicted ",round(rBM$Fisher_Nmean)," \u00B1 ",round(rBM$Fisher_Nse)," (mean \u00B1 1 SE) fishers after 10 years.")
 mtext(side=3, line=3, at=-0.07, adj=0, cex=1, mytitle)
 mtext(side=3, line=2, at=-0.07, adj=0, cex=0.8, mysubtitle1)
@@ -340,7 +359,7 @@ mtext(side=3, line=1, at=-0.07, adj=0, cex=0.8, mysubtitle2)
 dev.off()
 
 ###--- For Sim06 in Boreal
-rBH <- raster_output(sim_out=Boreal_escape_FEMALE_bern, sim_order=6, sim_use=BH_nozero,land=w3$land,
+rBH <- raster_output(sim_out=Boreal_escape_FEMALE_cnstntsurv, sim_order=6, sim_use=BH_nozero,land=w2$land,
                         TS=12, rExtent=rw3, rFun="sum",sFun="sum")
 
 rBH
@@ -348,11 +367,75 @@ plot(rBH$raster)
 
 length(BH_nozero) # 84
 # w3$t0
-Cairo(file="out/rB_escape_F_bern_H.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+Cairo(file="out/rB_escape_F_cnstntsurv_H.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
 plot(rBH$raster, oma=c(2, 3, 5, 2))
 mytitle = "Estimated Fisher Abundance over 100 Simulations"
-mysubtitle1 = paste0("Starting with 20 fishers and ",w2$actual.prop.hab*100,"% suitable habitat")
+# mysubtitle1 = paste0("Starting with 20 fishers and ",w2$actual.prop.hab*100,"% suitable habitat")
+mysubtitle1 = paste0("Starting with 20 fishers and 95% survival")
 mysubtitle2 = paste0("predicted ",round(rBH$Fisher_Nmean)," \u00B1 ",round(rBH$Fisher_Nse)," (mean \u00B1 1 SE) fishers after 10 years.")
+mtext(side=3, line=3, at=-0.07, adj=0, cex=1, mytitle)
+mtext(side=3, line=2, at=-0.07, adj=0, cex=0.8, mysubtitle1)
+mtext(side=3, line=1, at=-0.07, adj=0, cex=0.8, mysubtitle2)
+dev.off()
+
+
+################################################################################
+###--- For Sim04 in Columbian
+# lowest suitable habitat
+rCL <- raster_output(sim_out=Columbian_escape_FEMALE_cnstntsurv, sim_order=4, sim_use=CL_nozero,land=w2$land,
+                     TS=12, rExtent=rw1, rFun="sum",sFun="sum")
+
+rCL
+plot(rCL$raster)
+
+length(CL_nozero) #
+# w1$t0
+Cairo(file="out/rC_escape_F_cnstntsurv_L.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+plot(rCL$raster, oma=c(2, 3, 5, 2))
+mytitle = "Estimated Fisher Abundance over 100 Simulations"
+# mysubtitle1 = paste0("Starting with 20 fishers and ",w1$actual.prop.hab*100,"% suitable habitat")
+mysubtitle1 = paste0("Starting with 20 fishers and 75% survival")
+mysubtitle2 = paste0("predicted ",round(rCL$Fisher_Nmean)," \u00B1 ",round(rCL$Fisher_Nse)," (mean \u00B1 1 SE) fishers after 10 years.")
+mtext(side=3, line=3, at=-0.07, adj=0, cex=1, mytitle)
+mtext(side=3, line=2, at=-0.07, adj=0, cex=0.8, mysubtitle1)
+mtext(side=3, line=1, at=-0.07, adj=0, cex=0.8, mysubtitle2)
+dev.off()
+
+###--- For Sim05 in Columbian
+rCM <- raster_output(sim_out=Columbian_escape_FEMALE_cnstntsurv, sim_order=5, sim_use=CM_nozero,land=w2$land,
+                     TS=12, rExtent=rw2, rFun="sum",sFun="sum")
+
+rCM
+plot(rCM$raster)
+
+length(CM_nozero) # 55
+
+Cairo(file="out/rC_escape_F_cnstntsurv_M.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+plot(rCM$raster, oma=c(2, 3, 5, 2))
+mytitle = "Estimated Fisher Abundance over 100 Simulations"
+# mysubtitle1 = paste0("Starting with 20 fishers and ",w2$actual.prop.hab*100,"% suitable habitat")
+mysubtitle1 = paste0("Starting with 20 fishers and 85% survival")
+mysubtitle2 = paste0("predicted ",round(rCM$Fisher_Nmean)," \u00B1 ",round(rCM$Fisher_Nse)," (mean \u00B1 1 SE) fishers after 10 years.")
+mtext(side=3, line=3, at=-0.07, adj=0, cex=1, mytitle)
+mtext(side=3, line=2, at=-0.07, adj=0, cex=0.8, mysubtitle1)
+mtext(side=3, line=1, at=-0.07, adj=0, cex=0.8, mysubtitle2)
+dev.off()
+
+###--- For Sim06 in Columbian
+rCH <- raster_output(sim_out=Columbian_escape_FEMALE_cnstntsurv, sim_order=6, sim_use=CH_nozero,land=w2$land,
+                     TS=12, rExtent=rw2, rFun="sum",sFun="sum")
+
+rCH
+plot(rCH$raster)
+
+length(CH_nozero) # 84
+# w3$t0
+Cairo(file="out/rC_escape_F_cnstntsurv_H.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+plot(rCH$raster, oma=c(2, 3, 5, 2))
+mytitle = "Estimated Fisher Abundance over 100 Simulations"
+# mysubtitle1 = paste0("Starting with 20 fishers and ",w2$actual.prop.hab*100,"% suitable habitat")
+mysubtitle1 = paste0("Starting with 20 fishers and 95% survival")
+mysubtitle2 = paste0("predicted ",round(rCH$Fisher_Nmean)," \u00B1 ",round(rCH$Fisher_Nse)," (mean \u00B1 1 SE) fishers after 10 years.")
 mtext(side=3, line=3, at=-0.07, adj=0, cex=1, mytitle)
 mtext(side=3, line=2, at=-0.07, adj=0, cex=0.8, mysubtitle1)
 mtext(side=3, line=1, at=-0.07, adj=0, cex=0.8, mysubtitle2)
