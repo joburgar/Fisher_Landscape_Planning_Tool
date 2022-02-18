@@ -55,7 +55,7 @@ setup_plot <- function(sim_out=sim_out, name_out=name_out){
 
 # grab output from one set of 100 simulations
 sim_output <- function(sim_out=sim_out, sim=sim, numsims=numsims, yrs_sim=yrs_sim){
-  # sim_out=Boreal_escape_FEMALE_binom; sim=4; numsims=100; yrs_sim=10
+  # sim_out=Boreal_escape_35FEMALE; sim=4; numsims=100; yrs_sim=10
   num.runs <- yrs_sim + 2
 
   ABM.df <- as.data.frame(array(NA,c(numsims,num.runs)))
@@ -67,7 +67,7 @@ sim_output <- function(sim_out=sim_out, sim=sim, numsims=numsims, yrs_sim=yrs_si
       if(length(tmp)==0){
         ABM.df[ns,ts] <- 0
           } else if(tmp!=0){
-            ABM.df[ns,ts] <-count(tmp$breed=="adult")
+            ABM.df[ns,ts] <-as.integer(count(tmp$breed=="adult" & tmp$disperse=="E"))
             } else {
               ABM.df[ns,ts] <- 0
             }
