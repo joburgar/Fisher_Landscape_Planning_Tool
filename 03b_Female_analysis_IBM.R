@@ -281,35 +281,18 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
 }
 
 
-w1 <- set_up_world_FEMALE(nFemales=20, maxAgeFemale=9,xlim=c(1,10), ylim=c(1,10), prophab=0.5)
-w1
-
-# test <- FEMALE_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                 # import world
-#                                          repro_estimates=repro.CI, Fpop="B",    # reproduction
-#                                          surv_estimates=rf_surv_estimates,      # survive
-#                                          maxAgeFemale=9,                        # survive
-#                                          dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
-#                                          yrs.to.run=10)
-
 ################################################################################
 # Create 3 sets of 100 simulations - vary the proportion of habitat and survival
 # Low, medium and high habitat = 0.5, 0.6, and 0.7 (same world set up, get actual values)
 # Low, medium and high survival = 0.7, 0.8, 0.9
 # Run 100 simulations for each, save as objects
 # Calculate mean # of animals per cell at 10 years for each simulation to produce a heat map
-
-
-FEMALE_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                # import world
-                                 repro_estimates=repro.CI, Fpop="B",    # reproduction
-                                 surv_estimates=rf_surv_estimates,      # survive
-                                 maxAgeFemale=9,                        # survive
-                                 dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
-                                 yrs.to.run=10)
-
 ################################################################################
+
 ###--- RUN FOR BOREAL
 ###--- Run with low habitat (prop hab ~ 0.5)
-w1 <- set_up_world_FEMALE(nFemales=20, maxAgeFemale=9, xlim=c(1,10), ylim=c(1,10), prophab=0.5)
+# have 35 'core clusters' of female territories
+w1 <- set_up_world_FEMALE(nFemales=35, maxAgeFemale=9, xlim=c(1,10), ylim=c(1,10), prophab=0.5)
 
 B.w1.FEMALE.sim100 <- vector('list',100)
 for(i in 1:100){
@@ -322,7 +305,7 @@ for(i in 1:100){
 }
 
 ###--- Run with medium habitat (prop hab ~ 0.6)
-w2 <- set_up_world_FEMALE(nFemales=20, maxAgeFemale=9, xlim=c(1,10), ylim=c(1,10), prophab=0.6)
+w2 <- set_up_world_FEMALE(nFemales=35, maxAgeFemale=9, xlim=c(1,10), ylim=c(1,10), prophab=0.6)
 
 
 B.w2.FEMALE.sim100 <- vector('list',100)
@@ -338,7 +321,7 @@ for(i in 1:100){
 
 
 ###--- Run with high habitat (prop hab ~ 0.7)
-w3 <- set_up_world_FEMALE(nFemales=20, maxAgeFemale=9, xlim=c(1,10), ylim=c(1,10), prophab=0.7)
+w3 <- set_up_world_FEMALE(nFemales=35, maxAgeFemale=9, xlim=c(1,10), ylim=c(1,10), prophab=0.7)
 
 start_time <- Sys.time()
 B.w3.FEMALE.sim100 <- vector('list',100)
@@ -353,11 +336,11 @@ for(i in 1:100){
 
 end_time <- Sys.time()
 
-# end_time - start_time
+# end_time - start_time # takes ~ 3 min for each 100 simulation run
 
-Boreal_escape_FEMALE_binom <- list(w1, w2, w3,B.w1.FEMALE.sim100,B.w2.FEMALE.sim100,B.w3.FEMALE.sim100)
+Boreal_escape_35FEMALE <- list(w1, w2, w3,B.w1.FEMALE.sim100,B.w2.FEMALE.sim100,B.w3.FEMALE.sim100)
 
-save(Boreal_escape_FEMALE_binom, file="out/Boreal_escape_FEMALE_binom.RData")
+save(Boreal_escape_35FEMALE, file="out/Boreal_escape_35FEMALE.RData")
 
 ################################################################################
 ###--- RUN FOR CENTRAL INTERIOR / COLUMBIAN
@@ -397,9 +380,9 @@ for(i in 1:100){
 }
 
 
-Columbian_escape_FEMALE_binom <- list(w1, w2, w3,C.w1.FEMALE.sim100,C.w2.FEMALE.sim100,C.w3.FEMALE.sim100)
+Columbian_escape_35FEMALE <- list(w1, w2, w3,C.w1.FEMALE.sim100,C.w2.FEMALE.sim100,C.w3.FEMALE.sim100)
 
-save(Columbian_escape_FEMALE_binom, file="out/Columbian_escape_FEMALE_binom.RData")
+save(Columbian_escape_35FEMALE, file="out/Columbian_escape_35FEMALE.RData")
 
 
 ################################################################################
