@@ -345,13 +345,6 @@ w1
 # Run 100 simulations for each, save as objects
 # Calculate mean # of animals per cell at 10 years for each simulation to produce a heat map
 
-rf_surv_estimates
-
-
-# Create a figure with mean number of animals (+/- SE) for each time step and graph for each simulation
-# test.surv <- rf_surv_estimates
-# test.surv$L95CL <- test.surv$U95CL <- test.surv$Surv
-# test.surv$L95CL <- test.surv$U95CL <- 0.9
 
 FEMALE_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                # import world
                                  repro_estimates=repro.CI, Fpop="B",    # reproduction
@@ -409,12 +402,12 @@ end_time <- Sys.time()
 
 # end_time - start_time
 
-Boreal_escape_FEMALE_bern <- list(w1, w2, w3,B.w1.FEMALE.sim100,B.w2.FEMALE.sim100,B.w3.FEMALE.sim100)
+Boreal_escape_FEMALE_binom <- list(w1, w2, w3,B.w1.FEMALE.sim100,B.w2.FEMALE.sim100,B.w3.FEMALE.sim100)
 
-save(Boreal_escape_FEMALE, file="outputs/Boreal_escape_FEMALE.RData")
+save(Boreal_escape_FEMALE_binom, file="out/Boreal_escape_FEMALE_binom.RData")
 
 ################################################################################
-###--- RUN FOR CENTRAL INTERIOR
+###--- RUN FOR CENTRAL INTERIOR / COLUMBIAN
 # use the same worlds as with Boreal
 
 C.w1.FEMALE.sim100 <- vector('list',100)
@@ -451,6 +444,91 @@ for(i in 1:100){
 }
 
 
-Columbian_escape_FEMALE_bern <- list(w1, w2, w3,C.w1.FEMALE.sim100,C.w2.FEMALE.sim100,C.w3.FEMALE.sim100)
+Columbian_escape_FEMALE_binom <- list(w1, w2, w3,C.w1.FEMALE.sim100,C.w2.FEMALE.sim100,C.w3.FEMALE.sim100)
 
-save(Columbian_escape_FEMALE, file="outputs/Columbian_escape_FEMALE.RData")
+save(Columbian_escape_FEMALE_binom, file="out/Columbian_escape_FEMALE_binom.RData")
+
+
+################################################################################
+###--- Test sensitivity of model changing just surv and then just repro (using prop hab ~ 0.6 or w2)
+# w2 <- set_up_world_FEMALE(nFemales=20, maxAgeFemale=9, xlim=c(1,10), ylim=c(1,10), prophab=0.6)
+
+rf_surv_estimates
+
+test.surv <- rf_surv_estimates
+test.surv$L95CL <- test.surv$U95CL <- test.surv$Surv
+
+# 75% survival
+test.surv$L95CL <- test.surv$U95CL <- 0.75
+B.w2.FEMALE.75surv.sim100 <- vector('list',100)
+for(i in 1:100){
+  B.w2.FEMALE.75surv.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=w2$land, t0=w2$t0,                # import world
+                                                              repro_estimates=repro.CI, Fpop="B",    # reproduction
+                                                              surv_estimates=test.surv,      # survive
+                                                              maxAgeFemale=9,                        # survive
+                                                              dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
+                                                              yrs.to.run=10)                                             # number of years to run simulation post set up
+}
+
+
+C.w2.FEMALE.75surv.sim100 <- vector('list',100)
+for(i in 1:100){
+  C.w2.FEMALE.75surv.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=w2$land, t0=w2$t0,                # import world
+                                                                     repro_estimates=repro.CI, Fpop="C",    # reproduction
+                                                                     surv_estimates=test.surv,      # survive
+                                                                     maxAgeFemale=9,                        # survive
+                                                                     dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
+                                                                     yrs.to.run=10)                                             # number of years to run simulation post set up
+}
+
+# 85% survival
+test.surv$L95CL <- test.surv$U95CL <- 0.85
+B.w2.FEMALE.85surv.sim100 <- vector('list',100)
+for(i in 1:100){
+  B.w2.FEMALE.85surv.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=w2$land, t0=w2$t0,                # import world
+                                                                     repro_estimates=repro.CI, Fpop="B",    # reproduction
+                                                                     surv_estimates=test.surv,      # survive
+                                                                     maxAgeFemale=9,                        # survive
+                                                                     dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
+                                                                     yrs.to.run=10)                                             # number of years to run simulation post set up
+}
+
+
+C.w2.FEMALE.85surv.sim100 <- vector('list',100)
+for(i in 1:100){
+  C.w2.FEMALE.85surv.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=w2$land, t0=w2$t0,                # import world
+                                                                     repro_estimates=repro.CI, Fpop="C",    # reproduction
+                                                                     surv_estimates=test.surv,      # survive
+                                                                     maxAgeFemale=9,                        # survive
+                                                                     dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
+                                                                     yrs.to.run=10)                                             # number of years to run simulation post set up
+}
+
+# 95% survival
+test.surv$L95CL <- test.surv$U95CL <- 0.95
+B.w2.FEMALE.95surv.sim100 <- vector('list',100)
+for(i in 1:100){
+  B.w2.FEMALE.95surv.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=w2$land, t0=w2$t0,                # import world
+                                                                     repro_estimates=repro.CI, Fpop="B",    # reproduction
+                                                                     surv_estimates=test.surv,      # survive
+                                                                     maxAgeFemale=9,                        # survive
+                                                                     dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
+                                                                     yrs.to.run=10)                                             # number of years to run simulation post set up
+}
+
+
+C.w2.FEMALE.95surv.sim100 <- vector('list',100)
+for(i in 1:100){
+  C.w2.FEMALE.95surv.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=w2$land, t0=w2$t0,                # import world
+                                                                     repro_estimates=repro.CI, Fpop="C",    # reproduction
+                                                                     surv_estimates=test.surv,      # survive
+                                                                     maxAgeFemale=9,                        # survive
+                                                                     dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
+                                                                     yrs.to.run=10)                                             # number of years to run simulation post set up
+}
+
+Columbian_escape_FEMALE_cnstntsurv <- list(w1, w2, w3,C.w2.FEMALE.75surv.sim100,C.w2.FEMALE.85surv.sim100,C.w2.FEMALE.95surv.sim100)
+save(Columbian_escape_FEMALE_cnstntsurv, file="out/Columbian_escape_FEMALE_cnstntsurv.RData")
+
+Boreal_escape_FEMALE_cnstntsurv <- list(w1, w2, w3,B.w2.FEMALE.75surv.sim100,B.w2.FEMALE.85surv.sim100,B.w2.FEMALE.95surv.sim100)
+save(Boreal_escape_FEMALE_cnstntsurv, file="out/Boreal_escape_FEMALE_cnstntsurv.RData")
