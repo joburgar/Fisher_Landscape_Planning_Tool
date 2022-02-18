@@ -232,7 +232,7 @@ heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yr
   }
 
   r_stack = stack(r_list, r_zeroes_list)
-  r_stackApply <- stackApply(r_stack, indices=1, fun=sFun)
+  r_stackApply <- stackApply(r_stack, indices=1, fun=sum)
 
   writeRaster(r_stackApply, file=paste0("out/rSim_",name_out,"_",sim_out[[sim_order-3]]$actual.prop.hab*100,"hab.tif"), bylayer=TRUE, overwrite=TRUE)
 
@@ -262,23 +262,23 @@ heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yr
 
 ###--- load simulations (list of 3 per population from analysis script)
 
-load("out/Columbian_escape_FEMALE_binom.RData")
-load("out/Boreal_escape_FEMALE_binom.RData")
+load("out/Columbian_escape_35FEMALE.RData")
+load("out/Boreal_escape_35FEMALE.RData")
 
-BC_escape_binom <- ABM_fig(Bsim_out=Boreal_escape_FEMALE_binom, Csim_out=Columbian_escape_FEMALE_binom)
+BC_35F_escape <- ABM_fig(Bsim_out=Boreal_escape_35FEMALE, Csim_out=Columbian_escape_35FEMALE)
 # warning don't seem to matter (still provides correct value for female fisher - it's from sim_output function)
 
-BC_escape_binom$ABM.TS.df
-BC_escape_binom$sim.TS.plot
-BC_escape_binom$sim.TS.plot_se
+BC_35F_escape$ABM.TS.df
+BC_35F_escape$sim.TS.plot
+BC_35F_escape$sim.TS.plot_se
 
-Cairo(file="out/BC_AdultFemale_escape_prophab_CI.PNG",
+Cairo(file="out/BC_AdultFemale_35escape_CI.PNG",
       type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
-BC_escape_binom$sim.TS.plot
+BC_35F_escape$sim.TS.plot
 dev.off()
 
-Cairo(file="out/BC_AdultFemale_escape_prophab_SE.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
-BC_escape_binom$sim.TS.plot_se
+Cairo(file="out/BC_AdultFemale_35escape_SE.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+BC_35F_escape$sim.TS.plot_se
 dev.off()
 
 ################################################################################
@@ -286,11 +286,11 @@ dev.off()
 # For the Boreal population
 Bheatmap_list = list()
 for(i in 4:6){
-  Bheatmap_list[[i]] <- heatmap_output(sim_out=Boreal_escape_FEMALE_binom, sim_order=i, numsims=100, yrs_sim=10, TS=12, name_out="BFA_escape")
+  Bheatmap_list[[i]] <- heatmap_output(sim_out=Boreal_escape_35FEMALE, sim_order=i, numsims=100, yrs_sim=10, TS=12, name_out="BFA_35escape")
 }
 
 # For the Columbian population (error message as no fishers left alive in second scenario)
 Cheatmap_list = list()
 for(i in 4:6){
-  Cheatmap_list[[i]] <- heatmap_output(sim_out=Columbian_escape_FEMALE_binom, sim_order=i, numsims=100, yrs_sim=10, TS=12, name_out="CFA_escape")
+  Cheatmap_list[[i]] <- heatmap_output(sim_out=Columbian_escape_35FEMALE, sim_order=i, numsims=100, yrs_sim=10, TS=12, name_out="CFA_35escape")
 }
