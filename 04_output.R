@@ -37,12 +37,12 @@
 # Low, medium and high survival = 0.7, 0.8, 0.9
 
 
-load("out/Boreal_escape_FEMALE_bern.RData")
+load("outputs/Boreal_escape_FEMALE_bern.RData")
 w1 <- Boreal_escape_FEMALE_bern[[1]]; w1$actual.prop.hab # 0.52
 w2 <- Boreal_escape_FEMALE_bern[[2]]; w2$actual.prop.hab # 0.65
 w3 <- Boreal_escape_FEMALE_bern[[3]]; w3$actual.prop.hab # 0.69
 
-load("out/Columbian_escape_FEMALE_bern.RData")
+load("outputs/Columbian_escape_FEMALE_bern.RData")
 
 ###--- plot the simulated landbases
 Cairo(file="outputs/BCI_Fescape_w1.PNG",type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
@@ -175,7 +175,7 @@ sim.TS.plot
 
 #- Plot
 
-Cairo(file="out/BCI_sim_escape_FEMALE_bern.TS.plot_CL.PNG",
+Cairo(file="outputs/BCI_sim_escape_FEMALE_bern.TS.plot_CL.PNG",
       type="png",
       width=3000,
       height=2200,
@@ -201,7 +201,7 @@ sim.TS.plot_se <- ggplot(data = ABM.TS.use) +
 sim.TS.plot_se
 
 #- Plot
-Cairo(file="out/BCI_sim_escape_FEMALE_bern.TS.plot_SE.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+Cairo(file="outputs/BCI_sim_escape_FEMALE_bern.TS.plot_SE.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
 sim.TS.plot_se
 dev.off()
 
@@ -316,7 +316,7 @@ mysubtitle2 = paste0("predicted ",round(rBL$Fisher_Nmean)," \u00B1 ",round(rBL$F
 mtext(side=3, line=3, at=-0.07, adj=0, cex=1, mytitle)
 mtext(side=3, line=2, at=-0.07, adj=0, cex=0.8, mysubtitle1)
 mtext(side=3, line=1, at=-0.07, adj=0, cex=0.8, mysubtitle2)
-Cairo(file="out/rB_escape_F_bern_L.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+Cairo(file="outputs/rB_escape_F_bern_L.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
 dev.off()
 
 ###--- For Sim05 in Boreal
@@ -335,7 +335,7 @@ mysubtitle2 = paste0("predicted ",round(rBM$Fisher_Nmean)," \u00B1 ",round(rBM$F
 mtext(side=3, line=3, at=-0.07, adj=0, cex=1, mytitle)
 mtext(side=3, line=2, at=-0.07, adj=0, cex=0.8, mysubtitle1)
 mtext(side=3, line=1, at=-0.07, adj=0, cex=0.8, mysubtitle2)
-Cairo(file="out/rB_escape_F_bern_M.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+Cairo(file="outputs/rB_escape_F_bern_M.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
 dev.off()
 
 ###--- For Sim06 in Boreal
@@ -347,7 +347,7 @@ plot(rBH$raster)
 
 length(BH_nozero) # 84
 # w3$t0
-Cairo(file="out/rB_escape_F_bern_H.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+Cairo(file="outputs/rB_escape_F_bern_H.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
 plot(rBH$raster, oma=c(2, 3, 5, 2))
 mytitle = "Estimated Fisher Abundance over 100 Simulations"
 mysubtitle1 = paste0("Starting with 20 fishers and ",w2$actual.prop.hab*100,"% suitable habitat")
