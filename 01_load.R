@@ -24,13 +24,17 @@ tz = Sys.timezone() # specify timezone in BC
 
 # Load Packages
 list.of.packages <- c("tidyverse", "lubridate","chron","bcdata", "bcmaps","sf", "rgdal",
-                      "Cairo","OpenStreetMap", "ggmap","PNWColors","units","nngeo")
+                      "Cairo","OpenStreetMap", "ggmap","PNWColors","units","nngeo","raster")
 
 # Check you have them and load them
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 lapply(list.of.packages, require, character.only = TRUE)
 #####################################################################################
+
+###--- Area of Interest (AOI) is larger than Study Area
+# keep in mind that WGS84 lat/long espg = 4326; BC Albers espg = 3005; NAD83 / UTM zone 10N espg = 26910
+
 
 ###--- function to retrieve geodata from BCGW
 droplevels.sfc = function(x, except, exclude, ...) x
@@ -46,7 +50,7 @@ retrieve_geodata_aoi <- function (ID=ID){
   return(aoi.geodata)
 }
 
-
+#####################################################################################
 ###--- function to retrieve data from downloaded gdb or shapefile
 # Read the feature class
 
@@ -61,88 +65,14 @@ retrieve_gdb_shp_aoi <- function (dsn=dsn, layer=layer){
 }
 
 
-
-#####################################################################################
-###--- NO NEED TO RUN THIS NEXT SECTION, INSTEAD JUST IMPORT aoi.Fpop shapefile
-# aoi <- st_read(dsn=paste0(getwd(),"/data"), layer="FHE_two_pops")
-#
-# ggplot()+
-#   geom_sf(data=aoi, aes(fill=Hab_zone))
-#
-# aoi <- aoi %>%
-#   summarise(across(geometry, ~ st_union(.))) %>%
-#   summarise(across(geometry, ~ st_combine(.)))
-#
-# ggplot()+
-#   geom_sf(data=aoi, fill="black")
-
-###--- Use TSA data to differentiate the two fisher populations
-# May need to break the Mackenzie TSA into 2?
-
-# Timber Supply Area
-# bcdc_search("Timber Supply Area", res_format = "wms")
-# 1: FADM - Timber Supply Area (TSA) (multiple, wms, kml)
-# ID: 8daa29da-d7f4-401c-83ae-d962e3a28980
-# Name: fadm-timber-supply-area-tsa
-# aoi.TSA <- retrieve_geodata_aoi(ID = "8daa29da-d7f4-401c-83ae-d962e3a28980")
-# ggplot()+
-#   geom_sf(data=aoi.TSA, aes(fill=TSA_NUMBER_DESCRIPTION))
-# unique(aoi.TSA$TSA_NUMBER_DESCRIPTION) # 25 unique TSAs
-#
-# ggplot()+
-#   geom_sf(data=aoi.TSA %>% filter(TSA_NUMBER_DESCRIPTION=="MacKenzie TSA"), aes(fill=TSA_NUMBER_DESCRIPTION))
-#
-# ggplot()+
-#   geom_sf(data=aoi.TSA %>% filter(TSA_NUMBER_DESCRIPTION %in% c("Cassiar TSA",
-#                                                                 "Fort St. John TSA",
-#                                                                 "Fort Nelson TSA",
-#                                                                 "Dawson Creek TSA")),aes(fill=TSA_NUMBER_DESCRIPTION))
-#
-# aoi.TSA$Fpop <- "Central Interior"
-# aoi.TSA$Fpop <- as.factor(case_when(aoi.TSA$TSA_NUMBER_DESCRIPTION %in% c("Cassiar TSA",
-#                                                                 "Fort St. John TSA",
-#                                                                 "Fort Nelson TSA",
-#                                                                 "Dawson Creek TSA") ~ "Boreal",TRUE ~ as.character(aoi.TSA$Fpop)))
-#
-# ggplot()+
-#   geom_sf(data=aoi.TSA, aes(fill=Fpop))
-#
-# aoi.Fpop <- aoi.TSA %>%
-#   group_by(Fpop) %>%
-#   summarize(geometry = st_union(geometry))
-#
-# aoi.Fpop
-# ggplot()+
-#   geom_sf(data=aoi.Fpop, aes(fill=Fpop))
-
-aoi <- aoi.Fpop <- st_read(dsn=paste0(getwd(),"/data"), layer="aoi.Fpop")
-
-ggplot()+
-  geom_sf(data=aoi, aes(fill=Fpop))
-
-
-# Natural Region District
-# bcdc_search("Natural Region District", res_format = "wms")
-# 1: Natural Resource (NR) Districts (multiple, wms)
-# ID: 0bc73892-e41f-41d0-8d8e-828c16139337
-# Name: natural-resource-nr-district
-aoi.NRD <- retrieve_geodata_aoi(ID = "0bc73892-e41f-41d0-8d8e-828c16139337")
-unique(aoi.NRD$DISTRICT_NAME) # 15 unique Natural Resource Districts
-
-# remove the slivers of area, only map polygons with >10km2
-ggplot()+
-  geom_sf(data=aoi.NRD %>% filter(Area_km2>10), aes(fill=DISTRICT_NAME))
-
-# want to create a fishnet using the aoi extent and have as 30 km2 hexagons, and then join covariates to each cell
-# use 30km2 for now but recognize that some data may be at the smaller scale, and will need to be transformed to fit within the female territory
-
+################################################################################
 ###--- function to create study grid (i.e., female fisher sized pixels)
 # note that this function creates a hexagon grid (use square=TRUE for squares)
 # this function originally dissolved multipolygon into single polygon,
 # assumes original shapefile is the entire aoi,
 # for this exercise, commented out the st_union and st_combine code to keep the two Fisher populations distinct
 
-create_study_grid <- function (dsn=dsn, layer=layer, square=FALSE, cellsize=cellsize, output=output){
+create_study_grid <- function (dsn=dsn, layer=layer, square=TRUE, cellsize=cellsize, output=output){
 
   aoi <- st_read(dsn=dsn, layer=layer) %>% st_transform(crs = 3005) # ensures poly is in Albers
   aoi <- aoi %>%
@@ -162,55 +92,104 @@ create_study_grid <- function (dsn=dsn, layer=layer, square=FALSE, cellsize=cell
   return(list(aoi_utm, aoi_grid, sa_points))
 }
 
+################################################################################
+#- function to group traps based on grid cell
+create_grid <- function (input=input, cellsize=cellsize){
+  # input=traps.sf
+  # cellsize=5000
+  aoi_utm <- st_transform(input, crs=26910) # to have in metres for specifying grid cell size
+  aoi_utm$TrapNum <- rownames(aoi_utm)
+  aoi_grid <- st_make_grid(st_bbox(aoi_utm), what="polygons", cellsize=cellsize, square=TRUE) #  grid for entire AOI (rectangle)
+
+  # subset grid to just cells of interest
+  aoi_grid <- aoi_grid[aoi_utm]
+  # To sf and add grid ID
+  fishnet_grid_sf = st_sf(aoi_grid) %>%
+    # add grid ID
+    mutate(grid_id = 1:length(lengths(aoi_grid)))
+
+  fishnet_grid_sf$Area_km2 <- st_area(fishnet_grid_sf)*1e-6
+  fishnet_grid_sf <- drop_units(fishnet_grid_sf)
+  fishnet_grid_sf %>% summarise(sum(Area_km2)) %>% st_drop_geometry() #714.5 km2 study area each cell is 21.65 km2
+
+  tg.dist <- st_nn(aoi_utm, fishnet_grid_sf, k=1, returnDist = T)
+  aoi_utm$Trap_Grp <- unlist(tg.dist$nn)
+
+  return(list(aoi_utm=aoi_utm, fishnet_grid_sf=fishnet_grid_sf))
+}
+
+#####################################################################################
+###--- NO NEED TO RUN THIS NEXT SECTION
+###--- USED THIS TO CREATE TMP AOI SHAPEFILE FOR EXAMPLE SCENARIOS
+
+# Natural Region District
+# bcdc_search("Natural Region District", res_format = "wms")
+# 1: Natural Resource (NR) Districts (multiple, wms)
+# ID: 0bc73892-e41f-41d0-8d8e-828c16139337
+# Name: natural-resource-nr-district
+# aoi.NRD <- retrieve_geodata_aoi(ID = "0bc73892-e41f-41d0-8d8e-828c16139337")
+# unique(aoi.NRD$DISTRICT_NAME) # 15 unique Natural Resource Districts
+#
+# # remove the slivers of area, only map polygons with >10km2
+# ggplot()+
+#   geom_sf(data=aoi.NRD %>% filter(Area_km2>10), aes(fill=DISTRICT_NAME))
+#
+# aoi.QUESNEL <- aoi.NRD %>% filter(DISTRICT_NAME=="Quesnel Natural Resource District")
+#
+# ggplot()+
+#   geom_sf(data=aoi.QUESNEL %>% filter(Area_km2>10), aes(fill=DISTRICT_NAME))
+# aoi.QUESNEL$Area_km2
+#
+# # want to create a fishnet using the aoi extent and have as 30 km2 cells, and then join covariates to each cell
+# # use 30km2 for now but recognize that some data may be at the smaller scale, and will need to be transformed to fit within the female territory
+#
+# tmp <- create_grid(input=aoi.QUESNEL, cellsize=5500)
+# ggplot(tmp$fishnet_grid_sf)+
+#   geom_sf(data=tmp$fishnet_grid_sf)+
+#   geom_sf_label(aes(label=grid_id))
+#
+#
+# tmp2 <- tmp$fishnet_grid_sf %>% filter(grid_id %in% seq_len(69))
+# tmp3 <- tmp$fishnet_grid_sf %>%
+#   filter(grid_id %in% c(3,4,5,6,11,12,13,14,24,25,26,27,40,41,42,43))
+#
+# tmp3$grid_id <- rownames(tmp3)
+#
+# ggplot(tmp3)+
+#   geom_sf(data=tmp3)+
+#   geom_sf_label(aes(label=grid_id))
+#
+# aoi <- tmp3
+# st_write(aoi, dsn=paste0(getwd(),"/data/aoi_QTSA_example.shp"), delete_layer=TRUE)
 #####################################################################################
 
-###--- Area of Interest (AOI) is larger than Study Area
-# keep in mind that WGS84 lat/long espg = 4326; BC Albers espg = 3005; NAD83 / UTM zone 10N espg = 26910
+###--- NOW BRING IN COVARIATES
+aoi <- st_read(dsn=paste0(getwd(),"/data"), layer="aoi_QTSA_example")
+aoi.Fpop <- st_read(dsn=paste0(getwd(),"/data"), layer="aoi.Fpop")
+aoi.Fpop$Fpop <- case_when(aoi.Fpop$Fpop=="Central Interior" ~ "Columbian",
+                           TRUE ~ as.character(aoi.Fpop$Fpop))
 
-aoi$Fpop <- factor(aoi$Fpop,levels = c("Boreal", "Central Interior"))
-aoi_grid <- st_read(dsn="./out", layer="aoi_grid") %>% st_transform(crs = 3005)
+aoi <- st_join(aoi, aoi.Fpop %>% st_transform(crs=26910))
 
-Fpop_PGTSA <- ggplot()+
-  geom_sf(data=aoi.Fpop,aes(fill=Fpop))+
-  scale_fill_manual(values = rev(pnw_palette("Lake",2)))+
-  theme(legend.title = element_blank()) +
-  geom_sf(data=aoi_grid, col="slategrey")
-
-Cairo(file="out/Fpop_PGTSA.PNG",
-      type="png",
-      width=3600,
-      height=2400,
-      pointsize=10,
-      bg="white",
-      dpi=300)
-Fpop_PGTSA
-dev.off()
-
-Cairo(file="out/Fpop.PNG",type="png",width=3600,height=2400,pointsize=10,bg="white",dpi=300)
 ggplot()+
-  geom_sf(data=aoi.Fpop,aes(fill=Fpop))+
-  scale_fill_manual(values = rev(pnw_palette("Lake",2)))+
-  theme(legend.title = element_blank())
-dev.off()
+  geom_sf(data=aoi, aes(fill=Fpop))
+
+
+################################################################################
+###--- UPDATE - 2022-02-23 ---###
+###- PICK A SMALL AOI AS PROOF OF CONCEPT (4 x 4 fisher cells)
+###- USE SQUARE CELLS TO EMULATE IBM
+###- USE BASIC VRI CONDITION FOR GOOD HABITAT
+
 # now reduce aoi to proof-of-concept study area (same as grid above - Prince George TSA)
 # female fisher home range = 5.5 * 5.5 = 30 km2
 # the CLUS model (Kyle Lochhead and Tyler Muhly) analyses at ha pixel size and sums up to fisher home range
 # will want to go even smaller, but for now try the Prince George TSA as the study area (aoi)
 
 # takes too long for such a huge study area
-# for needs of a small test model, choose a portion of a TSA and go from there
-# using the Prince George TSA - Block E
-# create 100 m square pixels - keep in mind that this means 3025 square pixels in a female home range
-# start with fisher sized hexagon pixels
-
-list.files("./data")
-PGTSA_BLCKE <- create_study_grid(dsn="./data", layer="aoi_PGTSA_BLCKE", cellsize=100, square=TRUE, output="PGTSA_BLCKE") # female fisher hexagon
-aoi <- PGTSA_BLCKE[[1]]
-aoi_grid <- PGTSA_BLCKE[[2]]
-sa_points <- PGTSA_BLCKE[[3]]
-
-# housekeeping - remove large files
-rm(PGTSA_BLCKE, aoi.NRD, aoi.Fpop)
+# for needs of a small test model, choose a portion of a RDA and go from there
+# eventually create 100 m square pixels - keep in mind that this means 3025 square pixels in a female home range
+# start with fisher sized square pixels
 
 ###--- LOAD COVARIATES
 # Use cached data, downloaded through the bcgeodata warehouse website for big files that are updated annually
@@ -229,13 +208,6 @@ aoi <- aoi %>% st_transform(crs=3005)
 aoi.TSA <- retrieve_gdb_shp_aoi(dsn="./data/FADM_TSA", layer="FADM_TSA_polygon")
 aoi.TSA %>% group_by(TSNMBRDSCR) %>% summarise(sum(Area_km2)) %>% st_drop_geometry()
 
-# Timber Harvesting Landbase
-fgdb = "./data/tsa_thlb.gdb"
-# List all feature classes in a file geodatabase
-# Read the feature class
-st_layers(fgdb)
-aoi.THBL <- retrieve_gdb_shp_aoi(dsn=fgdb, layer="tsa_thlb")
-
 # VRI
 # https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry/forestry/stewardship/forest-analysis-inventory/data-management/standards/vegcomp_toc_data_dictionaryv5_2019.pdf
 # https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry/forestry/stewardship/forest-analysis-inventory/data-management/standards/vegcomp_poly_rank1_data_dictionaryv5_2019.pdf
@@ -249,157 +221,42 @@ aoi.THBL <- retrieve_gdb_shp_aoi(dsn=fgdb, layer="tsa_thlb")
 # bcdc_search("VRI", res_format = "wms")
 aoi.VRI <- retrieve_geodata_aoi(ID = "2ebb35d8-c82f-4a17-9c96-612ac3532d55")
 
-head(aoi.VRI)
-aoi.VRI$PROJ_HEIGHT_1_cat <- as.factor(ifelse(aoi.VRI$PROJ_HEIGHT_1 < 10, "H0-10",
-                                              ifelse(aoi.VRI$PROJ_HEIGHT_1 < 20, "H10-20",
-                                                     ifelse(aoi.VRI$PROJ_HEIGHT_1 < 30, "H20-30",
-                                                            ifelse(aoi.VRI$PROJ_HEIGHT_1 < 40, "H30-40",
-                                                                   ifelse(aoi.VRI$PROJ_HEIGHT_1 < 50, "H40-50", "H50+"))))))# remove NAs
-aoi.VRI <- aoi.VRI[complete.cases(aoi.VRI$PROJ_HEIGHT_1),]
+aoi.VRI %>% filter(!is.na(PROJ_HEIGHT_1)) %>%
+  summarise(mean = mean(PROJ_HEIGHT_1), min = min(PROJ_HEIGHT_1), max=max(PROJ_HEIGHT_1), sd = sd(PROJ_HEIGHT_1)) %>% st_drop_geometry()
+#mean   min   max    sd
+#17.3   0.1  40.2  7.57
 
+# proportion of VRI with projected height >= 20 m
+# aoi.VRI$TREE20_prop <- NA
+# aoi.VRI$TREE20_prop <- ifelse(aoi.VRI$PROJ_HEIGHT_1>=20, 1,0)
+# aoi.VRI$TREE20_prop[is.na(aoi.VRI$TREE20_prop)] <- 0
 
-# plot to check - clipped the Anderson release area
-
-
-Cairo(file="out/PGTSA_BLCKE_VRI.PNG",
-      type="png",
-      width=2200,
-      height=2400,
-      pointsize=10,
-      bg="white",
-      dpi=300)
-ggplot()+
-  geom_sf(data = aoi , lwd=0.6, col="black", fill="azure3")+
-  geom_sf(data = aoi.VRI, aes(fill=PROJ_HEIGHT_1_cat, col=NA)) +
-  scale_fill_brewer(palette="Greens") +
-  scale_color_brewer(palette="Greens") +
-  geom_sf(data = aoi , lwd=0.6, col="black", fill=NA)+
-  theme(legend.title=element_blank())
-dev.off()
-
-# Biogeoclimatic zones
-# bcdc_search("Biogeoclimatic zone", res_format = "wms")
-# 3: BEC Map (other, wms, kml)
-# ID: f358a53b-ffde-4830-a325-a5a03ff672c3
-# Name: bec-map
-aoi.BEC <- retrieve_geodata_aoi(ID = "f358a53b-ffde-4830-a325-a5a03ff672c3")
-# remove the slivers of area, only map polygons with >10km2
-aoi.BEC$Zone_subzone <- paste0(aoi.BEC$ZONE, aoi.BEC$SUBZONE)
-ggplot()+
-  geom_sf(data=aoi.BEC %>% filter(Area_km2>10), aes(fill=Zone_subzone))
-
-# fisher.bec.zones <- c("CWH","ICH","IDF","BWBS","MS","SBPS","SBS")
-# fisher.bec.subzones <- c("BWBSdk","BWBSmw","BWBSwk","SBSwk","ICHwc","SBSmc","SBSmh","SBSmk","SBSmm","SBSmw","SBSdh","SBSdk","SBSdw","SBPSxc","SBPSmc","SBPSdc","SBPSmk","IDFdk","IDFmw","IDFdw","IDFww",
-# "MSxc","MSxk","MSdv","MSdm","MSdk","MSdc","ICHmk","ICHmw")
-#
-# sum(unique(aoi.BEC$Zone_subzone) %in% fisher.bec.subzones, na.rm=TRUE) # 11 of the fisher bec subzones, as per the fisher website, in the area
-# sum(unique(aoi.BEC$ZONE) %in% fisher.bec.zones, na.rm=TRUE) # 5 of the 7 BEC zones, as per the fisher website
-# not sure if that matters...
-
-
-# Cutblocks
-# bcdc_search("cutblock", res_format = "wms")
-# 1: Harvested Areas of BC (Consolidated Cutblocks) (multiple, fgdb, wms, kml, pdf)
-# ID: b1b647a6-f271-42e0-9cd0-89ec24bce9f7
-# Name: harvested-areas-of-bc-consolidated-cutblocks-
-aoi.CTBLK <- retrieve_geodata_aoi(ID = "b1b647a6-f271-42e0-9cd0-89ec24bce9f7")
-summary(aoi.CTBLK)
-aoi.CTBLK %>% count(VEG_CONSOLIDATED_CUT_BLOCK_ID)
-
-Cairo(file="out/PGTSA_BLCKE_CTBLK.PNG",
-      type="png",
-      width=2200,
-      height=2400,
-      pointsize=10,
-      bg="white",
-      dpi=300)
-ggplot()+
-  geom_sf(data = aoi , lwd=0.6, col="black", fill="azure3")+
-  geom_sf(data=aoi.CTBLK, aes(fill=HARVEST_YEAR))+
-  scale_fill_gradient(low="darkgreen", high="white")+
-  geom_sf(data = aoi , lwd=0.6, col="black", fill=NA)
-dev.off()
-
-save.image("01_load.RData")
-
-
-###--- workaround to find suitable habitat based on ecoprovince and BEC
-# first find the general aoi (will refine)
-ecoprov <- ecoprovinces() %>% filter(ECOPROVINCE_CODE %in% c("BOP","SBI","CEI","NBM","SAL"))
-
-# create aoi of dissolved area
-# aoi <- ecoprov %>% st_transform(crs = 3005) # ensures poly is in Albers
-# sf::st_crs(aoi) = 3005
-
-
-# plot the ecoprovinces, ordering from CEI to BOP
-ecoprov$ECOPROVINCE_NAME <- factor(ecoprov$ECOPROVINCE_NAME,
-                                   levels = c("CENTRAL INTERIOR", "SUB-BOREAL INTERIOR", "BOREAL PLAINS"))
+aoi
+# proportion of VRI with projected height >= 20 m
+aoi$TREE20_prop <- NA
+for(i in seq_len(nrow(aoi))){
+  tmp <- aoi %>% st_transform(crs=26910) %>% filter(aoi$grid_id==i)
+  tmp2 <- st_intersection(tmp, aoi.VRI %>% filter(PROJ_HEIGHT_1>=20) %>% st_transform(crs=26910))
+  cov.area <- sum(drop_units(tmp2 %>% st_area()*1e-6))
+  cov.prop <- cov.area/tmp$Area_km2
+  aoi$TREE20_prop[i] <- cov.prop
+}
 
 ggplot()+
-  geom_sf(data = ecoprov, aes(fill=ECOPROVINCE_NAME))+
-  geom_sf(data = aoi, fill=NA, color="black", lwd=1)+
-  scale_fill_manual(values = pnw_palette("Lake",5))
+  geom_sf(data=aoi, aes(fill=TREE20_prop))
+summary(aoi$TREE20_prop)
 
-
-# Import BEC, Ecoprovinces, Ecoregions and Ecosections
-#SBSwk in Peace Region only
-
-
-aoi.BEC <- bec() %>% st_intersection(aoi) %>% filter(ZONE %in% fisher.bec.zones) %>% filter(grepl(fisher.bec.subzones, MAP_LABEL))
-aoi.BEC %>% count(ZONE) %>% st_drop_geometry()
-
-aoi.BEC$Area_km2 <- st_area(aoi.BEC)*1e-6
-aoi.BEC <- drop_units(aoi.BEC)
-aoi.BEC %>% group_by(ZONE) %>% summarise(sum(Area_km2)) %>% st_drop_geometry()
-
+aoi$Habitat <- ifelse(aoi$TREE20_prop>0.2, 1, 0)
 
 ggplot()+
-  geom_sf(data = aoi, fill=NA, color="black", lwd=1)+
-  geom_sf(data = ecoprov, aes(fill=ECOPROVINCE_NAME))+
-  geom_sf(data = aoi.BEC)+
-  scale_fill_manual(values = pnw_palette("Lake",3))
+  geom_sf(data=aoi, aes(fill=Habitat))
+
+aoi <- aoi %>% st_transform(crs=26910)
+raoi <- raster(ext=extent(aoi), crs=26910, res=c(5500,5500))
+raoi <- rasterize(aoi, raoi, field="Habitat")
+plot(raoi)
+
+IBM_aoi <- list(aoi=aoi, raoi=raoi)
+save(IBM_aoi, file="data/IBM_aoi.RData")
 
 
-#- add distance to spatial join
-aoi.ecoprov.dist <- st_nn(aoi.BEC, ecoprov, k=1, returnDist = T)
-# sum(as.numeric(aoi.ecoprov.dist$dist)) # check to make sure all = 0
-aoi.BEC$ecoprov <- unlist(aoi.ecoprov.dist$nn)
-aoi.BEC$ecoprov <- ecoprov$ECOPROVINCE_NAME[match(aoi.BEC$ecoprov,rownames(ecoprov))]
-summary(aoi.BEC$ecoprov)
-
-aoi.sub <- aoi.BEC %>% filter(str_detect(MAP_LABEL, fisher.bec.subzones))
-aoi.sub$ecoprov <- as.character(aoi.sub$ecoprov)
-
-aoi.sub$habitat <- ifelse(aoi.sub$ecoprov=="BOREAL PLAINS" & grepl("BWBSdk|BWBSmw|BWBSwk|SBSwk|ICHwc", aoi.sub$MAP_LABEL), 1,
-                          ifelse(aoi.sub$ecoprov=="SUB-BOREAL INTERIOR" & grepl("CWH|ICH|IDF", aoi.sub$MAP_LABEL),1,
-                                 ifelse(aoi.sub$ecoprov=="SUB-BOREAL INTERIOR" & grepl("SBSwk|SBSmc|SBSmh|SBSmk|SBSmm|SBSmw|SBSdh|SBSdk|SBSdw", aoi.sub$MAP_LABEL),1,
-                                        ifelse(aoi.sub$ecoprov=="CENTRAL INTERIOR" & grepl("SBPSxc|SBPSmc|SBPSdc|SBPSmk|IDFdk|IDFmw|IDFdw|IDFww|MSxc|MSxk|MSdv|MSdm|MSdk|MSdc|ICHmk|ICHmw|ICHmk|SBSdw|SBSmc", aoi.sub$MAP_LABEL),
-                                               1,0))))
-
-
-aoi.fisher.habitat <- aoi.sub %>% filter(habitat==1) %>%
-  summarise(across(geometry, ~ st_combine(.))) %>%
-  summarise(across(geometry, ~ st_union(.)))
-
-
-aoi2 <- aoi.BEC %>% st_intersection(aoi.fisher.habitat)
-
-ggplot()+
-  geom_sf(data = aoi, color="blue")+
-  geom_sf(data=aoi2, color="red")
-
-# not really what I'm wanting....probably best to just see if I can get the fisher distribution shapefile from someone else
-# aoi.fisher.habitat <- aoi.sub %>% filter(habitat==1) %>% st_combine() %>% st_union(by_feature=FALSE, is_coverage=TRUE)
-# aoi.fisher.habitat <- aoi.fisher.habitat %>% st_zm(drop=TRUE, what="ZM")
-#
-# ggplot()+
-#   # geom_sf(data = aoi)+
-#   geom_sf(data=aoi.fisher.habitat)
-#
-# glimpse(aoi.fisher.habitat)
-# st_write(aoi.fisher.habitat, dsn=paste0(getwd(),"/out/aoi.fisher.habitat.kml"), delete_layer=TRUE)
-
-rm(aoi)
-save.image("01_load.RData")
-# load("01_load.RData")
