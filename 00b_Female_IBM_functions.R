@@ -68,6 +68,59 @@ set_up_world_FEMALE <- function(nFemales=nFemales, maxAgeFemale=maxAgeFemale,xli
 
 }
 
+
+###--- SET-UP WORLD with actual aoi - for female only IBM
+set_up_REAL_world_FEMALE <- function(nFemales=nFemales, maxAgeFemale=maxAgeFemale,raoi=raoi){
+  # nFemales = 10
+  # maxAgeFemale = 9
+
+  nfishers = nFemales
+
+  # Each cell is assumed to be the same size as one fisher territory
+  # Cell values are either 0 or 1
+  # Assume 0 = habitat unsuitable for fisher territory; 1 = suitable fisher habitat
+  # Upload the raster (binary for habitat)
+  raoi <- IBM_aoi$raoi
+  cells.good.habitat <- sum(raoi@data@values)
+  total.cells <- raoi@ncols * raoi@nrows
+  actual.prop.hab <- cells.good.habitat / total.cells
+
+  land <- raster2world(raoi)
+
+  habM <- as.matrix(land@.Data)
+  habMflipped <- apply(habM,2,rev)
+
+  mHabitat <- which(habMflipped==1, arr.ind=TRUE)
+  tmpMatrix <- matrix(1, nrow=nrow(mHabitat), ncol=ncol(mHabitat))
+  NLmHabitat <- mHabitat - tmpMatrix
+
+  fishers_start <- as.data.frame(NLmHabitat)
+  colnames(fishers_start) <- c("pxcor", "pycor")
+  fishers_start$rank <- rank(round(runif(cells.good.habitat, min=100, max=999)))
+  fishers_start <- fishers_start %>% filter(rank <= nFemales) %>% dplyr::select(-rank)
+  # fishers_start <- fishers_start[c("pxcor","pycor")]
+
+  fishers_start <- as.matrix(fishers_start)
+  # Start with a landscape of adult females and males, all on "good" habitat
+  t0 <- createTurtles(n = nfishers, coords=fishers_start, breed="adult")
+
+  # create values and assign as adult (females) with established territories
+  t0 <- turtlesOwn(turtles = t0, tVar = c("shape"), tVal =16) # females are circles, males are squares
+  t0 <- turtlesOwn(turtles = t0, tVar = c("disperse"), tVal = c(rep("E", each=nfishers)))
+  t0 <- turtlesOwn(turtles = t0, tVar = c("repro"), tVal = 0)
+
+  # have fishers randomly assigned a year between 2.5 and 1 year less than max life span
+  yrs.adult <- (sample(5:((maxAgeFemale-1)*2), nfishers, replace=TRUE))/2
+  t0 <- turtlesOwn(turtles=t0, tVar = c("age"), tVal = yrs.adult)
+
+  # Visualize the turtles on the landscape with their respective color
+  plot(land)
+  points(t0, pch = t0$shape, col = of(agents = t0, var = "color"))
+
+  return(list("land"=land, "t0"=t0, "actual.prop.hab"=actual.prop.hab))
+
+}
+
 # tmp <- set_up_world_FEMALE(nFemales=10, maxAgeFemale=9,xlim=c(1,10), ylim=c(1,10), prophab=0.7)
 
 ###--- REPRODUCE
