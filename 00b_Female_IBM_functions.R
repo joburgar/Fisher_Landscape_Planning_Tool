@@ -80,25 +80,27 @@ set_up_REAL_world_FEMALE <- function(nFemales=nFemales, maxAgeFemale=maxAgeFemal
   # Cell values are either 0 or 1
   # Assume 0 = habitat unsuitable for fisher territory; 1 = suitable fisher habitat
   # Upload the raster (binary for habitat)
-  raoi <- IBM_aoi$raoi
   cells.good.habitat <- sum(raoi@data@values)
   total.cells <- raoi@ncols * raoi@nrows
   actual.prop.hab <- cells.good.habitat / total.cells
 
   land <- raster2world(raoi)
+  as.matrix(land@pCoords)
 
+  # for some reason NetLogoR world matrices are set up differently from rasters
+  # need to flip, change coordinates (-1), and keep in mind that NL worlds are col by row
   habM <- as.matrix(land@.Data)
-  habMflipped <- apply(habM,2,rev)
+  habMflipped <- habM[nrow(habM):1,]
 
   mHabitat <- which(habMflipped==1, arr.ind=TRUE)
   tmpMatrix <- matrix(1, nrow=nrow(mHabitat), ncol=ncol(mHabitat))
   NLmHabitat <- mHabitat - tmpMatrix
 
   fishers_start <- as.data.frame(NLmHabitat)
-  colnames(fishers_start) <- c("pxcor", "pycor")
+  colnames(fishers_start) <- c("pycor", "pxcor")
   fishers_start$rank <- rank(round(runif(cells.good.habitat, min=100, max=999)))
   fishers_start <- fishers_start %>% filter(rank <= nFemales) %>% dplyr::select(-rank)
-  # fishers_start <- fishers_start[c("pxcor","pycor")]
+  fishers_start <- fishers_start[c("pxcor","pycor")]
 
   fishers_start <- as.matrix(fishers_start)
   # Start with a landscape of adult females and males, all on "good" habitat
