@@ -93,7 +93,7 @@ create_study_grid <- function (dsn=dsn, layer=layer, square=TRUE, cellsize=cells
 }
 
 ################################################################################
-#- function to group traps based on grid cell
+#- function to create grid cell from aoi (shapefile)
 create_grid <- function (input=input, cellsize=cellsize){
   # input=traps.sf
   # cellsize=5000
@@ -122,49 +122,56 @@ create_grid <- function (input=input, cellsize=cellsize){
 ###--- NO NEED TO RUN THIS NEXT SECTION
 ###--- USED THIS TO CREATE TMP AOI SHAPEFILE FOR EXAMPLE SCENARIOS
 
-# Natural Region District
+Natural Region District
 # bcdc_search("Natural Region District", res_format = "wms")
 # 1: Natural Resource (NR) Districts (multiple, wms)
 # ID: 0bc73892-e41f-41d0-8d8e-828c16139337
 # Name: natural-resource-nr-district
-# aoi.NRD <- retrieve_geodata_aoi(ID = "0bc73892-e41f-41d0-8d8e-828c16139337")
-# unique(aoi.NRD$DISTRICT_NAME) # 15 unique Natural Resource Districts
-#
-# # remove the slivers of area, only map polygons with >10km2
-# ggplot()+
-#   geom_sf(data=aoi.NRD %>% filter(Area_km2>10), aes(fill=DISTRICT_NAME))
-#
-# aoi.QUESNEL <- aoi.NRD %>% filter(DISTRICT_NAME=="Quesnel Natural Resource District")
-#
-# ggplot()+
-#   geom_sf(data=aoi.QUESNEL %>% filter(Area_km2>10), aes(fill=DISTRICT_NAME))
-# aoi.QUESNEL$Area_km2
-#
-# # want to create a fishnet using the aoi extent and have as 30 km2 cells, and then join covariates to each cell
-# # use 30km2 for now but recognize that some data may be at the smaller scale, and will need to be transformed to fit within the female territory
-#
-# tmp <- create_grid(input=aoi.QUESNEL, cellsize=5500)
-# ggplot(tmp$fishnet_grid_sf)+
-#   geom_sf(data=tmp$fishnet_grid_sf)+
-#   geom_sf_label(aes(label=grid_id))
-#
-#
-# tmp2 <- tmp$fishnet_grid_sf %>% filter(grid_id %in% seq_len(69))
-# tmp3 <- tmp$fishnet_grid_sf %>%
-#   filter(grid_id %in% c(3,4,5,6,11,12,13,14,24,25,26,27,40,41,42,43))
-#
-# tmp3$grid_id <- rownames(tmp3)
-#
-# ggplot(tmp3)+
-#   geom_sf(data=tmp3)+
-#   geom_sf_label(aes(label=grid_id))
-#
-# aoi <- tmp3
-# st_write(aoi, dsn=paste0(getwd(),"/data/aoi_QTSA_example.shp"), delete_layer=TRUE)
+aoi <- aoi.Fpop
+aoi.NRD <- retrieve_geodata_aoi(ID = "0bc73892-e41f-41d0-8d8e-828c16139337")
+unique(aoi.NRD$DISTRICT_NAME) # 15 unique Natural Resource Districts
+
+# remove the slivers of area, only map polygons with >10km2
+ggplot()+
+  geom_sf(data=aoi.NRD %>% filter(Area_km2>10), aes(fill=DISTRICT_NAME))
+
+aoi.QUESNEL <- aoi.NRD %>% filter(DISTRICT_NAME=="Quesnel Natural Resource District")
+
+ggplot()+
+  geom_sf(data=aoi.QUESNEL %>% filter(Area_km2>10), aes(fill=DISTRICT_NAME))
+aoi.QUESNEL$Area_km2
+
+# want to create a fishnet using the aoi extent and have as 30 km2 cells, and then join covariates to each cell
+# use 30km2 for now but recognize that some data may be at the smaller scale, and will need to be transformed to fit within the female territory
+
+tmp <- create_grid(input=aoi.QUESNEL, cellsize=5500)
+ggplot(tmp$fishnet_grid_sf)+
+  geom_sf(data=tmp$fishnet_grid_sf)+
+  geom_sf_label(aes(label=grid_id))
+
+
+tmp2 <- tmp$fishnet_grid_sf %>% filter(grid_id %in% seq_len(69))
+
+ggplot(tmp2)+
+  geom_sf(data=tmp2)+
+  geom_sf_label(aes(label=grid_id))
+
+
+tmp3 <- tmp$fishnet_grid_sf %>%
+  filter(grid_id %in% c(1:16,22:29,38:45,59:66))
+
+tmp3$grid_id <- rownames(tmp3)
+
+ggplot(tmp3)+
+  geom_sf(data=tmp3)+
+  geom_sf_label(aes(label=grid_id))
+
+aoi <- tmp3
+st_write(aoi, dsn=paste0(getwd(),"/data/aoi_QTSA_example2.shp"), delete_layer=TRUE)
 #####################################################################################
 
 ###--- NOW BRING IN COVARIATES
-aoi <- st_read(dsn=paste0(getwd(),"/data"), layer="aoi_QTSA_example")
+# aoi <- st_read(dsn=paste0(getwd(),"/data"), layer="aoi_QTSA_example")
 aoi.Fpop <- st_read(dsn=paste0(getwd(),"/data"), layer="aoi.Fpop")
 aoi.Fpop$Fpop <- case_when(aoi.Fpop$Fpop=="Central Interior" ~ "Columbian",
                            TRUE ~ as.character(aoi.Fpop$Fpop))
@@ -205,8 +212,8 @@ aoi <- aoi %>% st_transform(crs=3005)
 # Timber Supply Area
 # cached from online as too slow through bcdata package
 # downloaded 2022-01-20
-aoi.TSA <- retrieve_gdb_shp_aoi(dsn="./data/FADM_TSA", layer="FADM_TSA_polygon")
-aoi.TSA %>% group_by(TSNMBRDSCR) %>% summarise(sum(Area_km2)) %>% st_drop_geometry()
+# aoi.TSA <- retrieve_gdb_shp_aoi(dsn="./data/FADM_TSA", layer="FADM_TSA_polygon")
+# aoi.TSA %>% group_by(TSNMBRDSCR) %>% summarise(sum(Area_km2)) %>% st_drop_geometry()
 
 # VRI
 # https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry/forestry/stewardship/forest-analysis-inventory/data-management/standards/vegcomp_toc_data_dictionaryv5_2019.pdf
@@ -257,6 +264,6 @@ raoi <- rasterize(aoi, raoi, field="Habitat")
 plot(raoi)
 
 IBM_aoi <- list(aoi=aoi, raoi=raoi)
-save(IBM_aoi, file="data/IBM_aoi.RData")
+save(IBM_aoi, file="data/IBM_aoi_ex2.RData")
 
 
