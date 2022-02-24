@@ -53,24 +53,37 @@ setup_plot <- function(sim_out=sim_out, name_out=name_out){
   dev.off()
 }
 
+
+
 # grab output from one set of 100 simulations
 sim_output <- function(sim_out=sim_out, sim=sim, numsims=numsims, yrs_sim=yrs_sim){
-  # sim_out=Boreal_escape_35FEMALE; sim=4; numsims=100; yrs_sim=10
+  # sim_out=Columbian_escape_35in400_FEMALE; sim=2; numsims=100; yrs_sim=10
   num.runs <- yrs_sim + 2
 
   ABM.df <- as.data.frame(array(NA,c(numsims,num.runs)))
   colnames(ABM.df) <- paste0("TimeStep_",str_pad(seq_len(num.runs),2,pad="0"))
 
+  # class(Columbian_escape_35in400_FEMALE[[4]][[1]][[12]]) # numeric
+  # class(Columbian_escape_35in400_FEMALE[[4]][[1]][[7]]) # agentMatrix (no rows)
+  # class(Columbian_escape_35in400_FEMALE[[4]][[1]][[6]]) #agentMatrix (with data)
+  # need to create loop to extract the number of adult females with established territories per time step
+  # issue is that some objects are numeric, some are agentMatrix objects (with or without data)
+  # converting to data frame to use atomic vector, but only after removing numeric (0) objects
+
   for(ns in 1:numsims){
     for(ts in 1:num.runs){
-      tmp <- as.array(sim_out[[sim]][[ns]][[ts]])
-      if(length(tmp)==0){
+      out <- sim_out[[sim]][[ns]][[ts]]
+      # out <- sim_out[[4]][[1]][[6]]
+      class(out)
+      if(class(out)=="numeric"){
         ABM.df[ns,ts] <- 0
-          } else if(tmp!=0){
-            ABM.df[ns,ts] <-as.integer(count(tmp$breed=="adult" & tmp$disperse=="E"))
-            } else {
-              ABM.df[ns,ts] <- 0
-            }
+        } else if(class(out)=="integer"){
+          ABM.df[ns,ts] <- 0
+        } else {
+          tmp <- as.data.frame(out@.Data)
+          str(tmp)
+          ABM.df[ns,ts] <- nrow(tmp[tmp$breed==1 & tmp$disperse==1])
+      }
     }
   }
 
@@ -110,15 +123,15 @@ return(ABM.df)
 # should make it generic so can be survival, repro, habitat...etc.
 
 ABM_fig <- function(Bsim_out=Bsim_out, Csim_out=Csim_out, Fpop=c("Boreal","Columbian"), yrs_sim=10){
-  # Bsim_out=Boreal_escape_FEMALE_binom
-  # Csim_out=Columbian_escape_FEMALE_binom
+  # Bsim_out=Boreal_escape_35in400_FEMALE
+  # Csim_out=Columbian_escape_35in400_FEMALE
 
   ABM.df <- rbind(pop_output(sim_out=Bsim_out),pop_output(sim_out=Csim_out))
   ABM.df$Pop <- rep(Fpop, each=3600)
 
-  ABM.df <- ABM.df %>% mutate(Prophab = case_when(Sim %in% c("Sim04") ~ Bsim_out[[1]]$actual.prop.hab,
-                                                  Sim %in% c("Sim05") ~ Bsim_out[[2]]$actual.prop.hab,
-                                                  Sim %in% c("Sim06") ~ Bsim_out[[3]]$actual.prop.hab))
+  ABM.df <- ABM.df %>% mutate(Pcnthab = case_when(Sim %in% c("Sim04") ~ round(Bsim_out[[1]]$actual.prop.hab*100),
+                                                  Sim %in% c("Sim05") ~ round(Bsim_out[[2]]$actual.prop.hab*100),
+                                                  Sim %in% c("Sim06") ~ round(Bsim_out[[3]]$actual.prop.hab*100)))
 
   ABM.TS.mean <- ABM.df %>% dplyr::select(-Run) %>% pivot_wider(names_from=TimeStep, values_from=Count, values_fn=mean)
   ABM.TS.mean$Param <- "Mean"
@@ -234,15 +247,15 @@ heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yr
   r_stack = stack(r_list, r_zeroes_list)
   r_stackApply <- stackApply(r_stack, indices=1, fun=sum)
 
-  writeRaster(r_stackApply, file=paste0("out/rSim_",name_out,"_",sim_out[[sim_order-3]]$actual.prop.hab*100,"hab.tif"), bylayer=TRUE, overwrite=TRUE)
+  writeRaster(r_stackApply, file=paste0("out/rSim_",name_out,"_",round(sim_out[[sim_order-3]]$actual.prop.hab*100),"hab.tif"), bylayer=TRUE, overwrite=TRUE)
 
   Fisher_Nmean <- mean(r_stackApply@data@values)
   Fisher_Nse <- se(r_stackApply@data@values)
 
-  Cairo(file=paste0("out/rHeatmap_",name_out,"_",sim_out[[sim_order-3]]$actual.prop.hab*100,"hab.PNG"), type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+  Cairo(file=paste0("out/rHeatmap_",name_out,"_",round(sim_out[[sim_order-3]]$actual.prop.hab*100),"hab.PNG"), type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
   plot(r_stackApply, oma=c(2, 3, 5, 2))
   mytitle = paste0("Estimated Fisher Territories over ",numsims," Simulations")
-  mysubtitle1 = paste0("Starting with ",fishers_to_start$numAF," fishers and ",sim_out[[sim_order-3]]$actual.prop.hab*100,"% habitat")
+  mysubtitle1 = paste0("Starting with ",fishers_to_start$numAF," fishers and ",round(sim_out[[sim_order-3]]$actual.prop.hab*100),"% habitat")
   mysubtitle2 = paste0("predicted ",round(Fisher_Nmean)," \u00B1 ",round(Fisher_Nse)," (mean \u00B1 1 SE) established fisher territories after ",yrs_sim," years.")
   mtext(side=3, line=3, at=-0.07, adj=0, cex=1, mytitle)
   mtext(side=3, line=2, at=-0.07, adj=0, cex=0.8, mysubtitle1)
@@ -262,22 +275,24 @@ heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yr
 
 ###--- load simulations (list of 3 per population from analysis script)
 
-load("out/Columbian_escape_35FEMALE.RData")
-load("out/Boreal_escape_35FEMALE.RData")
+load("out/Columbian_escape_35in400_FEMALE.RData")
 
-BC_35F_escape <- ABM_fig(Bsim_out=Boreal_escape_35FEMALE, Csim_out=Columbian_escape_35FEMALE)
+
+load("out/Boreal_escape_35in400_FEMALE.RData")
+
+BC_35F_escape <- ABM_fig(Bsim_out=Boreal_escape_35in400_FEMALE, Csim_out=Columbian_escape_35in400_FEMALE)
 # warning don't seem to matter (still provides correct value for female fisher - it's from sim_output function)
 
 BC_35F_escape$ABM.TS.df
 BC_35F_escape$sim.TS.plot
 BC_35F_escape$sim.TS.plot_se
 
-Cairo(file="out/BC_AdultFemale_35escape_CI.PNG",
+Cairo(file="out/BC_AdultFemale_35in400_escape_CI.PNG",
       type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
 BC_35F_escape$sim.TS.plot
 dev.off()
 
-Cairo(file="out/BC_AdultFemale_35escape_SE.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+Cairo(file="out/BC_AdultFemale_35in400_escape_SE.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
 BC_35F_escape$sim.TS.plot_se
 dev.off()
 
@@ -286,7 +301,7 @@ dev.off()
 # For the Boreal population
 Bheatmap_list = list()
 for(i in 4:6){
-  Bheatmap_list[[i]] <- heatmap_output(sim_out=Boreal_escape_35FEMALE, sim_order=i, numsims=100, yrs_sim=10, TS=12, name_out="BFA_35escape")
+  Bheatmap_list[[i]] <- heatmap_output(sim_out=Boreal_escape_35in400_FEMALE, sim_order=i, numsims=100, yrs_sim=10, TS=12, name_out="BFA_35escape")
 }
 
 # For the Columbian population (error message as no fishers left alive in second scenario)
