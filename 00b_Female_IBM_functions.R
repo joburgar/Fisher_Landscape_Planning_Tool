@@ -129,7 +129,7 @@ set_up_REAL_world_FEMALE <- function(nFemales=nFemales, maxAgeFemale=maxAgeFemal
 repro_FEMALE <- function(fishers=fishers, repro_estimates=repro.CI, Fpop="C") {
 
   # Random (binomial) selection for which adult females reproduce, based on denning rates confidence intervals
-  # fishers=tApr; fishers=tmp$t0; rm(fishers)
+  # fishers=w1$t0; fishers=tmp$t0; rm(fishers)
   whoFishers <- of(agents = fishers, var = c("who","breed")) # "who" of the fishers before they reproduce
   whoAFFishers <- whoFishers[whoFishers$breed=="adult",]$who
 
@@ -149,7 +149,7 @@ repro_FEMALE <- function(fishers=fishers, repro_estimates=repro.CI, Fpop="C") {
 
   # if there is at least one fisher reproducing
   # have those fishers have offspring, based on the mean and sd of empirical data
-  if (length(reproWho) != 0) {
+  if (length(reproWho) > 0) {
     fishers <- hatch(turtles = fishers, who = reproWho, n=round(rnorm(n=1, mean=ltrM, sd=ltrSD)/2),breed="juvenile") # litter size based on empirical data (divided by 2 for female only model)
 
     # assign all of the offsprig as dispersing, change repro and age values to reflect newborn kits rather than their moms
