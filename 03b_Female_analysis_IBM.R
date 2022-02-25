@@ -289,7 +289,7 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
 ######################################################################################
 
 # Read in aoi shapefile (with attribute info) and aoi raster (binary 0/1 for habitat)
-load("data/IBM_aoi_ex2.RData")
+load("data/IBM_aoi_Pex2.RData")
 glimpse(IBM_aoi)
 Fpop <- unique(substr(IBM_aoi$aoi$Fpop,1,1))
 sum(IBM_aoi$raoi@data@values) # number of equivalent territories with suitable habitat
@@ -298,9 +298,9 @@ sum(IBM_aoi$raoi@data@values) # number of equivalent territories with suitable h
 w1 <- set_up_REAL_world_FEMALE(nFemales=10, maxAgeFemale=9, raoi=IBM_aoi$raoi)
 
 start_time <- Sys.time()
-C.w1_real.FEMALE.sim100 <- vector('list',100)
+B.w1_real.FEMALE.sim100 <- vector('list',100)
 for(i in 1:100){
-  C.w1_real.FEMALE.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=w1$land, t0=w1$t0,           # import world
+  B.w1_real.FEMALE.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=w1$land, t0=w1$t0,           # import world
                                                               repro_estimates=repro.CI, Fpop=Fpop,   # reproduction
                                                               surv_estimates=rf_surv_estimates,      # survive
                                                               maxAgeFemale=9,                        # survive
@@ -310,11 +310,11 @@ for(i in 1:100){
 
 end_time <- Sys.time()
 
-# end_time - start_time # takes ~ 3 min for each 100 simulation run
+# end_time - start_time # takes ~ 1.5 min for 40 grid cells and 100 simulation run (Boreal); or ~30 sec for Columbian
 
-C.w1_real.FEMALE <- list(w1, C.w1_real.FEMALE.sim100)
+B.w1_real.FEMALE <- list(w1, B.w1_real.FEMALE.sim100)
 
-save(C.w1_real.FEMALE, file="out/C.w1_real.FEMALE.RData")
+save(B.w1_real.FEMALE, file="out/B.w1_real.FEMALE.RData")
 
 
 
