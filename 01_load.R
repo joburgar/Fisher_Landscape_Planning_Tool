@@ -122,43 +122,51 @@ create_grid <- function (input=input, cellsize=cellsize){
 ###--- NO NEED TO RUN THIS NEXT SECTION
 ###--- USED THIS TO CREATE TMP AOI SHAPEFILE FOR EXAMPLE SCENARIOS
 
-Natural Region District
+# Natural Region District
 # bcdc_search("Natural Region District", res_format = "wms")
 # 1: Natural Resource (NR) Districts (multiple, wms)
 # ID: 0bc73892-e41f-41d0-8d8e-828c16139337
 # Name: natural-resource-nr-district
-aoi <- aoi.Fpop
-aoi.NRD <- retrieve_geodata_aoi(ID = "0bc73892-e41f-41d0-8d8e-828c16139337")
-unique(aoi.NRD$DISTRICT_NAME) # 15 unique Natural Resource Districts
+# aoi <- aoi.Fpop
+# aoi.NRD <- retrieve_geodata_aoi(ID = "0bc73892-e41f-41d0-8d8e-828c16139337")
+# unique(aoi.NRD$DISTRICT_NAME) # 15 unique Natural Resource Districts
 
 # remove the slivers of area, only map polygons with >10km2
-ggplot()+
-  geom_sf(data=aoi.NRD %>% filter(Area_km2>10), aes(fill=DISTRICT_NAME))
-
-aoi.QUESNEL <- aoi.NRD %>% filter(DISTRICT_NAME=="Quesnel Natural Resource District")
-
-ggplot()+
-  geom_sf(data=aoi.QUESNEL %>% filter(Area_km2>10), aes(fill=DISTRICT_NAME))
-aoi.QUESNEL$Area_km2
+# ggplot()+
+#   geom_sf(data=aoi.NRD %>% filter(Area_km2>10), aes(fill=DISTRICT_NAME))
+#
+# aoi.PEACE <- aoi.NRD %>% filter(DISTRICT_NAME=="Peace Natural Resource District")
+# ggplot()+
+#   geom_sf(data=aoi.PEACE %>% filter(Area_km2>10), aes(fill=DISTRICT_NAME))
+# aoi.PEACE$Area_km2
+#
+# aoi.QUESNEL <- aoi.NRD %>% filter(DISTRICT_NAME=="Quesnel Natural Resource District")
+# ggplot()+
+#   geom_sf(data=aoi.QUESNEL %>% filter(Area_km2>10), aes(fill=DISTRICT_NAME))
+# aoi.QUESNEL$Area_km2
 
 # want to create a fishnet using the aoi extent and have as 30 km2 cells, and then join covariates to each cell
 # use 30km2 for now but recognize that some data may be at the smaller scale, and will need to be transformed to fit within the female territory
 
-tmp <- create_grid(input=aoi.QUESNEL, cellsize=5500)
+# tmp <- create_grid(input=aoi.QUESNEL, cellsize=5500)
+# ggplot(tmp$fishnet_grid_sf)+
+#   geom_sf(data=tmp$fishnet_grid_sf)+
+#   geom_sf_label(aes(label=grid_id))
+
+tmp <- create_grid(input=aoi.PEACE, cellsize=5500)
 ggplot(tmp$fishnet_grid_sf)+
   geom_sf(data=tmp$fishnet_grid_sf)+
   geom_sf_label(aes(label=grid_id))
 
-
-tmp2 <- tmp$fishnet_grid_sf %>% filter(grid_id %in% seq_len(69))
+tmp2 <- tmp$fishnet_grid_sf %>% filter(grid_id %in% seq_len(150))
 
 ggplot(tmp2)+
   geom_sf(data=tmp2)+
   geom_sf_label(aes(label=grid_id))
 
-
 tmp3 <- tmp$fishnet_grid_sf %>%
-  filter(grid_id %in% c(1:16,22:29,38:45,59:66))
+  filter(grid_id %in% c(61:68,78:85,96:103,111:118,131:138))
+  # filter(grid_id %in% c(1:16,22:29,38:45,59:66))
 
 tmp3$grid_id <- rownames(tmp3)
 
@@ -167,7 +175,8 @@ ggplot(tmp3)+
   geom_sf_label(aes(label=grid_id))
 
 aoi <- tmp3
-st_write(aoi, dsn=paste0(getwd(),"/data/aoi_QTSA_example2.shp"), delete_layer=TRUE)
+st_write(aoi, dsn=paste0(getwd(),"/data/aoi_PTSA_example2.shp"), delete_layer=TRUE)
+# st_write(aoi, dsn=paste0(getwd(),"/data/aoi_QTSA_example2.shp"), delete_layer=TRUE)
 #####################################################################################
 
 ###--- NOW BRING IN COVARIATES
@@ -239,6 +248,7 @@ aoi.VRI %>% filter(!is.na(PROJ_HEIGHT_1)) %>%
 # aoi.VRI$TREE20_prop[is.na(aoi.VRI$TREE20_prop)] <- 0
 
 aoi
+sum(aoi$Area_km2)
 # proportion of VRI with projected height >= 20 m
 aoi$TREE20_prop <- NA
 for(i in seq_len(nrow(aoi))){
@@ -261,9 +271,26 @@ ggplot()+
 aoi <- aoi %>% st_transform(crs=26910)
 raoi <- raster(ext=extent(aoi), crs=26910, res=c(5500,5500))
 raoi <- rasterize(aoi, raoi, field="Habitat")
-plot(raoi)
 
 IBM_aoi <- list(aoi=aoi, raoi=raoi)
-save(IBM_aoi, file="data/IBM_aoi_ex2.RData")
+# sum(IBM_aoi$raoi@data@values)
+# nrow(IBM_aoi$aoi)
+
+
+#plot of the raster showing habitat as binary (green = suitable, white = unsuitable)
+Cairo(file=paste0("out/IBM_raoi_Pex2.PNG"), type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+plot(IBM_aoi$raoi, legend=FALSE,main="Potential Fisher Equivalent Territories in the Area of Interest")
+dev.off()
+
+# plot of the underlying habitat as a gradation of suitable habitat
+Cairo(file=paste0("out/IBM_haoi_Pex2.PNG"), type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+ggplot()+
+  geom_sf(data=IBM_aoi$aoi, aes(fill=TREE20_prop))+
+  guides(fill=guide_legend(title="Proportion Suitable Habitat"))+
+  theme(legend.position="bottom")+
+  ggtitle("Fisher Equivalent Territories within the Area of Interest")
+dev.off()
+
+save(IBM_aoi, file="data/IBM_aoi_Pex2.RData")
 
 
