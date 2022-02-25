@@ -349,7 +349,7 @@ heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yr
   Cairo(file=paste0("out/rHeatmap_",name_out,"_",round(sim_out[[sim_order-3]]$actual.prop.hab*100),"hab.PNG"), type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
   plot(r_stackApply, oma=c(2, 3, 5, 2))
   mytitle = paste0("Estimated Fisher Territories over ",numsims," Simulations")
-  mysubtitle1 = paste0("Starting with ",fishers_to_start$numAF," fishers and ",round(sim_out[[sim_order-3]]$actual.prop.hab*100),"% habitat")
+  mysubtitle1 = paste0("Starting with ",fishers_to_start$numAF," fishers and ",round(sim_out[[1]]$actual.prop.hab*100),"% habitat")
   mysubtitle2 = paste0("predicted ",round(Fisher_Nmean)," \u00B1 ",round(Fisher_Nse)," (mean \u00B1 1 SE) established fisher territories after ",yrs_sim," years.")
   mtext(side=3, line=3, at=-0.07, adj=0, cex=1, mytitle)
   mtext(side=3, line=2, at=-0.07, adj=0, cex=0.8, mysubtitle1)
