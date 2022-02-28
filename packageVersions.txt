@@ -1,0 +1,200 @@
+"Package","LibPath","Version","GithubRepo","GithubUsername","GithubRef","GithubSHA1"
+"abind","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.4-5",NA,NA,NA,NA
+"askpass","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.1",NA,NA,NA,NA
+"assertthat","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.2.1",NA,NA,NA,NA
+"backports","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.4.1",NA,NA,NA,NA
+"base64enc","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.1-3",NA,NA,NA,NA
+"bit","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","4.0.4",NA,NA,NA,NA
+"bit64","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","4.0.5",NA,NA,NA,NA
+"blob","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.2.2",NA,NA,NA,NA
+"brio","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.1.3",NA,NA,NA,NA
+"broom","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.7.12",NA,NA,NA,NA
+"cachem","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.0.6",NA,NA,NA,NA
+"Cairo","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.5-14",NA,NA,NA,NA
+"callr","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","3.7.0",NA,NA,NA,NA
+"car","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","3.0-12",NA,NA,NA,NA
+"carData","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","3.0-5",NA,NA,NA,NA
+"cellranger","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.1.0",NA,NA,NA,NA
+"checkmate","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.0.0",NA,NA,NA,NA
+"CircStats","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.2-6",NA,NA,NA,NA
+"classInt","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.4-3",NA,NA,NA,NA
+"cli","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","3.1.1",NA,NA,NA,NA
+"clipr","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.7.1",NA,NA,NA,NA
+"colorspace","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.0-2",NA,NA,NA,NA
+"cpp11","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.4.2",NA,NA,NA,NA
+"crayon","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.4.2",NA,NA,NA,NA
+"curl","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","4.3.2",NA,NA,NA,NA
+"data.table","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.14.2",NA,NA,NA,NA
+"DBI","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.1.2",NA,NA,NA,NA
+"dbplyr","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.1.1",NA,NA,NA,NA
+"desc","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.4.0",NA,NA,NA,NA
+"diffobj","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.3.5",NA,NA,NA,NA
+"digest","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.6.29",NA,NA,NA,NA
+"dplyr","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.0.7",NA,NA,NA,NA
+"dtplyr","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.2.1",NA,NA,NA,NA
+"e1071","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.7-9",NA,NA,NA,NA
+"ellipsis","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.3.2",NA,NA,NA,NA
+"evaluate","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.14",NA,NA,NA,NA
+"fansi","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.0.2",NA,NA,NA,NA
+"farver","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.1.0",NA,NA,NA,NA
+"fastdigest","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.6-3",NA,NA,NA,NA
+"fastmap","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.1.0",NA,NA,NA,NA
+"fastmatch","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.1-3",NA,NA,NA,NA
+"forcats","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.5.1",NA,NA,NA,NA
+"Formula","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.2-4",NA,NA,NA,NA
+"fpCompare","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.2.3",NA,NA,NA,NA
+"fs","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.5.2",NA,NA,NA,NA
+"gargle","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.2.0",NA,NA,NA,NA
+"gdalUtilities","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.2.0",NA,NA,NA,NA
+"generics","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.1.2",NA,NA,NA,NA
+"ggplot2","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","3.3.5",NA,NA,NA,NA
+"glue","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.6.1",NA,NA,NA,NA
+"googledrive","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.0.0",NA,NA,NA,NA
+"googlesheets4","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.0.0",NA,NA,NA,NA
+"gridBase","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.4-7",NA,NA,NA,NA
+"gridExtra","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.3",NA,NA,NA,NA
+"gtable","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.3.0",NA,NA,NA,NA
+"haven","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.4.3",NA,NA,NA,NA
+"highr","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.9",NA,NA,NA,NA
+"Hmisc","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","4.6-0",NA,NA,NA,NA
+"hms","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.1.1",NA,NA,NA,NA
+"htmlTable","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.4.0",NA,NA,NA,NA
+"htmltools","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.5.2",NA,NA,NA,NA
+"htmlwidgets","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.5.4",NA,NA,NA,NA
+"httr","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.4.2",NA,NA,NA,NA
+"ids","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.0.1",NA,NA,NA,NA
+"igraph","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.2.11",NA,NA,NA,NA
+"isoband","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.2.5",NA,NA,NA,NA
+"jpeg","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.1-9",NA,NA,NA,NA
+"jquerylib","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.1.4",NA,NA,NA,NA
+"jsonlite","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.7.3",NA,NA,NA,NA
+"knitr","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.37",NA,NA,NA,NA
+"labeling","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.4.2",NA,NA,NA,NA
+"latticeExtra","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.6-29",NA,NA,NA,NA
+"lcmix","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.3",NA,NA,NA,NA
+"lifecycle","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.0.1",NA,NA,NA,NA
+"lme4","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.1-27.1",NA,NA,NA,NA
+"lubridate","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.8.0",NA,NA,NA,NA
+"magrittr","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.0.2",NA,NA,NA,NA
+"maptools","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.1-2",NA,NA,NA,NA
+"MatrixModels","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.5-0",NA,NA,NA,NA
+"matrixStats","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.10.1",NA,NA,NA,NA
+"memoise","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.0.1",NA,NA,NA,NA
+"mime","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.12",NA,NA,NA,NA
+"minqa","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.2.4",NA,NA,NA,NA
+"modelr","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.1.8",NA,NA,NA,NA
+"munsell","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.5.0",NA,NA,NA,NA
+"NetLogoR","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.3.9",NA,NA,NA,NA
+"nloptr","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.0.0",NA,NA,NA,NA
+"nnls","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.4",NA,NA,NA,NA
+"numDeriv","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2016.8-1.1",NA,NA,NA,NA
+"openssl","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.4.6",NA,NA,NA,NA
+"pbkrtest","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.5.1",NA,NA,NA,NA
+"pillar","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.7.0",NA,NA,NA,NA
+"pkgconfig","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.0.3",NA,NA,NA,NA
+"pkgload","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.2.4",NA,NA,NA,NA
+"plogr","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.2.0",NA,NA,NA,NA
+"plyr","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.8.6",NA,NA,NA,NA
+"png","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.1-7",NA,NA,NA,NA
+"PNWColors","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.1.0",NA,NA,NA,NA
+"praise","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.0.0",NA,NA,NA,NA
+"prettyunits","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.1.1",NA,NA,NA,NA
+"processx","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","3.5.2",NA,NA,NA,NA
+"progress","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.2.2",NA,NA,NA,NA
+"proxy","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.4-26",NA,NA,NA,NA
+"ps","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.6.0",NA,NA,NA,NA
+"purrr","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.3.4",NA,NA,NA,NA
+"qs","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.25.2",NA,NA,NA,NA
+"quantreg","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","5.87",NA,NA,NA,NA
+"quickPlot","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.1.6",NA,NA,NA,NA
+"R.methodsS3","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.8.1",NA,NA,NA,NA
+"R6","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.5.1",NA,NA,NA,NA
+"RApiSerialize","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.1.0",NA,NA,NA,NA
+"rappdirs","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.3.3",NA,NA,NA,NA
+"raster","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","3.5-15",NA,NA,NA,NA
+"RColorBrewer","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.1-2",NA,NA,NA,NA
+"Rcpp","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.0.8",NA,NA,NA,NA
+"RcppEigen","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.3.3.9.1",NA,NA,NA,NA
+"RcppParallel","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","5.1.5",NA,NA,NA,NA
+"readr","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.1.2",NA,NA,NA,NA
+"readxl","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.3.1",NA,NA,NA,NA
+"rematch","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.0.1",NA,NA,NA,NA
+"rematch2","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.1.2",NA,NA,NA,NA
+"remotes","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.4.2",NA,NA,NA,NA
+"reprex","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.0.1",NA,NA,NA,NA
+"reproducible","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.2.8",NA,NA,NA,NA
+"Require","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.0.13",NA,NA,NA,NA
+"rgdal","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.5-28",NA,NA,NA,NA
+"rgeos","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.5-9",NA,NA,NA,NA
+"rlang","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.0.1",NA,NA,NA,NA
+"rmarkdown","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.11",NA,NA,NA,NA
+"rprojroot","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.0.2",NA,NA,NA,NA
+"RSQLite","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.2.9",NA,NA,NA,NA
+"rstudioapi","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.13",NA,NA,NA,NA
+"rvest","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.0.2",NA,NA,NA,NA
+"s2","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.0.7",NA,NA,NA,NA
+"scales","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.1.1",NA,NA,NA,NA
+"selectr","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.4-2",NA,NA,NA,NA
+"sf","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.0-5",NA,NA,NA,NA
+"sp","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.4-6",NA,NA,NA,NA
+"SpaDES.core","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.0.10",NA,NA,NA,NA
+"SpaDES.install","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.0.6.9008","SpaDES.install","PredictiveEcology","development","c28daa2092ee9cdcaa229018d1b943cf7f370038"
+"SpaDES.project","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.0.1","SpaDES.project","PredictiveEcology","HEAD","aca2f32891d5af0395d0fa0f9464db5932bab8d1"
+"SpaDES.tools","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.3.10",NA,NA,NA,NA
+"SparseM","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.81",NA,NA,NA,NA
+"stringfish","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.15.5",NA,NA,NA,NA
+"stringi","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.7.6",NA,NA,NA,NA
+"stringr","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.4.0",NA,NA,NA,NA
+"sys","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","3.4",NA,NA,NA,NA
+"terra","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.5-17",NA,NA,NA,NA
+"testthat","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","3.1.2",NA,NA,NA,NA
+"tibble","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","3.1.6",NA,NA,NA,NA
+"tidyr","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.2.0",NA,NA,NA,NA
+"tidyselect","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.1.1",NA,NA,NA,NA
+"tidyverse","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.3.1",NA,NA,NA,NA
+"tinytex","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.36",NA,NA,NA,NA
+"tzdb","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.2.0",NA,NA,NA,NA
+"units","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.7-2",NA,NA,NA,NA
+"utf8","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.2.2",NA,NA,NA,NA
+"uuid","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.0-3",NA,NA,NA,NA
+"vctrs","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.3.8",NA,NA,NA,NA
+"viridis","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.6.2",NA,NA,NA,NA
+"viridisLite","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.4.0",NA,NA,NA,NA
+"vroom","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.5.7",NA,NA,NA,NA
+"waldo","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.3.1",NA,NA,NA,NA
+"whisker","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.4",NA,NA,NA,NA
+"withr","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.4.3",NA,NA,NA,NA
+"wk","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.6.0",NA,NA,NA,NA
+"xfun","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","0.29",NA,NA,NA,NA
+"xml2","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","1.3.3",NA,NA,NA,NA
+"yaml","C:/Users/Tati/Documents/GitHub/Fisher_Landscape_Planning_Tool/libraries/4.1","2.2.2",NA,NA,NA,NA
+"base","C:/Program Files/R/R-4.1.1/library","4.1.1",NA,NA,NA,NA
+"boot","C:/Program Files/R/R-4.1.1/library","1.3-28",NA,NA,NA,NA
+"class","C:/Program Files/R/R-4.1.1/library","7.3-19",NA,NA,NA,NA
+"cluster","C:/Program Files/R/R-4.1.1/library","2.1.2",NA,NA,NA,NA
+"codetools","C:/Program Files/R/R-4.1.1/library","0.2-18",NA,NA,NA,NA
+"compiler","C:/Program Files/R/R-4.1.1/library","4.1.1",NA,NA,NA,NA
+"datasets","C:/Program Files/R/R-4.1.1/library","4.1.1",NA,NA,NA,NA
+"foreign","C:/Program Files/R/R-4.1.1/library","0.8-81",NA,NA,NA,NA
+"graphics","C:/Program Files/R/R-4.1.1/library","4.1.1",NA,NA,NA,NA
+"grDevices","C:/Program Files/R/R-4.1.1/library","4.1.1",NA,NA,NA,NA
+"grid","C:/Program Files/R/R-4.1.1/library","4.1.1",NA,NA,NA,NA
+"KernSmooth","C:/Program Files/R/R-4.1.1/library","2.23-20",NA,NA,NA,NA
+"lattice","C:/Program Files/R/R-4.1.1/library","0.20-44",NA,NA,NA,NA
+"MASS","C:/Program Files/R/R-4.1.1/library","7.3-54",NA,NA,NA,NA
+"Matrix","C:/Program Files/R/R-4.1.1/library","1.3-4",NA,NA,NA,NA
+"methods","C:/Program Files/R/R-4.1.1/library","4.1.1",NA,NA,NA,NA
+"mgcv","C:/Program Files/R/R-4.1.1/library","1.8-36",NA,NA,NA,NA
+"nlme","C:/Program Files/R/R-4.1.1/library","3.1-152",NA,NA,NA,NA
+"nnet","C:/Program Files/R/R-4.1.1/library","7.3-16",NA,NA,NA,NA
+"parallel","C:/Program Files/R/R-4.1.1/library","4.1.1",NA,NA,NA,NA
+"rpart","C:/Program Files/R/R-4.1.1/library","4.1-15",NA,NA,NA,NA
+"spatial","C:/Program Files/R/R-4.1.1/library","7.3-14",NA,NA,NA,NA
+"splines","C:/Program Files/R/R-4.1.1/library","4.1.1",NA,NA,NA,NA
+"stats","C:/Program Files/R/R-4.1.1/library","4.1.1",NA,NA,NA,NA
+"stats4","C:/Program Files/R/R-4.1.1/library","4.1.1",NA,NA,NA,NA
+"survival","C:/Program Files/R/R-4.1.1/library","3.2-11",NA,NA,NA,NA
+"tcltk","C:/Program Files/R/R-4.1.1/library","4.1.1",NA,NA,NA,NA
+"tools","C:/Program Files/R/R-4.1.1/library","4.1.1",NA,NA,NA,NA
+"translations","C:/Program Files/R/R-4.1.1/library","4.1.1",NA,NA,NA,NA
+"utils","C:/Program Files/R/R-4.1.1/library","4.1.1",NA,NA,NA,NA
