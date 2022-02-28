@@ -15,7 +15,6 @@
 # script to produce outputs (through functions) of Individual Based Models (IBMs) for fisher
 # written by Joanna Burgar (Joanna.Burgar@gov.bc.ca) - 25-Jan-2022
 #####################################################################################
-<<<<<<< Updated upstream
 version$major
 version$minor
 R_version <- paste0("R-",version$major,".",version$minor)
@@ -30,22 +29,6 @@ list.of.packages <- c("tidyverse", "NetLogoR","nnls","lcmix","MASS","Cairo","PNW
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 lapply(list.of.packages, require, character.only = TRUE)
-=======
-# version$major
-# version$minor
-# R_version <- paste0("R-",version$major,".",version$minor)
-# 
-# .libPaths(paste0("C:/Program Files/R/",R_version,"/library")) # to ensure reading/writing libraries from C drive
-# tz = Sys.timezone() # specify timezone in BC
-# 
-# # Load Packages
-# list.of.packages <- c("tidyverse", "NetLogoR","nnls","lcmix","MASS","Cairo","PNWColors", "ggplot2",
-#                       "sf","raster","rgdal")
-# # Check you have them and load them
-# new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-# if(length(new.packages)) install.packages(new.packages)
-# lapply(list.of.packages, require, character.only = TRUE)
->>>>>>> Stashed changes
 
 ################################################################################
 
