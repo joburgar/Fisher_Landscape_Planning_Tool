@@ -24,94 +24,76 @@
 # Set your main wd path
 setwd(file.path(getwd(), "Fisher_Landscape_Planning_Tool"))
 
-# 1. Installing SpaDES
 if(!require("Require")){
   install.packages("Require")
 }
 library("Require")
 
 setLibPaths(file.path(getwd(), "libraries/4.1/")) 
-Require("PredictiveEcology/SpaDES.install@development")
-if (!dir.exists(file.path(.libPaths()[1], "raster"))){
-  install.packages("terra", type = "source")
-  install.packages("raster", type = "source")
+
+if (!file.exists(file.path(getwd(), "packageVersions.txt"))){
+  
+  # 1. Installing SpaDES
+
+  Require("PredictiveEcology/SpaDES.install@development")
+  if (!dir.exists(file.path(.libPaths()[1], "raster"))){
+    install.packages("terra", type = "source")
+    install.packages("raster", type = "source")
+  }
+  
+  if(!Require("SpaDES.core")){
+    installSpaDES(upgrade = FALSE)
+  }
+
+  list.of.packages <- c("tidyverse", "nnls","MASS","SpaDES.core","SpaDES.tools",
+                        "Cairo","PNWColors", "Hmisc")
+  
+  # Check you have them and load them
+  new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+  if(length(new.packages) != 0) 
+    lapply(list.of.packages, Require, character.only = TRUE)
+  
+  if (!Require("lcmix"))
+    Require("lcmix", repos="http://R-Forge.R-project.org")
+  
+  # NetLogoR is not available on CRAN for R 4.1, but can be downloaded ans installed from here:
+  if (!Require("NetLogoR"))
+    install.packages("https://cran.r-project.org/src/contrib/Archive/NetLogoR/NetLogoR_0.3.9.tar.gz",
+                     repos=NULL, method="libcurl")
+  
+  Require("reproducible")
+  Require("SpaDES.core")
+  Require("NetLogoR")
+  Require("magrittr")
+  Require("raster")
+  Require("dplyr")
+  Require("Cairo")
+  Require("stringr")
+  Require("tidyr")
+  
+  Require::pkgSnapshot() # Use this to be able to install packages from this file
+  # i.e., automatically generates list of installed packages and versions that can
+  # be used to install. :)
+  
+} else {
+  library("Require")
+  Require(packageVersionFile = file.path(getwd(), "packageVersions.txt"), 
+          libPaths = .libPaths()[1])
+  Require("reproducible")
+  Require("SpaDES.core")
+  Require("NetLogoR")
+  Require("magrittr")
+  Require("raster")
+  Require("dplyr")
+  Require("Cairo")
+  Require("stringr")
 }
-
-if(!Require("SpaDES.core")){
-  installSpaDES(upgrade = FALSE)
-}
-
-# tz = Sys.timezone() # specify timezone in BC # notUsed
-
-# Load Packages
-# install.packages("R.methodsS3")
-
-list.of.packages <- c("tidyverse", "nnls","MASS","SpaDES.core","SpaDES.tools",
-                      "Cairo","PNWColors", "Hmisc")
-
-# Check you have them and load them
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages) != 0) 
-  lapply(list.of.packages, Require, character.only = TRUE)
-
-if (!Require("lcmix"))
-  Require("lcmix", repos="http://R-Forge.R-project.org")
-
-# NetLogoR is not available on CRAN for R 4.1, but can be downloaded ans installed from here:
-if (!Require("NetLogoR"))
-  install.packages("https://cran.r-project.org/src/contrib/Archive/NetLogoR/NetLogoR_0.3.9.tar.gz",
-                   repos=NULL, method="libcurl")
-
-Require("reproducible")
-Require("SpaDES.core")
-Require("NetLogoR")
-Require("magrittr")
-Require("raster")
-Require("dplyr")
-Require("Cairo")
-Require("stringr")
 
 setPaths(cachePath = checkPath(file.path(getwd(), "cache"), create = TRUE),
          inputPath = checkPath(file.path(getwd(), "inputs"), create = TRUE),
-         outputPath = checkPath(file.path(getwd(), "outputs"), create = TRUE),
+         outputPath = checkPath(file.path(getwd(), "out"), create = TRUE),
          modulePath = checkPath(file.path(getwd(), "modules"), create = TRUE),
          rasterPath = checkPath(file.path(getwd(), "tempDir"), create = TRUE))
-
-Require::pkgSnapshot() # Use this to be able to install packages from this file
-# i.e., automatically generates list of installed packages and versions that can
-# be used to install. :)
-
-# for(i in 1:length(list.of.packages)){
-#   print(packageDescription(list.of.packages[i], fields=c("Package","Version")))
-# }
-
-# Package: tidyverse
-# Version: 1.3.1
-#
-# Package: NetLogoR
-# Version: 0.3.9
-#
-# Package: nnls
-# Version: 1.4
-#
-# Package: lcmix
-# Version: 0.3
-#
-# Package: MASS
-# Version: 7.3-54
-#
-# Package: SpaDES.core
-# Version: 1.0.10
-#
-# Package: SpaDES.tools
-# Version: 0.3.9
-#
-# Package: Cairo
-# Version: 1.5-14
-#
-# Package: PNWColors
-# Version: 0.1.0
-
 
 source("00b_Female_IBM_functions.R")
 #####################################################################################

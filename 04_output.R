@@ -15,6 +15,7 @@
 # script to produce outputs (through functions) of Individual Based Models (IBMs) for fisher
 # written by Joanna Burgar (Joanna.Burgar@gov.bc.ca) - 25-Jan-2022
 #####################################################################################
+<<<<<<< Updated upstream
 version$major
 version$minor
 R_version <- paste0("R-",version$major,".",version$minor)
@@ -29,8 +30,25 @@ list.of.packages <- c("tidyverse", "NetLogoR","nnls","lcmix","MASS","Cairo","PNW
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 lapply(list.of.packages, require, character.only = TRUE)
+=======
+# version$major
+# version$minor
+# R_version <- paste0("R-",version$major,".",version$minor)
+# 
+# .libPaths(paste0("C:/Program Files/R/",R_version,"/library")) # to ensure reading/writing libraries from C drive
+# tz = Sys.timezone() # specify timezone in BC
+# 
+# # Load Packages
+# list.of.packages <- c("tidyverse", "NetLogoR","nnls","lcmix","MASS","Cairo","PNWColors", "ggplot2",
+#                       "sf","raster","rgdal")
+# # Check you have them and load them
+# new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+# if(length(new.packages)) install.packages(new.packages)
+# lapply(list.of.packages, require, character.only = TRUE)
+>>>>>>> Stashed changes
 
 ################################################################################
+
 ###--- output FUNCTIONS
 
 # measures of uncertainty
@@ -53,7 +71,10 @@ setup_plot <- function(sim_out=sim_out, name_out=name_out){
   dev.off()
 }
 
+Require("data.table")
+Require("tidyr")
 # grab output from one set of 100 simulations
+
 sim_output <- function(sim_out=sim_out, sim=sim, numsims=numsims, yrs_sim=yrs_sim){
   # sim_out=B.w1_real.FEMALE; sim=2; numsims=100; yrs_sim=10
   num.runs <- yrs_sim + 2
@@ -127,7 +148,6 @@ pop_output <- function(sim_out=sim_out, sim_order=c(4:6), numsims=100, yrs_sim=1
   # sim_out=Boreal_escape_FEMALE_binom
   # sim_order=c(4:6)
   num.runs <- yrs_sim + 2
-
   ABM.df <- as.data.frame(array(NA,c(num.runs*numsims*length(sim_order),4)))
   colnames(ABM.df) <- c("Run","TimeStep","Count","Sim")
 
@@ -140,8 +160,6 @@ pop_output <- function(sim_out=sim_out, sim_order=c(4:6), numsims=100, yrs_sim=1
   }
 return(ABM.df)
 }
-
-
 
 ###--- Create a function to bind the two populations and produce two figures of adult females per time step
 # still need to clean up as not totally reproducible - assumes prophab is the only  piece that changes
