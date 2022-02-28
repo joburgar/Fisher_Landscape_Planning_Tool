@@ -15,20 +15,48 @@
 # script to produce outputs (through functions) of Individual Based Models (IBMs) for fisher
 # written by Joanna Burgar (Joanna.Burgar@gov.bc.ca) - 25-Jan-2022
 #####################################################################################
-version$major
-version$minor
-R_version <- paste0("R-",version$major,".",version$minor)
+# version$major
+# version$minor
+# R_version <- paste0("R-",version$major,".",version$minor)
+# 
+# .libPaths(paste0("C:/Program Files/R/",R_version,"/library")) # to ensure reading/writing libraries from C drive
+# tz = Sys.timezone() # specify timezone in BC
+# 
+# # Load Packages
+# list.of.packages <- c("tidyverse", "NetLogoR","nnls","lcmix","MASS","Cairo","PNWColors", "ggplot2",
+#                       "sf","raster","rgdal","data.table")
+# # Check you have them and load them
+# new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+# if(length(new.packages)) install.packages(new.packages)
+# lapply(list.of.packages, require, character.only = TRUE)
 
-.libPaths(paste0("C:/Program Files/R/",R_version,"/library")) # to ensure reading/writing libraries from C drive
-tz = Sys.timezone() # specify timezone in BC
+# I have commented out the package installation because it takes time and 
+# might get the wrong package versions. I added a more reproducible workflow 
+# below. This ensure packages are correctly installed and loaded. By the time 
+# the user gets to this script, they have already certainly installed the 
+# correct packages, so no need to install anything again.
 
-# Load Packages
-list.of.packages <- c("tidyverse", "NetLogoR","nnls","lcmix","MASS","Cairo","PNWColors", "ggplot2",
-                      "sf","raster","rgdal","data.table")
-# Check you have them and load them
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
-lapply(list.of.packages, require, character.only = TRUE)
+# Set your main wd path if not correct
+# setwd(file.path(getwd(), "Fisher_Landscape_Planning_Tool"))
+
+if(!require("Require")){
+  install.packages("Require")
+}
+library("Require")
+
+setLibPaths(file.path(getwd(), "libraries/4.1/")) 
+
+library("Require")
+Require(packageVersionFile = file.path(getwd(), "packageVersions.txt"), 
+        libPaths = .libPaths()[1])
+Require("reproducible")
+Require("SpaDES.core")
+Require("NetLogoR")
+Require("magrittr")
+Require("raster")
+Require("dplyr")
+Require("Cairo")
+Require("stringr")
 
 ################################################################################
 
@@ -276,8 +304,6 @@ ABM_fig_1sim <- function(sim_out=sim_out, numsims=100, yrs_sim=10, Fpop=Fpop){
   return(list(ABM.TS.df=ABM.TS.df, sim.TS.plot_se=sim.TS.plot_se))
 }
 
-
-
 ################################################################################
 
 ### Create heatmaps for the outputs
@@ -361,7 +387,6 @@ heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yr
   return(list(raster=r_stackApply, Fisher_Nmean=Fisher_Nmean, Fisher_Nse=Fisher_Nse, nozerosims=nozerosims))
 
 }
-
 
 ################################################################################
 # Run 100 simulations for each, save as objects
