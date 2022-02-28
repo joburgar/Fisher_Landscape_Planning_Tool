@@ -54,3 +54,4 @@ libraries/
 # Ignore outputs and inputs folders
 inputs/
 outputs/
+out/
