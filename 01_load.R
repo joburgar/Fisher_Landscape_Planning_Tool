@@ -15,21 +15,21 @@
 # script to load spatial data for fisher (provincial scale)
 # written by Joanna Burgar (Joanna.Burgar@gov.bc.ca) - 09-Nov-2021
 #####################################################################################
-version$major
-version$minor
-R_version <- paste0("R-",version$major,".",version$minor)
-
-.libPaths(paste0("C:/Program Files/R/",R_version,"/library")) # to ensure reading/writing libraries from C drive
-tz = Sys.timezone() # specify timezone in BC
-
-# Load Packages
-list.of.packages <- c("tidyverse", "lubridate","chron","bcdata", "bcmaps","sf", "rgdal",
-                      "Cairo","OpenStreetMap", "ggmap","PNWColors","units","nngeo","raster")
-
-# Check you have them and load them
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
-lapply(list.of.packages, require, character.only = TRUE)
+# version$major
+# version$minor
+# R_version <- paste0("R-",version$major,".",version$minor)
+# 
+# .libPaths(paste0("C:/Program Files/R/",R_version,"/library")) # to ensure reading/writing libraries from C drive
+# tz = Sys.timezone() # specify timezone in BC
+# 
+# # Load Packages
+# list.of.packages <- c("tidyverse", "lubridate","chron","bcdata", "bcmaps","sf", "rgdal",
+#                       "Cairo","OpenStreetMap", "ggmap","PNWColors","units","nngeo","raster")
+# 
+# # Check you have them and load them
+# new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+# if(length(new.packages)) install.packages(new.packages)
+# lapply(list.of.packages, require, character.only = TRUE)
 #####################################################################################
 
 ###--- Area of Interest (AOI) is larger than Study Area
