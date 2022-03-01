@@ -96,7 +96,8 @@ setPaths(cachePath = checkPath(file.path(getwd(), "cache"), create = TRUE),
          rasterPath = checkPath(file.path(getwd(), "tempDir"), create = TRUE))
 
 source("00b_Female_IBM_functions.R")
-#####################################################################################
+# source("01_load.R") # This is not working. It is missing an object called aoi
+####################################################################################
 
 # Start with a very simple example - habitat patch is either suitable or not suitable
 # Die by 2 if haven’t found a territory
@@ -319,7 +320,8 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
 
 # Read in aoi shapefile (with attribute info) and aoi raster (binary 0/1 for habitat)
 load("data/IBM_aoi_Pex2.RData")
-glimpse(IBM_aoi)
+# glimpse(IBM_aoi) # This can also be achieved without an extra package using str()
+str(IBM_aoi)
 Fpop <- unique(substr(IBM_aoi$aoi$Fpop,1,1))
 sum(IBM_aoi$raoi@data@values) # number of equivalent territories with suitable habitat
 # go with ~1/3 for actual female territories or ~10 in this case
@@ -343,10 +345,7 @@ end_time <- Sys.time()
 
 B.w1_real.FEMALE <- list(w1, B.w1_real.FEMALE.sim100)
 
-save(B.w1_real.FEMALE, file="out/B.w1_real.FEMALE.RData")
-
-
-
+save(B.w1_real.FEMALE, file = file.path(Paths$outputPath, "B.w1_real.FEMALE.RData"))
 
 # ################################################################################
 # # Create 3 sets of 100 simulations - vary the proportion of habitat and survival
