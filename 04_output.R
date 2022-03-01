@@ -57,6 +57,11 @@ Require("raster")
 Require("dplyr")
 Require("Cairo")
 Require("stringr")
+Require("jakelawlor/PNWColors")
+Require("data.table")
+Require("tidyr")
+Require("ggplot2")
+Require("sf")
 
 ################################################################################
 
@@ -82,8 +87,6 @@ setup_plot <- function(sim_out=sim_out, name_out=name_out){
   dev.off()
 }
 
-Require("data.table")
-Require("tidyr")
 # grab output from one set of 100 simulations
 
 sim_output <- function(sim_out=sim_out, sim=sim, numsims=numsims, yrs_sim=yrs_sim){
@@ -394,7 +397,7 @@ heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yr
 # Create a figure with mean number of adult females (+/- SE or 95% CIs) for each time step and graph for each simulation
 
 ###--- load real world simulations (list of 1 run for 1 population from analysis script)
-load("out/B.w1_real.FEMALE.RData")
+load(file.path(Paths$outputPath, "B.w1_real.FEMALE.RData"))
 B.w1_real <- ABM_fig_1sim(sim_out=B.w1_real.FEMALE, numsims=100, yrs_sim=10, Fpop="B")
 
 B.w1_real$sim.TS.plot_se
@@ -404,42 +407,47 @@ B.w1_real$sim.TS.plot_se
 # C.w1_real$sim.TS.plot
 # dev.off()
 
-Cairo(file="out/IBM_MeanSE_Pex2.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+Cairo(file = file.path(Paths$outputPath, "IBM_MeanSE_Pex2.PNG"),
+      type = "png", width = 3000, height = 2200, 
+      pointsize = 15, bg = "white", dpi = 300)
 B.w1_real$sim.TS.plot_se
 dev.off()
 
-
 # plot of initial starting points for adult female fishers
-Cairo(file="out/IBM_Saoi_Pex2.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+Cairo(file = file.path(Paths$outputPath, "IBM_Saoi_Pex2.PNG"),
+      type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
 plot(B.w1_real.FEMALE[[1]]$land, legend=FALSE, main="Simulated Fisher Established Territories within Area of Interest")
 points(B.w1_real.FEMALE[[1]]$t0, pch = B.w1_real.FEMALE[[1]]$t0$shape, col = of(agents = B.w1_real.FEMALE[[1]]$t0, var = "color"))
 dev.off()
 
 B.w1_real_heatmap <- heatmap_output(sim_out=B.w1_real.FEMALE, sim_order=2, numsims=100, yrs_sim=10, TS=12, name_out="Pex2")
 
+plot(B.w1_real_heatmap$raster)
 
+
+# WE DON'T HAVE THE DATA BELOW (C.w1_real.FEMALE.RData). Commented out.
 ###--- load real world simulations (list of 1 run for 1 population from analysis script)
-load("out/C.w1_real.FEMALE.RData")
-C.w1_real <- ABM_fig_1sim(sim_out=C.w1_real.FEMALE, numsims=100, yrs_sim=10, Fpop="C")
-
-C.w1_real$sim.TS.plot
-C.w1_real$sim.TS.plot_se
-
-Cairo(file="out/IBM_MeanCI_ex2.PNG",
-      type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
-C.w1_real$sim.TS.plot
-dev.off()
-
-Cairo(file="out/IBM_MeanSE_ex2.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
-C.w1_real$sim.TS.plot_se
-dev.off()
-
-
-# plot of initial starting points for adult female fishers
-Cairo(file="out/IBM_Saoi_ex2.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
-plot(C.w1_real.FEMALE[[1]]$land, legend=FALSE, main="Simulated Fisher Established Territories within Area of Interest")
-points(C.w1_real.FEMALE[[1]]$t0, pch = C.w1_real.FEMALE[[1]]$t0$shape, col = of(agents = C.w1_real.FEMALE[[1]]$t0, var = "color"))
-dev.off()
+# load("out/C.w1_real.FEMALE.RData")
+# C.w1_real <- ABM_fig_1sim(sim_out=C.w1_real.FEMALE, numsims=100, yrs_sim=10, Fpop="C")
+# 
+# C.w1_real$sim.TS.plot
+# C.w1_real$sim.TS.plot_se
+# 
+# Cairo(file="out/IBM_MeanCI_ex2.PNG",
+#       type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+# C.w1_real$sim.TS.plot
+# dev.off()
+# 
+# Cairo(file="out/IBM_MeanSE_ex2.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+# C.w1_real$sim.TS.plot_se
+# dev.off()
+# 
+# 
+# # plot of initial starting points for adult female fishers
+# Cairo(file="out/IBM_Saoi_ex2.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+# plot(C.w1_real.FEMALE[[1]]$land, legend=FALSE, main="Simulated Fisher Established Territories within Area of Interest")
+# points(C.w1_real.FEMALE[[1]]$t0, pch = C.w1_real.FEMALE[[1]]$t0$shape, col = of(agents = C.w1_real.FEMALE[[1]]$t0, var = "color"))
+# dev.off()
 
 #heatmap will not work if all of the runs finished with 0 fishers surviving
 # C.w1_real_heatmap <- heatmap_output(sim_out=C.w1_real.FEMALE, sim_order=2, numsims=100, yrs_sim=10, TS=12, name_out="QTSA_ex2")
