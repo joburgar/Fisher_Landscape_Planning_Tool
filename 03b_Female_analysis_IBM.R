@@ -300,33 +300,35 @@ print(sum(IBM_aoi$canBex_raster[[i]]@data@values)) # number of equivalent territ
 length(IBM_aoi$canBex_raster[[1]]@data@values)
 # go with ~1/3 for actual female territories or ~40 in this case
 
-canBexW <- list()
-for(i in 1:length(IBM_aoi$canBex_raster)){
-world <- set_up_REAL_world_FEMALE(nFemales=40, maxAgeFemale=9, raoi=IBM_aoi$canBex_raster[[i]])
-canBexW[[i]]<- world
-}
 
 canBex.FEMALE <- list()
-for(w in 1:length(IBM_aoi$canBex_raster)){
+
+for(i in 1:length(IBM_aoi$canBex_raster)){
+  canBex.FEMALE.world <- set_up_REAL_world_FEMALE(nFemales=40, maxAgeFemale=9, raoi=IBM_aoi$canBex_raster[[i]])
+
   start_time <- Sys.time()
   canBex.FEMALE.sim100 <- vector('list',100)
   for(i in 1:100){
-    canBex.FEMALE.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=canBexW[[w]]$land, t0=canBexW[[w]]$t0,           # import world
+    canBex.FEMALE.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=canBex.FEMALE.world$land,
+                                                                  t0=canBex.FEMALE.world$t0,             # import world
                                                                   repro_estimates=repro.CI, Fpop=Fpop,   # reproduction
                                                                   surv_estimates=rf_surv_estimates,      # survive
                                                                   maxAgeFemale=9,                        # survive
                                                                   dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
-                                                                  yrs.to.run=10)                                             # number of years to run simulation post set up
+                                                                  yrs.to.run=10)                         # number of years to run simulation post set up
   }
 
-  end_time <- Sys.time()
-  print(end_time - start_time)
+  end_time <- Sys.time(); print(end_time - start_time)
 
-  canBex.FEMALE[[w]] <- canBex.FEMALE.sim100
+  canBex.FEMALE.W.sim100 <- list(canBex.FEMALE.world, canBex.FEMALE.sim100)
+
+  canBex.FEMALE[[i]] <- canBex.FEMALE.W.sim100
 }
+
 
 # end_time - start_time # takes ~ 6-8 min for canBex0 scenario 484 grid cells and 100 simulation run (Boreal)
 
+# save(canBexW, file="out/canBexW.RData")
 save(canBex.FEMALE, file="out/canBex.FEMALE.RData")
 
 
