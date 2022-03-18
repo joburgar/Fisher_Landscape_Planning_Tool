@@ -187,19 +187,20 @@ ggplot()+
 aoi <- st_make_grid(st_buffer(aoi.CUT %>% st_transform(crs=26910), dist=30000), n=1)
 aoi <- st_as_sf(aoi)
 
+
+pal = pnw_palette(name="Winter",n=2,type="discrete")
+
+Cairo(file="out/Bex_Fpop_aoi_plot.PNG",type="png",width=2400,height=2400,pointsize=14,bg="white",dpi=300)
 ggplot()+
-  geom_sf(data=aoi.Fpop)+
+  geom_sf(data=aoi.Fpop, aes(fill=Fpop))+
   geom_sf(data=aoi)+
-  geom_sf(data=aoi.CUT)
+  geom_sf(data=aoi.CUT)+
+  scale_fill_manual(values=rev(pal))+
+  theme(legend.position="bottom")+
+  theme(legend.title=element_blank())
+dev.off()
 
 aoi <- st_join(aoi, aoi.Fpop %>% st_transform(crs=26910),left=TRUE, largest=TRUE)
-
-# aoi.grid <- create_grid(input=aoi, cellsize=5500)
-# aoi.utm <- aoi.grid$aoi_utm
-# aoi.grid <- aoi.grid$fishnet_grid_sf
-#
-# aoi.utm <- st_join(aoi.utm, aoi.Fpop %>% st_transform(crs=26910),left=TRUE, largest=TRUE)
-# aoi.grid <- st_join(aoi.grid, aoi.Fpop %>% st_transform(crs=26910),left=TRUE, largest=TRUE)
 
 ggplot()+
   geom_sf(data=aoi.CUT %>% filter(HARVEST_DECADE %in% c(1980)), aes(fill=HARVEST_YEAR))+
@@ -207,7 +208,7 @@ ggplot()+
 
 
 ### CREATNG SUITABLE HABITAT WITH FIRST ROUND OF MAHALANOBIS DISTANCE OUTPUTS
-aoi.CUTBex <- aoi.CUT %>% filter(HARVEST_DECADE %in% c(1980))
+aoi.CUTBex <- aoi.CUT %>% filter(HARVEST_DECADE==1980)
 aoi.CUTBex$rndmrnk <- rank(round(runif(nrow(aoi.CUTBex), min=10000, max=99999)))
 
 # maldist <- st_read(dsn=paste0(getwd(),"/data"), layer="Mahalanobis_predictions_2021_220304")
@@ -254,30 +255,43 @@ aoi.MAL.plot <- ggplot()+
   theme(legend.position="bottom")+
   theme(legend.title=element_blank())
 
-Cairo(file="out/Bex1_aoi_MAL_plot.PNG",type="png",width=2400,height=2400,pointsize=14,bg="white",dpi=300)
+Cairo(file="out/Bex_aoi_MAL_plot.PNG",type="png",width=2400,height=2400,pointsize=14,bg="white",dpi=300)
 aoi.MAL.plot
 dev.off()
 
 ################################################################################
-# Canned Example 1
-aoi.CUTBex <- st_join(aoi.CUTBex %>% filter(HARVEST_DECADE==1980), aoi.MAL %>% dplyr::select(D2_grp),left=TRUE, largest=TRUE)
+###--- Set up 4 possible scenarios
+# (1) 0% harvesting - run simulation with underlying landbase for baseline number
+# (2) 25% harvesting of cutblocks in suitable habitat
+# (3) 50% harvesting of cutblocks in suitable habitat
+# (4) 75% harvesting of cutblocks in suitable habitat
 
-# example 1 = all cutblocks
+# determine number of cutblocks in suitable territory (FETA)
+num.cutblocks.FETA <- aoi.CUTBex %>% filter(D2_grp=="Suitable Territory") %>% count(D2_grp) %>% st_drop_geometry()
+num.cutblocks.FETA <- num.cutblocks.FETA$n
+
+# Scenario 1 -0% harvesting - run simulation with underlying landbase for baseline number
+aoi.CUTBex <- st_join(aoi.CUTBex %>% filter(HARVEST_DECADE==1980), aoi.MAL %>% dplyr::select(D2_grp),left=TRUE, largest=TRUE)
+aoi.CUTBex <- aoi.CUTBex %>% arrange(D2_grp,rndmrnk)
+
+# Scenario 1 = 0% harvesting
 canBEx1 <- aoi.CUTBex
+canBEx1 <- canBEx1 %>% filter(D2_grp!="Suitable Territory")
 canBEx1 %>% count(D2_grp)
-# example 2 = random half of cutblocks
-canBEx2 <- aoi.CUTBex %>% arrange(rndmrnk)
-canBEx2 <- canBEx2[1:210,]
+
+# Scenario 2 = 25% harvesting in suitable habitat
+canBEx2 <- aoi.CUTBex
+canBEx2 <- canBEx2[round(num.cutblocks.FETA*.75):nrow(aoi.CUTBex),]
 canBEx2 %>% dplyr::count(D2_grp)
-# example 3 = "unsuitable quality" cuts
-# aoi.CUT$D2_grp <- fct_relevel(aoi.CUT$D2_grp, "Suitable Territory","Suitable Movement","Possible Movement","Unsuitable")
-# aoi.CUT %>% dplyr::count(D2_grp)
-canBEx3 <- aoi.CUTBex %>% arrange(D2_grp, rndmrnk)
-canBEx3 <- canBEx3[211:420,]
+
+# Scenario 3 = 50% harvesting in suitable habitat
+canBEx3 <- aoi.CUTBex
+canBEx3 <- canBEx3[round(num.cutblocks.FETA*.5):nrow(aoi.CUTBex),]
 canBEx3 %>% dplyr::count(D2_grp)
-# example 4 = "suitable quality" cuts
-canBEx4 <- aoi.CUTBex %>% arrange(D2_grp, rndmrnk)
-canBEx4 <- canBEx4[1:210,]
+
+# Scenario 4 = 75% harvesting in suitable habitat
+canBEx4 <- aoi.CUTBex
+canBEx4 <- canBEx4[round(num.cutblocks.FETA*.25):nrow(aoi.CUTBex),]
 canBEx4 %>% dplyr::count(D2_grp)
 
 aoi.MAL.canBEx1.plot <- ggplot()+
@@ -286,7 +300,9 @@ aoi.MAL.canBEx1.plot <- ggplot()+
   geom_sf(data=aoi, fill=NA)+
   scale_fill_manual(values=rev(pal))+
   theme(legend.position="bottom")+
-  theme(legend.title=element_blank())
+  theme(legend.title=element_blank())+
+  ggtitle("Scenario 1\n 0% harvesting in Fisher Equivalent Territory Areas") +
+  theme(plot.title = element_text(color="grey2", size=12, face="bold"))
 
 Cairo(file="out/canBex1_aoi_MAL_plot.PNG",type="png",width=2400,height=2400,pointsize=14,bg="white",dpi=300)
 aoi.MAL.canBEx1.plot
@@ -298,7 +314,9 @@ aoi.MAL.canBEx2.plot <- ggplot()+
   geom_sf(data=aoi, fill=NA)+
   scale_fill_manual(values=rev(pal))+
   theme(legend.position="bottom")+
-  theme(legend.title=element_blank())
+  theme(legend.title=element_blank())+
+  ggtitle("Scenario 1\n 25% harvesting in Fisher Equivalent Territory Areas") +
+  theme(plot.title = element_text(color="grey2", size=12, face="bold"))
 
 Cairo(file="out/canBex2_aoi_MAL_plot.PNG",type="png",width=2400,height=2400,pointsize=14,bg="white",dpi=300)
 aoi.MAL.canBEx2.plot
@@ -310,7 +328,9 @@ aoi.MAL.canBEx3.plot <- ggplot()+
   geom_sf(data=aoi, fill=NA)+
   scale_fill_manual(values=rev(pal))+
   theme(legend.position="bottom")+
-  theme(legend.title=element_blank())
+  theme(legend.title=element_blank())+
+  ggtitle("Scenario 1\n 50% harvesting in Fisher Equivalent Territory Areas") +
+  theme(plot.title = element_text(color="grey2", size=12, face="bold"))
 
 Cairo(file="out/canBex3_aoi_MAL_plot.PNG",type="png",width=2400,height=2400,pointsize=14,bg="white",dpi=300)
 aoi.MAL.canBEx3.plot
@@ -322,7 +342,9 @@ aoi.MAL.canBEx4.plot <- ggplot()+
   geom_sf(data=aoi, fill=NA)+
   scale_fill_manual(values=rev(pal))+
   theme(legend.position="bottom")+
-  theme(legend.title=element_blank())
+  theme(legend.title=element_blank())+
+  ggtitle("Scenario 1\n 75% harvesting in Fisher Equivalent Territory Areas") +
+  theme(plot.title = element_text(color="grey2", size=12, face="bold"))
 
 Cairo(file="out/canBex4_aoi_MAL_plot.PNG",type="png",width=2400,height=2400,pointsize=14,bg="white",dpi=300)
 aoi.MAL.canBEx4.plot
@@ -331,31 +353,15 @@ dev.off()
 ################################################################################
 # (1) transform aoi into fisher grid
 # (2) join cells to identify as habitat based on D2_grp category
-# (3) create 5 landscapes - one without any harvesting, and the 4 canned scenarios above
-# (4) for canned scenarios, change cells with harvesting to unsuitable habitat
-# (5) still binary "suitable" vs all other quality types for model
-
-# for landscape without any harvesting
-# aoi.MAL$Habitat <- ifelse(aoi.MAL$D2_grp=="Suitable Territory",1,0)
-#
-# aoi <- aoi %>% st_transform(crs=26910)
-# raoi <- raster(ext=extent(aoi), crs=26910, res=c(5500,5500))
-# raoi <- rasterize(aoi.MAL %>% st_transform(crs=26910), raoi, field="Habitat", fun="max")
-# raoi[is.na(raoi[])] <- 0
-#
-# #plot of the raster showing habitat as binary (green = suitable, white = unsuitable)
-# sum(raoi@data@values) # 129
-# sum(raoi@data@values) / length(raoi@data@values)*100 # 27% habitat
-# Cairo(file=paste0("out/IBM_raoi_canBex.PNG"), type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
-# plot(raoi, legend=FALSE,main="Potential Fisher Equivalent Territories in the Area of Interest",sub="129 or 27% Fisher Equivalent Territories")
-# dev.off()
+# (3) still binary "suitable" vs all other quality types for model
 
 ################################################################################
 # for canned scenarios - i.e., with any harvesting
 
-# suitable habitat without harvesting
-aoi.MAL$Habitat_canBex0 <- ifelse(aoi.MAL$D2_grp=="Suitable Territory",1,0)
-sum(aoi.MAL$Habitat_canBex0)
+# (1) 0% harvesting - run simulation with underlying landbase for baseline number
+# (2) 25% harvesting of cutblocks in suitable habitat
+# (3) 50% harvesting of cutblocks in suitable habitat
+# (4) 75% harvesting of cutblocks in suitable habitat
 
 # bring in harvesting data
 habitat <- list()
@@ -373,12 +379,12 @@ aoi.MAL$Habitat_canBex3 <- habitat[[3]]
 aoi.MAL$Habitat_canBex4 <- habitat[[4]]
 
 aoi.MAL %>% group_by(D2_grp) %>%
-  summarise_at(c("Habitat_canBex0","Habitat_canBex1","Habitat_canBex2","Habitat_canBex3","Habitat_canBex4"), sum, na.rm = TRUE) %>%
+  summarise_at(c("Habitat_canBex1","Habitat_canBex2","Habitat_canBex3","Habitat_canBex4"), sum, na.rm = TRUE) %>%
   st_drop_geometry()
 
 glimpse(aoi.MAL)
 
-Habitat_canBex <- c("canBex0","canBex1", "canBex2", "canBex3", "canBex4")
+Habitat_canBex <- c("canBex1", "canBex2", "canBex3", "canBex4")
 aoi <- aoi %>% st_transform(crs=26910)
 
 canBex_raster <- list()
@@ -402,9 +408,6 @@ sum(canBex_raster[[1]]@data@values) # 129 suitable habitat cells
 sum(canBex_raster[[2]]@data@values) # 105 suitable habitat cells
 sum(canBex_raster[[3]]@data@values) # 110 suitable habitat cells
 sum(canBex_raster[[4]]@data@values) # 118 suitable habitat cells
-sum(canBex_raster[[5]]@data@values) # 106 suitable habitat cells
-# nrow(IBM_aoi$aoi)
-
 
 IBM_aoi <- list(aoi=aoi.MAL, canBex_raster=canBex_raster)
 
