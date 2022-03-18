@@ -289,34 +289,45 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
 ######################################################################################
 
 # Read in aoi shapefile (with attribute info) and aoi raster (binary 0/1 for habitat)
-load("data/IBM_aoi_Pex2.RData")
+# load("data/IBM_aoi_Pex2.RData")
+load("data/IBM_aoi_canBex.RData")
+
 glimpse(IBM_aoi)
 Fpop <- unique(substr(IBM_aoi$aoi$Fpop,1,1))
-sum(IBM_aoi$raoi@data@values) # number of equivalent territories with suitable habitat
-# go with ~1/3 for actual female territories or ~10 in this case
+for(i in 1:length(IBM_aoi$canBex_raster)){
+print(sum(IBM_aoi$canBex_raster[[i]]@data@values)) # number of equivalent territories with suitable habitat
+}
+length(IBM_aoi$canBex_raster[[1]]@data@values)
+# go with ~1/3 for actual female territories or ~40 in this case
 
-w1 <- set_up_REAL_world_FEMALE(nFemales=10, maxAgeFemale=9, raoi=IBM_aoi$raoi)
-
-start_time <- Sys.time()
-B.w1_real.FEMALE.sim100 <- vector('list',100)
-for(i in 1:100){
-  B.w1_real.FEMALE.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=w1$land, t0=w1$t0,           # import world
-                                                              repro_estimates=repro.CI, Fpop=Fpop,   # reproduction
-                                                              surv_estimates=rf_surv_estimates,      # survive
-                                                              maxAgeFemale=9,                        # survive
-                                                              dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
-                                                              yrs.to.run=10)                                             # number of years to run simulation post set up
+canBexW <- list()
+for(i in 1:length(IBM_aoi$canBex_raster)){
+world <- set_up_REAL_world_FEMALE(nFemales=40, maxAgeFemale=9, raoi=IBM_aoi$canBex_raster[[i]])
+canBexW[[i]]<- world
 }
 
-end_time <- Sys.time()
+canBex.FEMALE <- list()
+for(w in 1:length(IBM_aoi$canBex_raster)){
+  start_time <- Sys.time()
+  canBex.FEMALE.sim100 <- vector('list',100)
+  for(i in 1:100){
+    canBex.FEMALE.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=canBexW[[w]]$land, t0=canBexW[[w]]$t0,           # import world
+                                                                  repro_estimates=repro.CI, Fpop=Fpop,   # reproduction
+                                                                  surv_estimates=rf_surv_estimates,      # survive
+                                                                  maxAgeFemale=9,                        # survive
+                                                                  dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
+                                                                  yrs.to.run=10)                                             # number of years to run simulation post set up
+  }
 
-# end_time - start_time # takes ~ 1.7 min for 40 grid cells and 100 simulation run (Boreal); or ~30 sec for Columbian
+  end_time <- Sys.time()
+  print(end_time - start_time)
 
-B.w1_real.FEMALE <- list(w1, B.w1_real.FEMALE.sim100)
+  canBex.FEMALE[[w]] <- canBex.FEMALE.sim100
+}
 
-save(B.w1_real.FEMALE, file="out/B.w1_real.FEMALE.RData")
+# end_time - start_time # takes ~ 6-8 min for canBex0 scenario 484 grid cells and 100 simulation run (Boreal)
 
-
+save(canBex.FEMALE, file="out/canBex.FEMALE.RData")
 
 
 # ################################################################################
