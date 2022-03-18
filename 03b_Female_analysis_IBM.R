@@ -310,7 +310,7 @@ for(i in 1:100){
 
 end_time <- Sys.time()
 
-# end_time - start_time # takes ~ 1.5 min for 40 grid cells and 100 simulation run (Boreal); or ~30 sec for Columbian
+# end_time - start_time # takes ~ 1.7 min for 40 grid cells and 100 simulation run (Boreal); or ~30 sec for Columbian
 
 B.w1_real.FEMALE <- list(w1, B.w1_real.FEMALE.sim100)
 
