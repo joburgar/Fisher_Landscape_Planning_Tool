@@ -298,18 +298,19 @@ for(i in 1:length(IBM_aoi$canBex_raster)){
 print(sum(IBM_aoi$canBex_raster[[i]]@data@values)) # number of equivalent territories with suitable habitat
 }
 length(IBM_aoi$canBex_raster[[1]]@data@values)
-# go with ~1/3 for actual female territories or ~40 in this case
 
+# go with ~1/3 for actual female territories to start with, rounded to nearest 5
+nFemales = plyr::round_any(sum(IBM_aoi$canBex_raster[[i]]@data@values)*0.3,5)
 
 canBex.FEMALE <- list()
 
 for(i in 1:length(IBM_aoi$canBex_raster)){
-  canBex.FEMALE.world <- set_up_REAL_world_FEMALE(nFemales=40, maxAgeFemale=9, raoi=IBM_aoi$canBex_raster[[i]])
+  canBex.FEMALE.world <- set_up_REAL_world_FEMALE(nFemales=nFemales, maxAgeFemale=9, raoi=IBM_aoi$canBex_raster[[i]])
 
   start_time <- Sys.time()
   canBex.FEMALE.sim100 <- vector('list',100)
-  for(i in 1:100){
-    canBex.FEMALE.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=canBex.FEMALE.world$land,
+  for(f in 1:100){
+    canBex.FEMALE.sim100[[f]] <- FEMALE_IBM_simulation_same_world(land=canBex.FEMALE.world$land,
                                                                   t0=canBex.FEMALE.world$t0,             # import world
                                                                   repro_estimates=repro.CI, Fpop=Fpop,   # reproduction
                                                                   surv_estimates=rf_surv_estimates,      # survive
@@ -326,11 +327,9 @@ for(i in 1:length(IBM_aoi$canBex_raster)){
 }
 
 
-# end_time - start_time # takes ~ 6-8 min for canBex0 scenario 484 grid cells and 100 simulation run (Boreal)
+# end_time - start_time # takes ~ 6-8 min for canBex scenario 484 grid cells and 100 simulation run (Boreal)
 
-# save(canBexW, file="out/canBexW.RData")
 save(canBex.FEMALE, file="out/canBex.FEMALE.RData")
-
 
 # ################################################################################
 # # Create 3 sets of 100 simulations - vary the proportion of habitat and survival
