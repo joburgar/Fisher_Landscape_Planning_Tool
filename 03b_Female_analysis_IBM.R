@@ -373,5 +373,5 @@ end_time <- Sys.time(); print(end_time - start_time)
 
 canBex4.FEMALE <- list(canBex.FEMALE.world[[4]], canBex4.FEMALE.sim100)
 
-canBex.FEMALE<- list(canBex1.FEMALE,canBex2.FEMALE,canBex3.FEMALE,canBex3.FEMALE)
+canBex.FEMALE<- list(canBex1.FEMALE,canBex2.FEMALE,canBex3.FEMALE,canBex4.FEMALE)
 save(canBex.FEMALE, file="out/canBex.FEMALE.RData")
