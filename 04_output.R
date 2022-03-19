@@ -368,86 +368,72 @@ heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yr
 # Create a figure with mean number of adult females (+/- SE or 95% CIs) for each time step and graph for each simulation
 
 ###--- load real world simulations (list of 1 run for 1 population from analysis script)
-load("out/B.w1_real.FEMALE.RData")
-B.w1_real <- ABM_fig_1sim(sim_out=B.w1_real.FEMALE, numsims=100, yrs_sim=10, Fpop="B")
+load("out/canBex.FEMALE.RData")
 
-B.w1_real$sim.TS.plot_se
+scenario1 <- canBex.FEMALE[[1]]
+scenario2 <- canBex.FEMALE[[2]]
+scenario3 <- canBex.FEMALE[[3]]
+scenario4 <- canBex.FEMALE[[4]]
 
-# Cairo(file="out/IBM_MeanCI_ex2.PNG",
-#       type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
-# C.w1_real$sim.TS.plot
-# dev.off()
+# Scenario 1 - 0% Harvesting
+scenario1_out <- ABM_fig_1sim(sim_out=scenario1, numsims=100, yrs_sim=10, Fpop="B")
 
-Cairo(file="out/IBM_MeanSE_Pex2.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
-B.w1_real$sim.TS.plot_se
+Cairo(file="out/IBM_MeanSE_canBex1.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+scenario1_out$sim.TS.plot_se
 dev.off()
-
 
 # plot of initial starting points for adult female fishers
-Cairo(file="out/IBM_Saoi_Pex2.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
-plot(B.w1_real.FEMALE[[1]]$land, legend=FALSE, main="Simulated Fisher Established Territories within Area of Interest")
-points(B.w1_real.FEMALE[[1]]$t0, pch = B.w1_real.FEMALE[[1]]$t0$shape, col = of(agents = B.w1_real.FEMALE[[1]]$t0, var = "color"))
+Cairo(file="out/IBM_Saoi_canBex1.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+plot(scenario1[[1]]$land, legend=FALSE, main="Simulated Fisher Established Territories within Area of Interest")
+points(scenario1[[1]]$t0, pch = scenario1[[1]]$t0$shape, col = of(agents = scenario1[[1]]$t0, var = "color"))
 dev.off()
 
-B.w1_real_heatmap <- heatmap_output(sim_out=B.w1_real.FEMALE, sim_order=2, numsims=100, yrs_sim=10, TS=12, name_out="Pex2")
+scenario1_heatmap <- heatmap_output(sim_out=scenario1, sim_order=2, numsims=100, yrs_sim=10, TS=12, name_out="canBex1")
 
-
-###--- load real world simulations (list of 1 run for 1 population from analysis script)
-load("out/C.w1_real.FEMALE.RData")
-C.w1_real <- ABM_fig_1sim(sim_out=C.w1_real.FEMALE, numsims=100, yrs_sim=10, Fpop="C")
-
-C.w1_real$sim.TS.plot
-C.w1_real$sim.TS.plot_se
-
-Cairo(file="out/IBM_MeanCI_ex2.PNG",
-      type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
-C.w1_real$sim.TS.plot
-dev.off()
-
-Cairo(file="out/IBM_MeanSE_ex2.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
-C.w1_real$sim.TS.plot_se
-dev.off()
-
-
-# plot of initial starting points for adult female fishers
-Cairo(file="out/IBM_Saoi_ex2.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
-plot(C.w1_real.FEMALE[[1]]$land, legend=FALSE, main="Simulated Fisher Established Territories within Area of Interest")
-points(C.w1_real.FEMALE[[1]]$t0, pch = C.w1_real.FEMALE[[1]]$t0$shape, col = of(agents = C.w1_real.FEMALE[[1]]$t0, var = "color"))
-dev.off()
-
-#heatmap will not work if all of the runs finished with 0 fishers surviving
-# C.w1_real_heatmap <- heatmap_output(sim_out=C.w1_real.FEMALE, sim_order=2, numsims=100, yrs_sim=10, TS=12, name_out="QTSA_ex2")
-
-###--- load simulations (list of 3 per population from analysis script)
-# load("out/Columbian_escape_35in400_FEMALE.RData")
-# load("out/Boreal_escape_35in400_FEMALE.RData")
-#
-# BC_35F_escape <- ABM_fig(Bsim_out=Boreal_escape_35in400_FEMALE, Csim_out=Columbian_escape_35in400_FEMALE)
-# # warning don't seem to matter (still provides correct value for female fisher - it's from sim_output function)
-#
-# BC_35F_escape$ABM.TS.df
-# BC_35F_escape$sim.TS.plot
-# BC_35F_escape$sim.TS.plot_se
-#
-# Cairo(file="out/BC_AdultFemale_35in400_escape_CI.PNG",
-#       type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
-# BC_35F_escape$sim.TS.plot
-# dev.off()
-#
-# Cairo(file="out/BC_AdultFemale_35in400_escape_SE.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
-# BC_35F_escape$sim.TS.plot_se
-# dev.off()
-#
 ################################################################################
-###--- Create heatmaps and output for each of the simulations, per population
-# # For the Boreal population
-# Bheatmap_list = list()
-# for(i in 4:6){
-#   Bheatmap_list[[i]] <- heatmap_output(sim_out=Boreal_escape_35in400_FEMALE, sim_order=i, numsims=100, yrs_sim=10, TS=12, name_out="BFA_35escape")
-# }
-#
-# # For the Columbian population (error message as no fishers left alive in second scenario)
-# Cheatmap_list = list()
-# for(i in 4:6){
-#   Cheatmap_list[[i]] <- heatmap_output(sim_out=Columbian_escape_35FEMALE, sim_order=i, numsims=100, yrs_sim=10, TS=12, name_out="CFA_35escape")
-# }
+# Scenario 2 - 25% Harvesting
+scenario2_out <- ABM_fig_1sim(sim_out=scenario2, numsims=100, yrs_sim=10, Fpop="B")
+
+Cairo(file="out/IBM_MeanSE_canBex2.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+scenario2_out$sim.TS.plot_se
+dev.off()
+
+# plot of initial starting points for adult female fishers
+Cairo(file="out/IBM_Saoi_canBex2.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+plot(scenario2[[1]]$land, legend=FALSE, main="Simulated Fisher Established Territories within Area of Interest")
+points(scenario2[[1]]$t0, pch = scenario2[[1]]$t0$shape, col = of(agents = scenario2[[1]]$t0, var = "color"))
+dev.off()
+
+scenario2_heatmap <- heatmap_output(sim_out=scenario2, sim_order=2, numsims=100, yrs_sim=10, TS=12, name_out="canBex2")
+
+################################################################################
+# Scenario 3 - 50% Harvesting
+scenario3_out <- ABM_fig_1sim(sim_out=scenario3, numsims=100, yrs_sim=10, Fpop="B")
+
+Cairo(file="out/IBM_MeanSE_canBex3.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+scenario3_out$sim.TS.plot_se
+dev.off()
+
+# plot of initial starting points for adult female fishers
+Cairo(file="out/IBM_Saoi_canBex3.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+plot(scenario3[[1]]$land, legend=FALSE, main="Simulated Fisher Established Territories within Area of Interest")
+points(scenario3[[1]]$t0, pch = scenario3[[1]]$t0$shape, col = of(agents = scenario3[[1]]$t0, var = "color"))
+dev.off()
+
+scenario3_heatmap <- heatmap_output(sim_out=scenario3, sim_order=2, numsims=100, yrs_sim=10, TS=12, name_out="canBex3")
+
+################################################################################
+# Scenario 4 - 75% Harvesting
+scenario4_out <- ABM_fig_1sim(sim_out=scenario4, numsims=100, yrs_sim=10, Fpop="B")
+
+Cairo(file="out/IBM_MeanSE_canBex4.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+scenario4_out$sim.TS.plot_se
+dev.off()
+
+# plot of initial starting points for adult female fishers
+Cairo(file="out/IBM_Saoi_canBex1.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+plot(scenario4[[1]]$land, legend=FALSE, main="Simulated Fisher Established Territories within Area of Interest")
+points(scenario4[[1]]$t0, pch = scenario4[[1]]$t0$shape, col = of(agents = scenario4[[1]]$t0, var = "color"))
+dev.off()
+
+scenario4_heatmap <- heatmap_output(sim_out=scenario4, sim_order=2, numsims=100, yrs_sim=10, TS=12, name_out="canBex4")
