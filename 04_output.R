@@ -41,17 +41,16 @@ UCL <- function(x) quantile(x, probs=0.95)
 # initial world plot
 setup_plot <- function(sim_out=sim_out, name_out=name_out){
     ###--- plot the simulated landbases
-  for(i in 1:3){
-    Cairo(file=paste0("out/",name_out,"_",sim_out[[i]]$actual.prop.hab*100,"hab_setup.PNG"),type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
-    plot(sim_out[[i]]$land, main=c(paste0("Simulated Landbase"),paste0(sim_out[[i]]$actual.prop.hab*100,"% Suitable Habitat")))
-    points(sim_out[[i]]$t0, pch = sim_out[[i]]$t0$shape, col = of(agents = sim_out[[i]]$t0, var = "color"))
-    dev.off()
-  }
+  Cairo(file=paste0("out/",name_out,"_",round(sim_out[[1]]$actual.prop.hab*100),"hab_setup.PNG"),type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
+  plot(sim_out[[1]]$land, main=c(paste0("Simulated Landbase"),paste0(round(sim_out[[1]]$actual.prop.hab*100),"% Suitable Habitat")))
+  points(sim_out[[1]]$t0, pch = sim_out[[1]]$t0$shape, col = of(agents = sim_out[[1]]$t0, var = "color"))
+  dev.off()
 
-  Cairo(file=paste0("out/",name_out,"_",sim_out[[3]]$actual.prop.hab*100,"hab_setup_nofishers.PNG"),type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
-  plot(sim_out[[3]]$land, main=c(paste0("Simulated Landbase"),paste0(sim_out[[3]]$actual.prop.hab*100,"% Suitable Habitat")))
+  Cairo(file=paste0("out/",name_out,"_",round(sim_out[[1]]$actual.prop.hab*100),"hab_setup_nofishers.PNG"),type="png",width=2200,height=2000,pointsize=12,bg="white",dpi=300)
+  plot(sim_out[[1]]$land, main=c(paste0("Simulated Landbase"),paste0(round(sim_out[[1]]$actual.prop.hab*100),"% Suitable Habitat")))
   dev.off()
 }
+
 
 # grab output from one set of 100 simulations
 sim_output <- function(sim_out=sim_out, sim=sim, numsims=numsims, yrs_sim=yrs_sim){
@@ -346,10 +345,13 @@ heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yr
   Fisher_Nmean <- mean(r_stackApply@data@values)
   Fisher_Nse <- se(r_stackApply@data@values)
 
-  Cairo(file=paste0("out/rHeatmap_",name_out,"_",round(sim_out[[sim_order-3]]$actual.prop.hab*100),"hab.PNG"), type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+  suitable_habitat <- sum(sim_out[[1]]$land)
+  total_habitat <- dim(sim_out[[1]]$land)[1]*dim(sim_out[[1]]$land)[2]
+
+  Cairo(file=paste0("out/rHeatmap_",name_out,"_hab.PNG"), type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
   plot(r_stackApply, oma=c(2, 3, 5, 2))
   mytitle = paste0("Estimated Fisher Territories over ",numsims," Simulations")
-  mysubtitle1 = paste0("Starting with ",fishers_to_start$numAF," fishers and ",round(sim_out[[1]]$actual.prop.hab*100),"% habitat")
+  mysubtitle1 = paste0("Starting with ",fishers_to_start$numAF," fishers and ",round(suitable_habitat/total_habitat*100),"% habitat")
   mysubtitle2 = paste0("predicted ",round(Fisher_Nmean)," \u00B1 ",round(Fisher_Nse)," (mean \u00B1 1 SE) established fisher territories after ",yrs_sim," years.")
   mtext(side=3, line=3, at=-0.07, adj=0, cex=1, mytitle)
   mtext(side=3, line=2, at=-0.07, adj=0, cex=0.8, mysubtitle1)
@@ -376,6 +378,8 @@ scenario3 <- canBex.FEMALE[[3]]
 scenario4 <- canBex.FEMALE[[4]]
 
 # Scenario 1 - 0% Harvesting
+scenario1_setup <- setup_plot(sim_out = scenario1, name_out = "canBex1")
+
 scenario1_out <- ABM_fig_1sim(sim_out=scenario1, numsims=100, yrs_sim=10, Fpop="B")
 
 Cairo(file="out/IBM_MeanSE_canBex1.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
@@ -392,6 +396,8 @@ scenario1_heatmap <- heatmap_output(sim_out=scenario1, sim_order=2, numsims=100,
 
 ################################################################################
 # Scenario 2 - 25% Harvesting
+scenario2_setup <- setup_plot(sim_out = scenario2, name_out = "canBex2")
+
 scenario2_out <- ABM_fig_1sim(sim_out=scenario2, numsims=100, yrs_sim=10, Fpop="B")
 
 Cairo(file="out/IBM_MeanSE_canBex2.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
@@ -408,6 +414,8 @@ scenario2_heatmap <- heatmap_output(sim_out=scenario2, sim_order=2, numsims=100,
 
 ################################################################################
 # Scenario 3 - 50% Harvesting
+scenario3_setup <- setup_plot(sim_out = scenario3, name_out = "canBex3")
+
 scenario3_out <- ABM_fig_1sim(sim_out=scenario3, numsims=100, yrs_sim=10, Fpop="B")
 
 Cairo(file="out/IBM_MeanSE_canBex3.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
@@ -424,6 +432,8 @@ scenario3_heatmap <- heatmap_output(sim_out=scenario3, sim_order=2, numsims=100,
 
 ################################################################################
 # Scenario 4 - 75% Harvesting
+scenario4_setup <- setup_plot(sim_out = scenario4, name_out = "canBex4")
+
 scenario4_out <- ABM_fig_1sim(sim_out=scenario4, numsims=100, yrs_sim=10, Fpop="B")
 
 Cairo(file="out/IBM_MeanSE_canBex4.PNG",type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
