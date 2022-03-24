@@ -65,11 +65,10 @@ lapply(list.of.packages, require, character.only = TRUE)
 # Package: PNWColors
 # Version: 0.1.0
 
-
 source("00b_Female_IBM_functions.R")
 #####################################################################################
 
-# Start with a very simple example - habitat patch is either suitable or not suitable
+# Start with a  simple example - habitat patch is either suitable or not suitable
 # Die by 2 if haven’t found a territory
 # Females max age length = 9 (as per discussion with team - see Rory's spreadsheet)
 # Female territory = 30 km2 (1 pixel / cell)
@@ -80,42 +79,22 @@ source("00b_Female_IBM_functions.R")
 
 ################################################################################
 
-# *** Step 1. START ***
-# The assumption is that there is 100% survival during the first year (i.e., the set up), at the first time step no fishers die
-# •	t0 = October to April = kits are born; need to run through the reproduce functions
-# i.	t0 <- repro(fishers=t0, repro_estimates=repro.CI, Fpop="C")
-# •	all fishers age 0.5 years
-#
-# *** Step 2. AGE ***
-# •	The assumption is that there is 100% survival during the first year (i.e., the set up), at the second time step no fishers die
-# •	t1 = April to October = kits kicked out of natal territory
-# •	all fishers age 0.5 years
-#
-# *** Step 3. ESTABLISH / MAINTAIN TERRITORY & SCENT TERRITORY (MATE) & SURVIVE ***
-# •	 t2 = October to April = females with established territory find mate
-# •	 3a = the first step is for individuals without territories to disperse; run through the disperse function up to 30 times to allow 6 months of movement
-# i.	t2 <- disperse(land=land, fishers=t2, dist_mov=dist_mov, out=FALSE)
-# •	all fishers age 0.5 years
-# •	at the end of this time step, all fishers subject to mortality; run through the survive function
-# i.	t2 <- survive(fishers=t2, surv_estimates=rf_surv_estimates, Fpop=Fpop, maxAgeFemale=maxAgeFemale)
-#
-# *** Step 4.  ESTABLISH / MAINTAIN TERRITORY ***
-# •	t3 = April to October = keep surviving
-# •	4a = the first step is for individuals without territories to disperse; run through the disperse function up to 30 times to allow 6 months of movement
-# i.	TOct <- disperse(land=land, fishers=tOct, dist_mov=dist_mov, out=FALSE)
-# •	all fishers age 0.5 years
-# •	update the fisher table to change juveniles to adults as they age out of (i.e., age > 2)
-#
-# *** Step 5. ESTABLISH / MAINTAIN TERRITORY & REPRODUCE & SCENT TERRITORY (MATE) & SURVIVE ***
-# •	t4 = October to April = females with established territory produce kits
-# •	5a = the first step is for pregnant female fishers to reproduce; run through the reproduce denning and kits_produced functions
-# i.	tApr <- repro(fishers=t0, repro_estimates=repro.CI, Fpop="C")
-# •	5b = the second step is for juvenile fishers without established territories to move; loop through the disperse function up to 30 times
-# i.	tApr <- disperse(land=land, fishers=tApr, dist_mov=dist_mov, out=out)
-# •	all fishers age 0.5 years
-# •	at the end of this time step, all fishers subject to mortality; run through the survive function
-# i.	tApr <- survive(fishers=tApr, surv_estimates=rf_surv_estimates, Fpop=Fpop, maxAgeFemale=maxAgeFemale)
+# t0	April	Kits are born
+# 	Number of kits born conditional on denning rate and litter size
+# t0 <- repro(fishers=t0, repro_estimates=repro.CI, Fpop="C")
 
+# t1	October	Kits are kicked out of natal territory
+# 	Age 1 year (t0 and t1)
+
+# tApril	April	Establish / maintain territory & reproduce & scent territory
+# 	Females ≥ 0.5 years without established territories disperse (up to 30 FETAs / 6 months of movement)
+# 	Females > 2 years give birth and with established territories give birth; number of kits born conditional on denning rate and litter size
+# 	Age 0.5 years
+
+# tOctober	October	Establish / maintain territory & survive
+# 	Females ≥ 0.5 years without established territories disperse
+# 	Fishers subject to mortality; number who die is conditional on survival estimates, maximum lifespan (for adults and dispersing juveniles)
+# 	Age 0.5 years
 
 ################################################################################
 # data to read in; already prepped / formatted in 00_surv_repro_estimates_prep.R
@@ -127,38 +106,29 @@ repro.CI <- read.csv("data/repro.CI.csv", header=TRUE)
 # taken from Rory's updated survival, trapping mortality excluded
 rf_surv_estimates <- read.csv("data/rf_surv_estimates.csv", header=TRUE)
 
-# tmp <- set_up_world_FEMALE(nFemales=10, maxAgeFemale = 9, xlim=c(1,10), ylim=c(1,10), prophab=0.7)
-# t0=tmp$t0
-# land=tmp$land
+
 ################################################################################
 
 # create function to loop through functions, allow sub-function specification
 # now that the function is using the cohort survival data, have the survival run on an annual basis, not per time step
-FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                                # import world
-                                             repro_estimates=repro.CI, Fpop="C",      # reproduction
-                                             surv_estimates=rf_surv_estimates,                # survive
-                                             maxAgeFemale=maxAgeFemale,                       # survive
-                                             dist_mov=1.0, out=TRUE, torus=TRUE,              # disperse
-                                             yrs.to.run=10){                                             # number of years to run simulations ()
+FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                        # import world
+                                             repro_estimates=repro.CI, Fpop=Fpop,      # reproduction
+                                             surv_estimates=rf_surv_estimates,        # survive
+                                             maxAgeFemale=maxAgeFemale,               # survive
+                                             dist_mov=1.0, out=TRUE, torus=TRUE,      # disperse
+                                             yrs.to.run=10){                          # number of years to run simulations ()
 
-  # 2 times steps per year so yrs.to.run*2 plus the initial 3 time steps (start in Apr=t0, Oct=t1, Apr=t2)
-  IBM.sim.out <- vector('list', yrs.to.run+2)
+  IBM.sim.out <- vector('list', yrs.to.run+1)
 
-  # *** Step 1. START ***
-  # The assumption is that there is 100% survival during the first year (i.e., the set up), at the first time step no fishers die
-  # •	t0 = October to April = kits are born; need to run through the reproduce functions
-  # i.	t0 <- repro(fishers=t0, repro_estimates=repro.CI, Fpop="C")
+  # t0	April	Kits are born
+  # 	Number of kits born conditional on denning rate and litter size
+  # t0 <- repro(fishers=t0, repro_estimates=repro.CI, Fpop="C")
 
   # t0=tmp$t0; land=tmp$land
   t0 <- repro_FEMALE(fishers=t0, repro_estimates=repro_estimates, Fpop=Fpop)
 
-  print(NLcount(t0))
-  IBM.sim.out[[1]] <- t0 # time step ends at April
-
-  # *** Step 2. AGE ***
-  # •	The assumption is that there is 100% survival during the first year (i.e., the set up), at the second time step no fishers die
-  # •	t1 = April to October = kits kicked out of natal territory
-  # •	all fishers age 1 year (to make up fro the Oct to Apr to Oct from start of t0)
+  # t1	October	Kits are kicked out of natal territory
+  # 	Age 1 year (t0 and t1)
 
   age.val <- of(agents=t0, var=c("age"))+1
   t1 <- NLset(turtles = t0, agents=turtle(t0, who=t0$who),var="age", val=age.val)
@@ -166,50 +136,38 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
   # plot(land)
   # points(t1, pch = t1$shape, col = of(agents = t1, var = "color"))
 
-  # print(NLcount(t1))
-  # IBM.sim.out[[2]] <- t1 # time step ends at October
+  print(NLcount(t1))
+  IBM.sim.out[[1]] <- t1 # time step ends at April; gives the number of fishers at the start
 
-  # *** Step 3. ESTABLISH / MAINTAIN TERRITORY & SCENT TERRITORY (MATE) & SURVIVE ***
-  # •	 t2 = October to April = females with established territory find mate
-  # •	 3a = the first step is for individuals without territories to disperse; run through the disperse function up to 30 times to allow 6 months of movement
-  # i.	t2 <- disperse(land=land, fishers=t2, dist_mov=dist_mov, out=FALSE)
-  # •	all fishers age 0.5 years
-  # •	at the end of this time step, all fishers subject to mortality; run through the survive function
-  # i.	t2 <- survive(fishers=t2, surv_estimates=rf_surv_estimates, Fpop=Fpop, maxAgeFemale=maxAgeFemale)
+  tApr <- t1
 
-  t2 <- t1
-  for(i in 1:30){
-    t2 <- disperse_FEMALE(land=land, fishers=t2, dist_mov=dist_mov, out=out, torus=torus)
-  }
+  for(tcount in 2:(yrs.to.run+1)){
 
-  # patchHere(land, t2)
-  # plot(land)
-  # points(t2, pch = t2$shape, col = of(agents = t2, var = "color"))
+    # tApril	April	Establish / maintain territory & reproduce & scent territory
+    # 	Females ≥ 0.5 years without established territories disperse (up to 30 FETAs / 6 months of movement)
+    # 	Females > 2 years give birth and with established territories give birth; number of kits born conditional on denning rate and litter size
+    # 	Age 0.5 years
 
-  age.val <- of(agents=t2, var=c("age"))+0.5
-  t2 <- NLset(turtles = t2, agents=turtle(t2, who=t2$who),var="age", val=age.val)
+    if(NLcount(tApr)!=0){
 
-  t2 <- survive_FEMALE(t2, surv_estimates=surv_estimates, Fpop=Fpop, maxAgeFemale=maxAgeFemale)
+      tApr <- repro_FEMALE(fishers=tApr, repro_estimates=repro_estimates, Fpop=Fpop)
 
-  # plot(land)
-  # points(t2, pch = t2$shape, col = of(agents = t2, var = "color"))
+      for(i in 1:30){
+        tApr <- disperse_FEMALE(land=land, fishers=tApr, dist_mov=dist_mov, out=out, torus=torus)
+      }
 
-  print(NLcount(t2))
-  IBM.sim.out[[2]] <- t2 # time step ends at April
+      age.val <- of(agents=tApr, var=c("age"))+0.5
+      tApr <- NLset(turtles = tApr, agents=turtle(tApr, who=tApr$who),var="age", val=age.val)
 
+    # plot(land)
+    # points(tApr, pch = tApr$shape, col = of(agents = tApr, var = "color"))
+    }
 
-  ################################################################################
-
-  tOct <- t2
-
-  for(tcount in 3:(yrs.to.run+2)){
-
-    #    # *** Step 4.  ESTABLISH / MAINTAIN TERRITORY ***
-    # •	t3 = April to October = keep surviving
-    # •	4a = the first step is for individuals without territories to disperse; run through the disperse function up to 30 times to allow 6 months of movement
-    # i.	TOct <- disperse(land=land, fishers=tOct, dist_mov=dist_mov, out=FALSE)
-    # •	all fishers age 0.5 years
-    # •	update the fisher table to change juveniles to adults as they age out of (i.e., age > 2)
+    # tOctober	October	Establish / maintain territory & survive
+    # 	Females ≥ 0.5 years without established territories disperse
+    # 	Fishers subject to mortality; number who die is conditional on survival estimates, maximum lifespan (for adults and dispersing juveniles)
+    # 	Age 0.5 years
+    tOct <- tApr
 
     if(NLcount(tOct)!=0){
 
@@ -225,58 +183,19 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
                                    TRUE ~ as.character(breed.val$breed))
 
       tOct <- NLset(turtles = tOct, agents=turtle(tOct, who=tOct$who),var="breed", val=breed.val$breed)
-    # print(NLcount(tOct))
-    #   IBM.sim.out[[tcount]] <- tOct
-    # } else {
-    #   IBM.sim.out[[tcount]] <- 0
-      }
 
+      tOct <- survive_FEMALE(fishers=tOct, surv_estimates=surv_estimates, Fpop=Fpop, maxAgeFemale=maxAgeFemale)
+
+      IBM.sim.out[[tcount]] <- tOct
     # plot(land)
     # points(tOct, pch = tOct$shape, col = of(agents = tOct, var = "color"))
-
-      # *** Step 5. ESTABLISH / MAINTAIN TERRITORY & REPRODUCE & SCENT TERRITORY (MATE) & SURVIVE ***
-      # •	t4 = October to April = females with established territory produce kits
-      # •	5a = the first step is for pregnant female fishers to reproduce; run through the reproduce denning and kits_produced functions
-      # i.	tApr <- denning(fishers=tOct, denLCI=denLCI, denUCI=denUCI)
-      # ii.	tApr <- kits_produced(fishers=tApr, ltrM=ltrM, ltrSD=ltrSD)
-      # •	5b = the second step is for juvenile fishers without established territories to move; loop through the disperse function up to 30 times
-      # i.	tApr <- disperse(land=land, fishers=tApr, dist_mov=dist_mov, out=out)
-      # •	all fishers age 0.5 years
-      # •	at the end of this time step, all fishers subject to mortality; run through the survive function
-      # i.	tApr <- survive(fishers=tApr, surv_estimates=rf_surv_estimates, Fpop=Fpop, maxAgeFemale=maxAgeFemale)
-      # *** Step 4.  ESTABLISH / MAINTAIN TERRITORY ***
-      # t3 = April to October = keep surviving
-      # 4a. function DISPERSE - run through DISPERSE function for individuals without territories, up to 30 times to allow 6 months of movement
-
-    tApr <- tOct
-
-    if(NLcount(tApr)!=0){
-
-      tApr <- repro_FEMALE(fishers=tApr, repro_estimates=repro_estimates, Fpop=Fpop)
-
-      for(i in 1:30){
-        tApr <- disperse_FEMALE(land=land, fishers=tApr, dist_mov=dist_mov, out=out, torus=torus)
-      }
-
-      age.val <- of(agents=tApr, var=c("age"))+0.5
-      tApr <- NLset(turtles = tApr, agents=turtle(tApr, who=tApr$who),var="age", val=age.val)
-
-      tApr <- survive_FEMALE(fishers=tApr, surv_estimates=surv_estimates, Fpop=Fpop, maxAgeFemale=maxAgeFemale)
-
-      # patchHere(land, tApr)
-      # plot(land)
-      # points(tApr, pch = tApr$shape, col = of(agents = tApr, var = "color"))
-
-      print(NLcount(tApr))
-
-      IBM.sim.out[[tcount]] <- tApr
 
     } else {
         IBM.sim.out[[tcount]] <- 0 }
 
-    tOct <- tApr
-
-    }
+    print(NLcount(tOct))
+    tApr <- tOct
+  }
    return(IBM.sim.out)
 }
 
