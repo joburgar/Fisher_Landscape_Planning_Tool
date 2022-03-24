@@ -55,7 +55,7 @@ setup_plot <- function(sim_out=sim_out, name_out=name_out){
 # grab output from one set of 100 simulations
 sim_output <- function(sim_out=sim_out, sim=sim, numsims=numsims, yrs_sim=yrs_sim){
   # sim_out=B.w1_real.FEMALE; sim=2; numsims=100; yrs_sim=10
-  num.runs <- yrs_sim + 2
+  num.runs <- yrs_sim + 1
 
   ABM.df <- as.data.frame(array(NA,c(numsims,num.runs)))
   colnames(ABM.df) <- paste0("TimeStep_",str_pad(seq_len(num.runs),2,pad="0"))
@@ -125,7 +125,7 @@ sim_output <- function(sim_out=sim_out, sim=sim, numsims=numsims, yrs_sim=yrs_si
 pop_output <- function(sim_out=sim_out, sim_order=c(4:6), numsims=100, yrs_sim=10){
   # sim_out=Boreal_escape_FEMALE_binom
   # sim_order=c(4:6)
-  num.runs <- yrs_sim + 2
+  num.runs <- yrs_sim + 1
 
   ABM.df <- as.data.frame(array(NA,c(num.runs*numsims*length(sim_order),4)))
   colnames(ABM.df) <- c("Run","TimeStep","Count","Sim")
@@ -392,7 +392,7 @@ plot(scenario1[[1]]$land, legend=FALSE, main="Simulated Fisher Established Terri
 points(scenario1[[1]]$t0, pch = scenario1[[1]]$t0$shape, col = of(agents = scenario1[[1]]$t0, var = "color"))
 dev.off()
 
-scenario1_heatmap <- heatmap_output(sim_out=scenario1, sim_order=2, numsims=100, yrs_sim=10, TS=12, name_out="canBex1")
+scenario1_heatmap <- heatmap_output(sim_out=scenario1, sim_order=2, numsims=100, yrs_sim=10, TS=11, name_out="canBex1")
 
 ################################################################################
 # Scenario 2 - 25% Harvesting
@@ -410,7 +410,7 @@ plot(scenario2[[1]]$land, legend=FALSE, main="Simulated Fisher Established Terri
 points(scenario2[[1]]$t0, pch = scenario2[[1]]$t0$shape, col = of(agents = scenario2[[1]]$t0, var = "color"))
 dev.off()
 
-scenario2_heatmap <- heatmap_output(sim_out=scenario2, sim_order=2, numsims=100, yrs_sim=10, TS=12, name_out="canBex2")
+scenario2_heatmap <- heatmap_output(sim_out=scenario2, sim_order=2, numsims=100, yrs_sim=10, TS=11, name_out="canBex2")
 
 ################################################################################
 # Scenario 3 - 50% Harvesting
@@ -428,7 +428,7 @@ plot(scenario3[[1]]$land, legend=FALSE, main="Simulated Fisher Established Terri
 points(scenario3[[1]]$t0, pch = scenario3[[1]]$t0$shape, col = of(agents = scenario3[[1]]$t0, var = "color"))
 dev.off()
 
-scenario3_heatmap <- heatmap_output(sim_out=scenario3, sim_order=2, numsims=100, yrs_sim=10, TS=12, name_out="canBex3")
+scenario3_heatmap <- heatmap_output(sim_out=scenario3, sim_order=2, numsims=100, yrs_sim=10, TS=11, name_out="canBex3")
 
 ################################################################################
 # Scenario 4 - 75% Harvesting
@@ -446,4 +446,4 @@ plot(scenario4[[1]]$land, legend=FALSE, main="Simulated Fisher Established Terri
 points(scenario4[[1]]$t0, pch = scenario4[[1]]$t0$shape, col = of(agents = scenario4[[1]]$t0, var = "color"))
 dev.off()
 
-scenario4_heatmap <- heatmap_output(sim_out=scenario4, sim_order=2, numsims=100, yrs_sim=10, TS=12, name_out="canBex4")
+scenario4_heatmap <- heatmap_output(sim_out=scenario4, sim_order=2, numsims=100, yrs_sim=10, TS=11, name_out="canBex4")
