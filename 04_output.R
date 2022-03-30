@@ -70,10 +70,11 @@ sim_output <- function(sim_out=sim_out, sim=sim, numsims=numsims, yrs_sim=yrs_si
   ABM.df <- rbindlist(lapply(Reps, function(rps){
     ABM.df_ts <- rbindlist(lapply(timeSteps, function(ts){
       DT <- as.array(sim_out[[sim]][[rps]][[ts]])
+      # DT <- as.array(sim_out[[2]][[1]][[11]])
 
       if (length(DT) != 0){
-        nAdults = as.numeric(table(DT$breed)["adult"])
-        nJuvenile = as.numeric(table(DT$breed)["juvenile"])
+        nAdults = as.numeric(table(DT[DT$disperse=="E"]$breed)["adult"])
+        nJuvenile = as.numeric(table(DT[DT$disperse=="E"]$breed)["juvenile"])
       } else {
         nAdults = 0
         nJuvenile = 0
@@ -188,7 +189,7 @@ ABM_fig_1sim <- function(sim_out=sim_out, numsims=100, yrs_sim=10, Fpop=Fpop){
 # the mean and se relate to the number of pixels (i.e., territories) selected per simulation
 
 heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yrs_sim=10, TS=TS, name_out=name_out, dir_name=dir_name){
-  # sim_out=C.w1_real.FEMALE; sim_order=2; numsims=100; yrs_sim=10; TS=12; name_out="QTSA_ex2"
+  # sim_out=scenario1; sim_order=2; numsims=100; yrs_sim=10; TS=11; name_out="canBex1"
 
   TS_full=paste0("TimeStep_",TS)
 
@@ -214,7 +215,12 @@ heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yr
 
   # for simulations where at least one fisher survived
   for(i in 1:length(nozerosims)){
-    ftmp <- as.data.frame(patchHere(sim_out[[1]]$land, sim_out[[sim_order]][[nozerosims[i]]][[TS]]))
+    # i=1
+    ftmp1 <- sim_out[[sim_order]][[nozerosims[i]]][[TS]]
+    whoEAF <- ftmp1[ftmp1$breed=="adult" & ftmp1$disperse=="E",]$who
+    EAFind <- turtle(ftmp1, who = whoEAF) # fishers who are dispersing (i.e., kits)
+
+    ftmp <- as.data.frame(patchHere(sim_out[[1]]$land, EAFind))
     ftmp$Fisher <- 1
     ftmp.sf <- st_as_sf(ftmp, coords = c("pxcor", "pycor"))
     ftmp.sfp <- st_buffer(ftmp.sf, dist=.1)
@@ -240,8 +246,11 @@ heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yr
 
   writeRaster(r_stackApply, file=paste0("out/",dir_name,"/rSim_",name_out,"_",round(sim_out[[sim_order-3]]$actual.prop.hab*100),"hab.tif"), bylayer=TRUE, overwrite=TRUE)
 
-  Fisher_Nmean <- mean(r_stackApply@data@values)
-  Fisher_Nse <- se(r_stackApply@data@values)
+  # Fisher_Nmean <- mean(r_stackApply@data@values[r_stackApply@data@values>1])
+  # Fisher_Nmean <- mean(r_stackApply@data@values)
+  Fpredicted <- round(sum(r_stackApply@data@values/100))
+  # Fisher_Nse <- se(r_stackApply@data@values[r_stackApply@data@values>1])
+  # Fisher_Nse <- se(r_stackApply@data@values)
 
   suitable_habitat <- sum(sim_out[[1]]$land)
   total_habitat <- dim(sim_out[[1]]$land)[1]*dim(sim_out[[1]]$land)[2]
@@ -250,13 +259,14 @@ heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yr
   plot(r_stackApply, oma=c(2, 3, 5, 2))
   mytitle = paste0("Estimated Fisher Territories over ",numsims," Simulations")
   mysubtitle1 = paste0("Starting with ",fishers_to_start$numAF," fishers and ",round(suitable_habitat/total_habitat*100),"% habitat")
-  mysubtitle2 = paste0("predicted ",round(Fisher_Nmean)," \u00B1 ",round(Fisher_Nse)," (mean \u00B1 1 SE) established fisher territories after ",yrs_sim," years.")
+  # mysubtitle2 = paste0("predicted ",round(Fisher_Nmean)," \u00B1 ",round(Fisher_Nse)," (mean \u00B1 1 SE) established fisher territories after ",yrs_sim," years.")
+  mysubtitle2 = paste0("predicted ",Fpredicted," established fisher female territories after ",yrs_sim," years.")
   mtext(side=3, line=3, at=-0.07, adj=0, cex=1, mytitle)
   mtext(side=3, line=2, at=-0.07, adj=0, cex=0.8, mysubtitle1)
   mtext(side=3, line=1, at=-0.07, adj=0, cex=0.8, mysubtitle2)
   dev.off()
 
-  return(list(raster=r_stackApply, Fisher_Nmean=Fisher_Nmean, Fisher_Nse=Fisher_Nse, nozerosims=nozerosims))
+  return(list(raster=r_stackApply, Fisher_Nmean=Fisher_Nmean, Fisher_Nse=Fisher_Nse, Fpredicted=Fpredicted, nozerosims=nozerosims))
 
 }
 
@@ -270,6 +280,18 @@ heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yr
 load("out/canBex.FEMALE.RData")
 
 scenario1 <- canBex.FEMALE[[1]]
+
+# fishers = canBex1.FEMALE[[2]][[1]][[11]]
+# land = canBex1.FEMALE[[1]]$land
+# tmp <- as.data.frame(patchHere(land, fishers))
+# tmp %>% arrange(pxcor)
+# disperseHabitatF <- of(land, agents=patchHere(land, fishers)) # identify habitat quality of current location
+# sum(land) >= sum(disperseHabitatF) # if FALSE then something is going on - should only have as many established territories as female fishers
+#
+# plot(land)
+# points(fishers, pch = fishers$shape, col = of(agents = fishers, var = "color"))
+
+
 scenario2 <- canBex.FEMALE[[2]]
 scenario3 <- canBex.FEMALE[[3]]
 scenario4 <- canBex.FEMALE[[4]]
