@@ -147,7 +147,7 @@ aoi.Fpop$Fpop <- case_when(aoi.Fpop$Fpop=="Central Interior" ~ "Columbian",
 # 1: Harvested Areas of BC (Consolidated Cutblocks) (multiple, fgdb, wms, kml, pdf)
 # ID: b1b647a6-f271-42e0-9cd0-89ec24bce9f7
 # Name: harvested-areas-of-bc-consolidated-cutblocks-
-# aoi <- st_read(dsn=paste0(getwd(),"/data"), layer="cutblocks_sample") %>% st_transform(crs=26910)
+# aoi <- st_read(dsn=paste0(getwd(),"/data/ThompOkan_FGT/1_CUTBLOCKS"), layer="cutblocks_sample") %>% st_transform(crs=26910)
 #
 # aoi <- aoi %>% st_transform(crs=3005)
 # aoi.CUT <- retrieve_geodata_aoi(ID = "2ebb35d8-c82f-4a17-9c96-612ac3532d55")
@@ -163,10 +163,15 @@ aoi.Fpop$Fpop <- case_when(aoi.Fpop$Fpop=="Central Interior" ~ "Columbian",
 #                                     aoi.CUT$HARVEST_DECADE==9 ~1990,
 #                                     aoi.CUT$HARVEST_DECADE==8 ~1980,
 #                                     aoi.CUT$HARVEST_DECADE==7 ~1970,
-#                                     aoi.CUT$HARVEST_DECADE==6 ~1960)
-# st_write(aoi.CUT, dsn=paste0(getwd(),"/data/aoi_CUT_example.shp"), delete_layer=TRUE)
+#                                     aoi.CUT$HARVEST_DECADE==6 ~1960,
+#                                     aoi.CUT$HARVEST_DECADE==5 ~1950)
+# st_write(aoi.CUT, dsn=paste0(getwd(),"/data/aoi_CUT_example_TO.shp"), delete_layer=TRUE)
 
-aoi.CUT <- st_read(dsn=paste0(getwd(),"/data"), layer="aoi_CUT_example") %>%
+aoi.CUT_Bex <- st_read(dsn=paste0(getwd(),"/data"), layer="aoi_CUT_example") %>%
+  rename(HARVEST_DATE = HARVEST_DA, HARVEST_YEAR = HARVEST_Y, HARVEST_DECADE = HARVEST_DE, Area_km2 = Are_km2)
+aoi.CUT <- aoi.CUT_Bex
+
+aoi.CUT <- st_read(dsn=paste0(getwd(),"/data"), layer="aoi_CUT_example_Skeena") %>%
   rename(HARVEST_DATE = HARVEST_DA, HARVEST_YEAR = HARVEST_Y, HARVEST_DECADE = HARVEST_DE, Area_km2 = Are_km2)
 
 aoi.CUT %>% group_by(HARVEST_DECADE) %>% summarise(sum(Area_km2)) %>% st_drop_geometry()
@@ -187,12 +192,16 @@ ggplot()+
 aoi <- st_make_grid(st_buffer(aoi.CUT %>% st_transform(crs=26910), dist=30000), n=1)
 aoi <- st_as_sf(aoi)
 
+# Baoi <- st_make_grid(st_buffer(aoi.CUT_Bex %>% st_transform(crs=26910), dist=30000), n=1)
+# Baoi <- st_as_sf(Baoi)
 
 pal = pnw_palette(name="Winter",n=2,type="discrete")
 
-Cairo(file="out/Bex_Fpop_aoi_plot.PNG",type="png",width=2400,height=2400,pointsize=14,bg="white",dpi=300)
+Cairo(file="out/BCex_Fpop_aoi_plot.PNG",type="png",width=2400,height=2400,pointsize=16,bg="white",dpi=300)
 ggplot()+
   geom_sf(data=aoi.Fpop, aes(fill=Fpop))+
+  geom_sf(data=Baoi)+
+  geom_sf(data=aoi.CUT_Bex)+
   geom_sf(data=aoi)+
   geom_sf(data=aoi.CUT)+
   scale_fill_manual(values=rev(pal))+
@@ -208,8 +217,8 @@ ggplot()+
 
 
 ### CREATNG SUITABLE HABITAT WITH FIRST ROUND OF MAHALANOBIS DISTANCE OUTPUTS
-aoi.CUTBex <- aoi.CUT %>% filter(HARVEST_DECADE==1980)
-aoi.CUTBex$rndmrnk <- rank(round(runif(nrow(aoi.CUTBex), min=10000, max=99999)))
+aoi.CUTex <- aoi.CUT %>% filter(HARVEST_DECADE==1980)
+aoi.CUTex$rndmrnk <- rank(round(runif(nrow(aoi.CUTex), min=10000, max=99999)))
 
 # maldist <- st_read(dsn=paste0(getwd(),"/data"), layer="Mahalanobis_predictions_2021_220304")
 # summary(maldist %>% st_drop_geometry())
@@ -217,7 +226,7 @@ aoi.CUTBex$rndmrnk <- rank(round(runif(nrow(aoi.CUTBex), min=10000, max=99999)))
 aoi <- aoi %>% st_transform(crs=3005)
 aoi.MAL <- retrieve_gdb_shp_aoi(dsn=paste0(getwd(),"/data"), layer="Mahalanobis_predictions_2021_220304")
 # aoi.MAL %>% count(D2) %>% st_drop_geometry()
-summary(aoi.MAL$D2); nrow(aoi.MAL) # 439 FETA in this aoi
+summary(aoi.MAL$D2); nrow(aoi.MAL) # 439 FETA in the Boreal aoi, 115 in Columbian
 
 aoi.MAL <- aoi.MAL %>% mutate(D2_grp = cut(D2, c(0, 10, 20, 30, Inf)))
 levels(aoi.MAL$D2_grp)
@@ -227,13 +236,20 @@ aoi.MAL$D2_grp <- recode(aoi.MAL$D2_grp, "(0,10]"="Suitable Territory",
                   "(30,Inf]"="Unsuitable")
 glimpse(aoi.MAL)
 aoi.MAL %>% group_by(D2_grp) %>% summarize(n=n()) %>% st_drop_geometry()
+# Boreal
 # 1 Suitable Territory   140
 # 2 Suitable Movement    124
 # 3 Possible Movement     68
 # 4 Unsuitable           107
 
+# Columbian
+# 1 Suitable Territory     7
+# 2 Suitable Movement      5
+# 3 Possible Movement      4
+# 4 Unsuitable            99
+
 # indicate which FETA are targeted for harvesting
-aoi.MAL <- st_join(aoi.MAL, aoi.CUTBex %>% dplyr::select(rndmrnk),left=TRUE, largest=TRUE)
+aoi.MAL <- st_join(aoi.MAL, aoi.CUTex %>% dplyr::select(rndmrnk),left=TRUE, largest=TRUE)
 aoi.MAL %>% count(rndmrnk)
 aoi.MAL$Harvest <- ifelse(is.na(aoi.MAL$rndmrnk), 0,1)
 aoi.MAL %>% group_by(D2_grp) %>% count(Harvest) %>% st_drop_geometry()
@@ -255,7 +271,7 @@ aoi.MAL.plot <- ggplot()+
   theme(legend.position="bottom")+
   theme(legend.title=element_blank())
 
-Cairo(file="out/Bex_aoi_MAL_plot.PNG",type="png",width=2400,height=2400,pointsize=14,bg="white",dpi=300)
+Cairo(file="out/Cex_aoi_MAL_plot.PNG",type="png",width=2400,height=2400,pointsize=14,bg="white",dpi=300)
 aoi.MAL.plot
 dev.off()
 
@@ -267,29 +283,91 @@ dev.off()
 # (4) 75% harvesting of cutblocks in suitable habitat
 
 # determine number of cutblocks in suitable territory (FETA)
-num.cutblocks.FETA <- aoi.CUTBex %>% filter(D2_grp=="Suitable Territory") %>% count(D2_grp) %>% st_drop_geometry()
+###NEED TO REWORK THIS - NOT WORKING NOW
+num.cutblocks.FETA <- aoi.MAL %>% filter(D2_grp=="Suitable Territory") %>% count(D2_grp) %>% st_drop_geometry()
 num.cutblocks.FETA <- num.cutblocks.FETA$n
 
-# Scenario 1 -0% harvesting - run simulation with underlying landbase for baseline number
-aoi.CUTBex <- st_join(aoi.CUTBex %>% filter(HARVEST_DECADE==1980), aoi.MAL %>% dplyr::select(D2_grp),left=TRUE, largest=TRUE)
-aoi.CUTBex <- aoi.CUTBex %>% arrange(D2_grp,rndmrnk)
+# Scenario 1 -0% harvesting - run simulation with underlying landbase for baseline number - Columbian - only 1 scenario because cutblocks not in suitable habitat
+aoi.CUTCex <- st_join(aoi.CUTex %>% filter(HARVEST_DECADE==1980), aoi.MAL %>% dplyr::select(D2_grp),left=TRUE, largest=TRUE)
+aoi.CUTCex <- aoi.CUTCex %>% arrange(D2_grp,rndmrnk)
+aoi.CUTCex %>% count(D2_grp)
 
-# Scenario 1 = 0% harvesting
+aoi.MAL.canCEx1.plot <- ggplot()+
+  geom_sf(data=aoi.MAL, aes(fill=D2_grp))+
+  geom_sf(data=aoi.CUTCex,fill="black",col="black",lwd=1)+
+  geom_sf(data=aoi, fill=NA)+
+  scale_fill_manual(values=rev(pal))+
+  theme(legend.position="bottom")+
+  theme(legend.title=element_blank())+
+  ggtitle("Scenario 1\n 0% harvesting in Fisher Equivalent Territory Areas") +
+  theme(plot.title = element_text(color="grey2", size=12, face="bold"))
+
+Cairo(file="out/canCex_aoi_MAL_plot.PNG",type="png",width=2400,height=2400,pointsize=14,bg="white",dpi=300)
+aoi.MAL.canCEx1.plot
+dev.off()
+
+aoi.MAL <- st_join(aoi.MAL, aoi.CUTCex %>% dplyr::select(HARVEST_DECADE),left=TRUE, largest=TRUE)
+aoi.MAL$HARVEST_DECADE[is.na(aoi.MAL$HARVEST_DECADE)] <- 0
+habitat <- ifelse(aoi.MAL$D2_grp=="Suitable Territory" & aoi.MAL$HARVEST_DECADE==0,1,0)
+aoi.MAL$HARVEST_DECADE <- NULL
+
+aoi.MAL$Habitat_canCex1 <- habitat
+
+aoi.MAL %>% group_by(D2_grp) %>%
+  summarise_at("Habitat_canCex1", sum, na.rm = TRUE) %>%
+  st_drop_geometry()
+
+glimpse(aoi.MAL)
+# because multiple cutblocks within a FETA ended up with 130 FETAs in CanBex1, 121, 118, and 117 in CanBex2, CanBex3, and CanBex4, respectively
+
+aoi <- aoi %>% st_transform(crs=26910)
+
+canCex_raster <- list()
+raoi <- raster(ext=extent(aoi), crs=26910, res=c(5500,5500))
+raoi <- rasterize(aoi.MAL %>% st_transform(crs=26910), raoi, field="Habitat_canCex1", fun="max")
+raoi[is.na(raoi[])] <- 0
+
+plot(raoi)
+#plot of the raster showing habitat as binary (green = suitable, white = unsuitable)
+# sum(raoi@data@values) # 129
+# round(sum(raoi@data@values) / length(raoi@data@values)*100) # 27% habitat
+Cairo(file="out/IBM_raster_Habitat_canCex1.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+plot(raoi,main=c(paste0("Fisher Equivalent Territory Areas (FETA) in the Area of Interest,"),
+                 paste0(sum(raoi@data@values)," or ",round(sum(raoi@data@values) / length(raoi@data@values)*100),"% FETA in Scenario canCex1")),
+                 cex.main=0.8)
+dev.off()
+canCex1_raster <- raoi
+
+sum(canCex1_raster@data@values) # 7 suitable habitat cells
+dim(canCex1_raster) # 156 cells so 7 chances for fisher
+
+IBM_aoi <- list(aoi=aoi.MAL, canCex1_raster=canCex1_raster)
+save(IBM_aoi, file="data/IBM_aoi_canCex.RData")
+
+
+#################################################################################
+# Boreal
+# Scenario 1 -0% harvesting - run simulation with underlying landbase for baseline number
+aoi.CUTBex <- st_join(aoi.CUTex %>% filter(HARVEST_DECADE==1980), aoi.MAL %>% dplyr::select(D2_grp),left=TRUE, largest=TRUE)
+aoi.CUTBex <- aoi.CUTBex %>% arrange(D2_grp,rndmrnk)
+aoi.CUTBex %>% count(D2_grp)
+
+# Scenario 1 = 0% harvesting aka 0 cutblocks in suitable territory
 canBEx1 <- aoi.CUTBex
 canBEx1 <- canBEx1 %>% filter(D2_grp!="Suitable Territory")
 canBEx1 %>% count(D2_grp)
 
-# Scenario 2 = 25% harvesting in suitable habitat
+# Scenario 2 = 25% harvesting in suitable habitat aka 59 cutblocks in suitable territory
 canBEx2 <- aoi.CUTBex
 canBEx2 <- canBEx2[round(num.cutblocks.FETA*.75):nrow(aoi.CUTBex),]
 canBEx2 %>% dplyr::count(D2_grp)
 
-# Scenario 3 = 50% harvesting in suitable habitat
+# Scenario 3 = 50% harvesting in suitable habitat aka 94 cutblocks in suitable territory
 canBEx3 <- aoi.CUTBex
 canBEx3 <- canBEx3[round(num.cutblocks.FETA*.5):nrow(aoi.CUTBex),]
 canBEx3 %>% dplyr::count(D2_grp)
 
-# Scenario 4 = 75% harvesting in suitable habitat
+# Scenario 4 = 75% harvesting in suitable habitat aka 129 cutblocks in suitable territory
 canBEx4 <- aoi.CUTBex
 canBEx4 <- canBEx4[round(num.cutblocks.FETA*.25):nrow(aoi.CUTBex),]
 canBEx4 %>% dplyr::count(D2_grp)
@@ -383,6 +461,7 @@ aoi.MAL %>% group_by(D2_grp) %>%
   st_drop_geometry()
 
 glimpse(aoi.MAL)
+# because multiple cutblocks within a FETA ended up with 130 FETAs in CanBex1, 121, 118, and 117 in CanBex2, CanBex3, and CanBex4, respectively
 
 Habitat_canBex <- c("canBex1", "canBex2", "canBex3", "canBex4")
 aoi <- aoi %>% st_transform(crs=26910)
@@ -404,13 +483,12 @@ dev.off()
 canBex_raster[[i]] <- raoi
 }
 
-sum(canBex_raster[[1]]@data@values) # 129 suitable habitat cells
-sum(canBex_raster[[2]]@data@values) # 105 suitable habitat cells
-sum(canBex_raster[[3]]@data@values) # 110 suitable habitat cells
-sum(canBex_raster[[4]]@data@values) # 118 suitable habitat cells
+sum(canBex_raster[[1]]@data@values) # 118 suitable habitat cells
+sum(canBex_raster[[2]]@data@values) # 109 suitable habitat cells
+sum(canBex_raster[[3]]@data@values) # 106 suitable habitat cells
+sum(canBex_raster[[4]]@data@values) # 105 suitable habitat cells
 
 IBM_aoi <- list(aoi=aoi.MAL, canBex_raster=canBex_raster)
-
 save(IBM_aoi, file="data/IBM_aoi_canBex.RData")
 
 save.image("05_create_aoi.RData")
