@@ -120,6 +120,9 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
 
   IBM.sim.out <- vector('list', yrs.to.run+1)
 
+  # land = canBex.FEMALE.world[[1]]$land
+  # t0 = canBex.FEMALE.world[[1]]$t0
+
   # t0	April	Kits are born
   # 	Number of kits born conditional on denning rate and litter size
   # t0 <- repro(fishers=t0, repro_estimates=repro.CI, Fpop="C")
@@ -139,6 +142,9 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
   print(NLcount(t1))
   IBM.sim.out[[1]] <- t1 # time step ends at April; gives the number of fishers at the start
 
+  # tmp <- patchHere(land, t1[t1$disperse=="E"])
+  # duplicated(tmp)
+
   tApr <- t1
 
   for(tcount in 2:(yrs.to.run+1)){
@@ -155,6 +161,9 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
       for(i in 1:30){
         tApr <- disperse_FEMALE(land=land, fishers=tApr, dist_mov=dist_mov, out=out, torus=torus)
       }
+
+      # tmp <- patchHere(land, tApr[tApr$disperse=="E"])
+      # duplicated(tmp)
 
       age.val <- of(agents=tApr, var=c("age"))+0.5
       tApr <- NLset(turtles = tApr, agents=turtle(tApr, who=tApr$who),var="age", val=age.val)
@@ -174,6 +183,9 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
       for(i in 1:30){
         tOct <- disperse_FEMALE(land=land, fishers=tOct, dist_mov=dist_mov, out=out, torus=torus)
       }
+
+      # tmp <- patchHere(land, tOct)
+      # duplicated(tmp)
 
       age.val <- of(agents=tOct, var=c("age"))+0.5
       tOct <- NLset(turtles = tOct, agents=turtle(tOct, who=tOct$who),var="age", val=age.val)
@@ -220,7 +232,8 @@ print(sum(IBM_aoi$canBex_raster[[i]]@data@values)) # number of equivalent territ
 length(IBM_aoi$canBex_raster[[1]]@data@values)
 
 # go with ~1/3 for actual female territories to start with, rounded to nearest 5
-nFemales = plyr::round_any(sum(IBM_aoi$canBex_raster[[i]]@data@values)*0.3,5)
+nFemales = plyr::round_any(sum(IBM_aoi$canBex_raster[[1]]@data@values)*0.3,5); nFemales
+#35 for Boreal
 
 canBex.FEMALE.world <- list()
 for(i in 1:length(IBM_aoi$canBex_raster)){
@@ -243,6 +256,19 @@ end_time <- Sys.time(); print(end_time - start_time)
 
 canBex1.FEMALE <- list(canBex.FEMALE.world[[1]], canBex1.FEMALE.sim100)
 
+# tmp <- canBex1.FEMALE.sim100[[1]][[11]]
+# canBex1.FEMALE.sim100[[1]]
+# plot(canBex.FEMALE.world[[1]]$land)
+# points(tmp[tmp$breed=="adult"], pch = tmp[tmp$breed=="adult"]$shape, col = "black")
+# points(tmp[tmp$breed=="juvenile"], pch = tmp[tmp$breed=="adult"]$shape, col = "blue")
+#
+# plot(canBex.FEMALE.world[[1]]$land)
+# points(tmp[tmp$disperse=="E"], pch = tmp[tmp$disperse=="E"]$shape, col = "black")
+# points(tmp[tmp$disperse=="D"], pch = tmp[tmp$disperse=="D"]$shape, col = "blue")
+#
+# tmp <- as.data.frame(patchHere(canBex.FEMALE.world[[1]]$land, tmp[tmp$disperse=="E"]))
+# tmp %>% dplyr::arrange(pxcor)
+# duplicated(tmp)
 
 # Scenario2
 start_time <- Sys.time()
