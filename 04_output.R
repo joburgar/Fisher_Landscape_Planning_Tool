@@ -70,9 +70,9 @@ sim_output <- function(sim_out=sim_out, sim=sim, numsims=numsims, yrs_sim=yrs_si
   ABM.df <- rbindlist(lapply(Reps, function(rps){
     ABM.df_ts <- rbindlist(lapply(timeSteps, function(ts){
       DT <- as.array(sim_out[[sim]][[rps]][[ts]])
-      # DT <- as.array(sim_out[[2]][[1]][[11]])
+      # DT <- as.array(sim_out[[2]][[1]][11])
 
-      if (length(DT) != 0){
+      if (length(DT) >1 ){
         nAdults = as.numeric(table(DT[DT$disperse=="E"]$breed)["adult"])
         nJuvenile = as.numeric(table(DT[DT$disperse=="E"]$breed)["juvenile"])
       } else {
@@ -122,13 +122,15 @@ ABM_fig_1sim <- function(sim_out=sim_out, numsims=100, yrs_sim=10, Fpop=Fpop){
 
   ABM.TS.se <- ABM.df %>% dplyr::select(-Run) %>% pivot_wider(names_from=TimeStep, values_from=Count, values_fn=se)
   ABM.TS.se$Param <- "SE"
-  ABM.TS.LCL <- ABM.df %>% dplyr::select(-Run) %>% pivot_wider(names_from=TimeStep, values_from=Count, values_fn=LCL)
-  ABM.TS.LCL$Param <- "LCL"
 
-  ABM.TS.UCL <- ABM.df %>% dplyr::select(-Run) %>% pivot_wider(names_from=TimeStep, values_from=Count, values_fn=UCL)
-  ABM.TS.UCL$Param <- "UCL"
+  # ABM.TS.LCL <- ABM.df %>% dplyr::select(-Run) %>% pivot_wider(names_from=TimeStep, values_from=Count, values_fn=LCL)
+  # ABM.TS.LCL$Param <- "LCL"
+  #
+  # ABM.TS.UCL <- ABM.df %>% dplyr::select(-Run) %>% pivot_wider(names_from=TimeStep, values_from=Count, values_fn=UCL)
+  # ABM.TS.UCL$Param <- "UCL"
 
-  ABM.TS <- rbind(ABM.TS.mean, ABM.TS.se, ABM.TS.LCL, ABM.TS.UCL)
+  # ABM.TS <- rbind(ABM.TS.mean, ABM.TS.se, ABM.TS.LCL, ABM.TS.UCL)
+  ABM.TS <- rbind(ABM.TS.mean, ABM.TS.se)
 
   ABM.TS.df <- ABM.TS %>% pivot_longer(cols = 4:(3+yrs_sim+1),names_to = "TimeStep",values_to = "Value" )
   ABM.TS.df <- ABM.TS.df %>% pivot_wider(names_from = Param, values_from = Value)
@@ -142,19 +144,19 @@ ABM_fig_1sim <- function(sim_out=sim_out, numsims=100, yrs_sim=10, Fpop=Fpop){
   Fpop_name <- ifelse(Fpop=="C","Columbian","Boreal")
   fishers_to_start <- nrow(sim_out[[1]]$t0)
 
-  sim.TS.plot <- ggplot(data = ABM.TS.use) +
-    theme_bw() + theme(strip.background = element_rect(fill = "white", colour = "white")) +
-    theme(panel.grid = element_blank())+
-    geom_ribbon(aes(x = TimeStepNum, ymin = LCL, ymax = UCL), fill = "#2c6184") +
-    geom_vline(xintercept =7, col="darkgrey", lty=4) +
-    geom_hline(yintercept = 0, col="grey", lty=4) +
-    geom_line(aes(x = TimeStepNum, y = Mean)) +
-    theme(axis.text.x = element_blank()) +
-    xlab(expression(paste("Annual Predictions Starting at T"[0]))) +
-    ylab("Number of Adult Female Fishers (Mean + 95% Confidence Intervals)")+
-    ggtitle(paste0("Simulating ",yrs_sim," Years of ",Fpop_name," Fisher Populations,\nStarting with ",
-                   round(unique(ABM.TS.df$Pcnthab*100)),"% Suitable Habitat and ",
-                   fishers_to_start," Adult Female Fishers"))
+  # sim.TS.plot <- ggplot(data = ABM.TS.use) +
+  #   theme_bw() + theme(strip.background = element_rect(fill = "white", colour = "white")) +
+  #   theme(panel.grid = element_blank())+
+  #   geom_ribbon(aes(x = TimeStepNum, ymin = LCL, ymax = UCL), fill = "#2c6184") +
+  #   geom_vline(xintercept =7, col="darkgrey", lty=4) +
+  #   geom_hline(yintercept = 0, col="grey", lty=4) +
+  #   geom_line(aes(x = TimeStepNum, y = Mean)) +
+  #   theme(axis.text.x = element_blank()) +
+  #   xlab(expression(paste("Annual Predictions Starting at T"[0]))) +
+  #   ylab("Number of Adult Female Fishers (Mean + 95% Confidence Intervals)")+
+  #   ggtitle(paste0("Simulating ",yrs_sim," Years of ",Fpop_name," Fisher Populations,\nStarting with ",
+  #                  round(unique(ABM.TS.df$Pcnthab*100)),"% Suitable Habitat and ",
+  #                  fishers_to_start," Adult Female Fishers"))
 
   sim.TS.plot_se <- ggplot(data = ABM.TS.use) +
     theme_bw() + theme(strip.background = element_rect(fill = "white", colour = "white")) +
@@ -172,7 +174,7 @@ ABM_fig_1sim <- function(sim_out=sim_out, numsims=100, yrs_sim=10, Fpop=Fpop){
                    fishers_to_start," Adult Female Fishers"))
 
 
-  return(list(ABM.TS.df=ABM.TS.df, sim.TS.plot=sim.TS.plot, sim.TS.plot_se=sim.TS.plot_se))
+  return(list(ABM.TS.df=ABM.TS.df, sim.TS.plot_se=sim.TS.plot_se))
 
 }
 
@@ -247,10 +249,10 @@ heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yr
   writeRaster(r_stackApply, file=paste0("out/",dir_name,"/rSim_",name_out,"_",round(sim_out[[sim_order-3]]$actual.prop.hab*100),"hab.tif"), bylayer=TRUE, overwrite=TRUE)
 
   # Fisher_Nmean <- mean(r_stackApply@data@values[r_stackApply@data@values>1])
-  # Fisher_Nmean <- mean(r_stackApply@data@values)
+  Fisher_Nmean <- mean(r_stackApply@data@values)
   Fpredicted <- round(sum(r_stackApply@data@values/100))
   # Fisher_Nse <- se(r_stackApply@data@values[r_stackApply@data@values>1])
-  # Fisher_Nse <- se(r_stackApply@data@values)
+  Fisher_Nse <- se(r_stackApply@data@values)
 
   suitable_habitat <- sum(sim_out[[1]]$land)
   total_habitat <- dim(sim_out[[1]]$land)[1]*dim(sim_out[[1]]$land)[2]
@@ -277,9 +279,9 @@ heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yr
 # Create a figure with mean number of adult females (+/- SE or 95% CIs) for each time step and graph for each simulation
 
 ###--- load real world simulations (list of 1 run for 1 population from analysis script)
-load("out/canBex.FEMALE.RData")
-
-scenario1 <- canBex.FEMALE[[1]]
+# load("out/canBex.FEMALE.RData")
+load("out/canCex.FEMALE.RData")
+# load("out/canCex.FEMALE_actual.RData")
 
 # fishers = canBex1.FEMALE[[2]][[1]][[11]]
 # land = canBex1.FEMALE[[1]]$land
@@ -292,15 +294,16 @@ scenario1 <- canBex.FEMALE[[1]]
 # points(fishers, pch = fishers$shape, col = of(agents = fishers, var = "color"))
 
 
-scenario2 <- canBex.FEMALE[[2]]
-scenario3 <- canBex.FEMALE[[3]]
-scenario4 <- canBex.FEMALE[[4]]
+scenario1 <- canCex.FEMALE[[1]]
+scenario2 <- canCex.FEMALE[[2]]
+scenario3 <- canCex.FEMALE[[3]]
+scenario4 <- canCex.FEMALE[[4]]
 
-length(canBex.FEMALE)
+length(canCex.FEMALE)
 
 ### create output data from scenario output
 scenario_output_function <- function(sim_out=sim_out, name_out=name_out,
-                                     numsims=100, yrs_sim=10, Fpop="B",
+                                     numsims=100, yrs_sim=10, Fpop="C",
                                      sim_order=2, TS=11){
   dir_name <- substr(name_out,1,nchar(name_out)-1)
 
@@ -312,9 +315,9 @@ scenario_output_function <- function(sim_out=sim_out, name_out=name_out,
   print(scenario_out$sim.TS.plot_se)
   dev.off()
 
-  Cairo(file=paste0("out/",dir_name,"/IBM_",name_out,"_MeanCL.PNG"),type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
-  print(scenario_out$sim.TS.plot)
-  dev.off()
+  # Cairo(file=paste0("out/",dir_name,"/IBM_",name_out,"_MeanCL.PNG"),type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
+  # print(scenario_out$sim.TS.plot)
+  # dev.off()
 
   Cairo(file=paste0("out/",dir_name,"/IBM_",name_out,"_Saoi.PNG"),type="png",width=3000,height=2200,pointsize=15,bg="white",dpi=300)
   plot(sim_out[[1]]$land, legend=FALSE, main="Simulated Fisher Established Territories within Area of Interest")
@@ -327,9 +330,12 @@ scenario_output_function <- function(sim_out=sim_out, name_out=name_out,
   return(list(scenario_setup=scenario_setup, scenario_out=scenario_out, scenario_heatmap=scenario_heatmap))
 }
 
-
-dir.create(file.path(paste(getwd(),"canBex",sep="/out/")), recursive = TRUE)
-
+# boreal
 for(i in 1:length(canBex.FEMALE)){
   scenario_output_function(sim_out=canBex.FEMALE[[i]], name_out=paste0("canBex",i))
+}
+
+# columbian
+for(i in 1:length(canCex.FEMALE)){
+  scenario_output_function(sim_out=canCex.FEMALE[[i]], name_out=paste0("canCex",i))
 }
