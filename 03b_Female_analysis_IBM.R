@@ -222,9 +222,16 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
 # Read in aoi shapefile (with attribute info) and aoi raster (binary 0/1 for habitat)
 # load("data/IBM_aoi_Pex2.RData")
 load("data/IBM_aoi_canBex.RData")
+# load("data/IBM_aoi_canCex.RData")
 
 # glimpse(IBM_aoi)
 Fpop <- unique(substr(IBM_aoi$aoi$Fpop,1,1))
+Fpop = "C" # for using the Boreal example data with Columbian demographic rates
+
+# print(sum(IBM_aoi$canCex1_raster@data@values)) # number of equivalent territories with suitable habitat
+# 7
+# length(IBM_aoi$canCex1_raster@data@values)
+# 156
 
 for(i in 1:length(IBM_aoi$canBex_raster)){
 print(sum(IBM_aoi$canBex_raster[[i]]@data@values)) # number of equivalent territories with suitable habitat
@@ -233,7 +240,8 @@ length(IBM_aoi$canBex_raster[[1]]@data@values)
 
 # go with ~1/3 for actual female territories to start with, rounded to nearest 5
 nFemales = plyr::round_any(sum(IBM_aoi$canBex_raster[[1]]@data@values)*0.3,5); nFemales
-#35 for Boreal
+nFemales = round(sum(IBM_aoi$canCex1_raster@data@values)*0.3); nFemales
+#35 for Boreal; 2 for Columbian
 
 canBex.FEMALE.world <- list()
 for(i in 1:length(IBM_aoi$canBex_raster)){
@@ -320,3 +328,100 @@ canBex4.FEMALE <- list(canBex.FEMALE.world[[4]], canBex4.FEMALE.sim100)
 
 canBex.FEMALE<- list(canBex1.FEMALE,canBex2.FEMALE,canBex3.FEMALE,canBex4.FEMALE)
 save(canBex.FEMALE, file="out/canBex.FEMALE.RData")
+
+
+#################################################################################
+# For columbian
+canCex.FEMALE.world <- set_up_REAL_world_FEMALE(nFemales=nFemales, maxAgeFemale=9, raoi=IBM_aoi$canCex1_raster)
+
+# Scenario1
+start_time <- Sys.time()
+canCex1.FEMALE.sim100 <- vector('list',100)
+for(i in 1:100){
+  canCex1.FEMALE.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=canCex.FEMALE.world$land,
+                                                                 t0=canCex.FEMALE.world$t0,             # import world
+                                                                 repro_estimates=repro.CI, Fpop=Fpop,   # reproduction
+                                                                 surv_estimates=rf_surv_estimates,      # survive
+                                                                 maxAgeFemale=9,                        # survive
+                                                                 dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
+                                                                 yrs.to.run=10)                         # number of years to run simulation post set up
+}
+end_time <- Sys.time(); print(end_time - start_time)
+
+canCex1.FEMALE <- list(canCex.FEMALE.world, canCex1.FEMALE.sim100)
+save(canCex1.FEMALE, file="out/canCex.FEMALE_actual.RData") # all went to 0 well before 10 years
+
+
+### For illustration purposes, use the Boreal landscape and Columbian demographics
+canCex.FEMALE.world <- list()
+for(i in 1:length(IBM_aoi$canBex_raster)){
+  canCex.FEMALE.world[[i]] <- set_up_REAL_world_FEMALE(nFemales=nFemales, maxAgeFemale=9, raoi=IBM_aoi$canBex_raster[[i]])
+}
+
+# Scenario1
+start_time <- Sys.time()
+canCex1.FEMALE.sim100 <- vector('list',100)
+for(i in 1:100){
+  canCex1.FEMALE.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=canCex.FEMALE.world[[1]]$land,
+                                                                 t0=canCex.FEMALE.world[[1]]$t0,             # import world
+                                                                 repro_estimates=repro.CI, Fpop="C",   # reproduction
+                                                                 surv_estimates=rf_surv_estimates,      # survive
+                                                                 maxAgeFemale=9,                        # survive
+                                                                 dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
+                                                                 yrs.to.run=10)                         # number of years to run simulation post set up
+}
+end_time <- Sys.time(); print(end_time - start_time)
+canCex1.FEMALE <- list(canCex.FEMALE.world[[1]], canCex1.FEMALE.sim100)
+
+
+# Scenario2
+start_time <- Sys.time()
+canCex2.FEMALE.sim100 <- vector('list',100)
+for(i in 1:100){
+  canCex2.FEMALE.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=canCex.FEMALE.world[[2]]$land,
+                                                                 t0=canCex.FEMALE.world[[2]]$t0,             # import world
+                                                                 repro_estimates=repro.CI, Fpop="C",   # reproduction
+                                                                 surv_estimates=rf_surv_estimates,      # survive
+                                                                 maxAgeFemale=9,                        # survive
+                                                                 dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
+                                                                 yrs.to.run=10)                         # number of years to run simulation post set up
+}
+end_time <- Sys.time(); print(end_time - start_time)
+
+canCex2.FEMALE <- list(canCex.FEMALE.world[[2]], canCex2.FEMALE.sim100)
+
+# Scenario3
+start_time <- Sys.time()
+canCex3.FEMALE.sim100 <- vector('list',100)
+for(i in 1:100){
+  canCex3.FEMALE.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=canCex.FEMALE.world[[3]]$land,
+                                                                 t0=canCex.FEMALE.world[[3]]$t0,             # import world
+                                                                 repro_estimates=repro.CI, Fpop="C",   # reproduction
+                                                                 surv_estimates=rf_surv_estimates,      # survive
+                                                                 maxAgeFemale=9,                        # survive
+                                                                 dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
+                                                                 yrs.to.run=10)                         # number of years to run simulation post set up
+}
+end_time <- Sys.time(); print(end_time - start_time)
+
+canCex3.FEMALE <- list(canCex.FEMALE.world[[3]], canCex3.FEMALE.sim100)
+
+# Scenario4
+start_time <- Sys.time()
+canCex4.FEMALE.sim100 <- vector('list',100)
+for(i in 1:100){
+  canCex4.FEMALE.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=canCex.FEMALE.world[[4]]$land,
+                                                                 t0=canCex.FEMALE.world[[4]]$t0,             # import world
+                                                                 repro_estimates=repro.CI, Fpop="C",   # reproduction
+                                                                 surv_estimates=rf_surv_estimates,      # survive
+                                                                 maxAgeFemale=9,                        # survive
+                                                                 dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
+                                                                 yrs.to.run=10)                         # number of years to run simulation post set up
+}
+end_time <- Sys.time(); print(end_time - start_time)
+
+canCex4.FEMALE <- list(canCex.FEMALE.world[[4]], canCex4.FEMALE.sim100)
+
+canCex.FEMALE<- list(canCex1.FEMALE,canCex2.FEMALE,canCex3.FEMALE,canCex4.FEMALE)
+save(canCex.FEMALE, file="out/canCex.FEMALE.RData")
+
