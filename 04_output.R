@@ -190,8 +190,10 @@ ABM_fig_1sim <- function(sim_out=sim_out, numsims=100, yrs_sim=10, Fpop=Fpop){
 # then uses sum to count how many times each pixel is selected (out of numsims run, i.e., 100)
 # the mean and se relate to the number of pixels (i.e., territories) selected per simulation
 
-heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yrs_sim=10, TS=TS, name_out=name_out, dir_name=dir_name){
-  # sim_out=scenario1; sim_order=2; numsims=100; yrs_sim=10; TS=11; name_out="canBex1"
+heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yrs_sim=10, TS=TS, name_out=name_out, dir_name=dir_name, rextent=rextent){
+  # scenario1 <- canBex.FEMALE[[1]]
+  # IBM_aoi$canBex_raster
+  # sim_out=scenario1; sim_order=2; numsims=100; yrs_sim=10; TS=11; name_out="canBex1";rextent=IBM_aoi$canBex_raster[[1]]
 
   TS_full=paste0("TimeStep_",TS)
 
@@ -246,6 +248,7 @@ heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yr
   r_stack = stack(r_list, r_zeroes_list)
   r_stackApply <- stackApply(r_stack, indices=1, fun=sum)
 
+  extent(r_stackApply) <- extent(rextent)
   writeRaster(r_stackApply, file=paste0("out/",dir_name,"/rSim_",name_out,"_",round(sim_out[[sim_order-3]]$actual.prop.hab*100),"hab.tif"), bylayer=TRUE, overwrite=TRUE)
 
   # Fisher_Nmean <- mean(r_stackApply@data@values[r_stackApply@data@values>1])
@@ -279,8 +282,9 @@ heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yr
 # Create a figure with mean number of adult females (+/- SE or 95% CIs) for each time step and graph for each simulation
 
 ###--- load real world simulations (list of 1 run for 1 population from analysis script)
-# load("out/canBex.FEMALE.RData")
+load(file="data/IBM_aoi_canBex.RData") # need this input data (canBex) for both canBex and canCex because using same underlying landscape for both outputs
 load("out/canCex.FEMALE.RData")
+# load("out/canCex.FEMALE.RData")
 # load("out/canCex.FEMALE_actual.RData")
 
 # fishers = canBex1.FEMALE[[2]][[1]][[11]]
@@ -299,12 +303,10 @@ scenario2 <- canCex.FEMALE[[2]]
 scenario3 <- canCex.FEMALE[[3]]
 scenario4 <- canCex.FEMALE[[4]]
 
-length(canCex.FEMALE)
-
 ### create output data from scenario output
 scenario_output_function <- function(sim_out=sim_out, name_out=name_out,
                                      numsims=100, yrs_sim=10, Fpop="C",
-                                     sim_order=2, TS=11){
+                                     sim_order=2, TS=11, rextent=rextent){
   dir_name <- substr(name_out,1,nchar(name_out)-1)
 
   scenario_setup <- setup_plot(sim_out=sim_out, name_out=name_out)
@@ -325,17 +327,18 @@ scenario_output_function <- function(sim_out=sim_out, name_out=name_out,
   dev.off()
 
   scenario_heatmap <- heatmap_output(sim_out=sim_out, sim_order=sim_order, numsims=numsims, yrs_sim=yrs_sim, TS=TS,
-                                     name_out=name_out, dir_name=dir_name)
+                                     name_out=name_out, dir_name=dir_name, rextent=rextent)
 
   return(list(scenario_setup=scenario_setup, scenario_out=scenario_out, scenario_heatmap=scenario_heatmap))
 }
 
 # boreal
+# note raster output is crs=26910; NAD83 / UTM zone 10N; https://epsg.io/26910
 for(i in 1:length(canBex.FEMALE)){
-  scenario_output_function(sim_out=canBex.FEMALE[[i]], name_out=paste0("canBex",i))
+  scenario_output_function(sim_out=canBex.FEMALE[[i]], name_out=paste0("canBex",i), rextent=IBM_aoi$canBex_raster[[i]])
 }
 
 # columbian
 for(i in 1:length(canCex.FEMALE)){
-  scenario_output_function(sim_out=canCex.FEMALE[[i]], name_out=paste0("canCex",i))
+  scenario_output_function(sim_out=canCex.FEMALE[[i]], name_out=paste0("canCex",i), rextent=IBM_aoi$canBex_raster[[i]]) # note canBex raster for extent becauase using Boreal landbase and Columbian demographics
 }
