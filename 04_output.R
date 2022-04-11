@@ -260,15 +260,18 @@ heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yr
   suitable_habitat <- sum(sim_out[[1]]$land)
   total_habitat <- dim(sim_out[[1]]$land)[1]*dim(sim_out[[1]]$land)[2]
 
+  mtext_left <- floor(r_stackApply@extent@xmin) # to get legend to display at left extent of map
+
   Cairo(file=paste0("out/",dir_name,"/rHeatmap_",name_out,"_hab.PNG"), type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+
   plot(r_stackApply, oma=c(2, 3, 5, 2))
   mytitle = paste0("Estimated Fisher Territories over ",numsims," Simulations")
   mysubtitle1 = paste0("Starting with ",fishers_to_start$numAF," fishers and ",round(suitable_habitat/total_habitat*100),"% habitat")
   # mysubtitle2 = paste0("predicted ",round(Fisher_Nmean)," \u00B1 ",round(Fisher_Nse)," (mean \u00B1 1 SE) established fisher territories after ",yrs_sim," years.")
   mysubtitle2 = paste0("predicted ",Fpredicted," established fisher female territories after ",yrs_sim," years.")
-  mtext(side=3, line=3, at=-0.07, adj=0, cex=1, mytitle)
-  mtext(side=3, line=2, at=-0.07, adj=0, cex=0.8, mysubtitle1)
-  mtext(side=3, line=1, at=-0.07, adj=0, cex=0.8, mysubtitle2)
+  mtext(side=3, line=3, at=mtext_left, adj=0, cex=1, mytitle)
+  mtext(side=3, line=2, at=mtext_left, adj=0, cex=0.8, mysubtitle1)
+  mtext(side=3, line=1, at=mtext_left, adj=0, cex=0.8, mysubtitle2)
   dev.off()
 
   return(list(raster=r_stackApply, Fisher_Nmean=Fisher_Nmean, Fisher_Nse=Fisher_Nse, Fpredicted=Fpredicted, nozerosims=nozerosims))
@@ -283,7 +286,7 @@ heatmap_output <- function(sim_out=sim_out, sim_order=sim_order, numsims=100, yr
 
 ###--- load real world simulations (list of 1 run for 1 population from analysis script)
 load(file="data/IBM_aoi_canBex.RData") # need this input data (canBex) for both canBex and canCex because using same underlying landscape for both outputs
-load("out/canCex.FEMALE.RData")
+load("out/canBex.FEMALE.RData")
 # load("out/canCex.FEMALE.RData")
 # load("out/canCex.FEMALE_actual.RData")
 
@@ -297,15 +300,14 @@ load("out/canCex.FEMALE.RData")
 # plot(land)
 # points(fishers, pch = fishers$shape, col = of(agents = fishers, var = "color"))
 
-
-scenario1 <- canCex.FEMALE[[1]]
-scenario2 <- canCex.FEMALE[[2]]
-scenario3 <- canCex.FEMALE[[3]]
-scenario4 <- canCex.FEMALE[[4]]
+scenario1 <- canBex.FEMALE[[1]]
+scenario2 <- canBex.FEMALE[[2]]
+scenario3 <- canBex.FEMALE[[3]]
+scenario4 <- canBex.FEMALE[[4]]
 
 ### create output data from scenario output
 scenario_output_function <- function(sim_out=sim_out, name_out=name_out,
-                                     numsims=100, yrs_sim=10, Fpop="C",
+                                     numsims=100, yrs_sim=10, Fpop=Fpop,
                                      sim_order=2, TS=11, rextent=rextent){
   dir_name <- substr(name_out,1,nchar(name_out)-1)
 
@@ -335,7 +337,7 @@ scenario_output_function <- function(sim_out=sim_out, name_out=name_out,
 # boreal
 # note raster output is crs=26910; NAD83 / UTM zone 10N; https://epsg.io/26910
 for(i in 1:length(canBex.FEMALE)){
-  scenario_output_function(sim_out=canBex.FEMALE[[i]], name_out=paste0("canBex",i), rextent=IBM_aoi$canBex_raster[[i]])
+  scenario_output_function(Fpop="B", sim_out=canBex.FEMALE[[i]], name_out=paste0("canBex",i), rextent=IBM_aoi$canBex_raster[[i]])
 }
 
 # columbian
