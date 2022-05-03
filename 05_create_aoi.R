@@ -141,374 +141,206 @@ create_grid <- function (input=input, cellsize=cellsize){
 aoi.Fpop <- st_read(dsn=paste0(getwd(),"/data"), layer="aoi.Fpop")
 aoi.Fpop$Fpop <- case_when(aoi.Fpop$Fpop=="Central Interior" ~ "Columbian",
                            TRUE ~ as.character(aoi.Fpop$Fpop))
+ggplot()+
+  geom_sf(data=aoi.Fpop)
 
-###--- Create an example polygon, with potential cutblocks
-# Consolidated cutblock
-# 1: Harvested Areas of BC (Consolidated Cutblocks) (multiple, fgdb, wms, kml, pdf)
-# ID: b1b647a6-f271-42e0-9cd0-89ec24bce9f7
-# Name: harvested-areas-of-bc-consolidated-cutblocks-
-# aoi <- st_read(dsn=paste0(getwd(),"/data/ThompOkan_FGT/1_CUTBLOCKS"), layer="cutblocks_sample") %>% st_transform(crs=26910)
-#
-# aoi <- aoi %>% st_transform(crs=3005)
-# aoi.CUT <- retrieve_geodata_aoi(ID = "2ebb35d8-c82f-4a17-9c96-612ac3532d55")
-# aoi.CUT <- aoi.CUT %>% dplyr::select(id, FEATURE_ID, HARVEST_DATE, Area_km2)
-# aoi.CUT$HARVEST_Yr <- year(aoi.CUT$HARVEST_DATE)
-# aoi.CUT <- aoi.CUT %>% filter(!is.na(HARVEST_Yr))
-# aoi.CUT %>% dplyr::count(HARVEST_Yr) %>% st_drop_geometry()
-#
-# aoi.CUT$HARVEST_DECADE <- as.numeric(substr(aoi.CUT$HARVEST_Yr,3,3))
-# unique(aoi.CUT$HARVEST_DECADE)
-# aoi.CUT$HARVEST_DECADE <- case_when(aoi.CUT$HARVEST_DECADE==1 ~2010,
-#                                     aoi.CUT$HARVEST_DECADE==0 ~2000,
-#                                     aoi.CUT$HARVEST_DECADE==9 ~1990,
-#                                     aoi.CUT$HARVEST_DECADE==8 ~1980,
-#                                     aoi.CUT$HARVEST_DECADE==7 ~1970,
-#                                     aoi.CUT$HARVEST_DECADE==6 ~1960,
-#                                     aoi.CUT$HARVEST_DECADE==5 ~1950)
-# st_write(aoi.CUT, dsn=paste0(getwd(),"/data/aoi_CUT_example_TO.shp"), delete_layer=TRUE)
-
-aoi.CUT_Bex <- st_read(dsn=paste0(getwd(),"/data"), layer="aoi_CUT_example") %>%
-  rename(HARVEST_DATE = HARVEST_DA, HARVEST_YEAR = HARVEST_Y, HARVEST_DECADE = HARVEST_DE, Area_km2 = Are_km2)
-aoi.CUT <- aoi.CUT_Bex
-
-aoi.CUT <- st_read(dsn=paste0(getwd(),"/data"), layer="aoi_CUT_example_Skeena") %>%
-  rename(HARVEST_DATE = HARVEST_DA, HARVEST_YEAR = HARVEST_Y, HARVEST_DECADE = HARVEST_DE, Area_km2 = Are_km2)
-
-aoi.CUT %>% group_by(HARVEST_DECADE) %>% summarise(sum(Area_km2)) %>% st_drop_geometry()
-aoi.CUT %>% dplyr::count(HARVEST_DECADE) %>%  st_drop_geometry()
+aoi.Fpop_simpl <- st_simplify(aoi.Fpop %>% st_transform(crs=26910), preserveTopology = FALSE, dTolerance = 1000) %>% st_transform(crs=3005)
+# preserveToplogy=TRUE ensures that no polygons or inner holes are reduced to lines/removed - not necessary because just boundary for other intersections
 
 ggplot()+
-  geom_sf(data=aoi.CUT, aes(fill=HARVEST_DECADE))
+  geom_sf(data=aoi.Fpop_simpl, aes(fill=Fpop))
 
-# Run through canned examples with different configurations of cuts from 1970
-# actual cutblocks, but long enough ago to potentially be classified as 'suitable' by our hypothetical VRI test
-# first generate random numbers for each cutblock and select different sets per example
-# 420 cutblocks covering 55.6 km2 in 1980, try 4 examples
+# st_write(aoi.Fpop_simpl, paste0(getwd(),"/data/aoi.Fpop_simpl.shp"), delete_layer=TRUE)
+# round(c(object.size(aoi.Fpop),object.size((aoi.Fpop_simpl)))/1024) # huge reduction in memory usage 100x magnitude less memory storage!
+
+FHE_zones <- st_read(dsn=paste0(getwd(),"/data"), layer="FHE_zones")
+FHE_zones <- st_simplify(FHE_zones %>% st_transform(crs=26910), preserveTopology = FALSE, dTolerance = 1000) %>% st_transform(crs=3005)
+
+# bring in the different Natural Resource Districts
+# Natural Region District
+# bcdc_search("Natural Region District", res_format = "wms")
+# 1: Natural Resource (NR) Districts (multiple, wms)
+# ID: 0bc73892-e41f-41d0-8d8e-828c16139337
+# Name: natural-resource-nr-district
+aoi <- aoi.Fpop_simpl
+aoi.NRD <- retrieve_geodata_aoi(ID = "0bc73892-e41f-41d0-8d8e-828c16139337")
+unique(aoi.NRD$DISTRICT_NAME) # 15 unique Natural Resource Districts
+
+# create example for each of the Regions, choosing one Natural Resource District
+aoi.NRD %>% filter(grepl("Omineca",REGION_ORG_UNIT_NAME)) %>% group_by(Fpop,OBJECTID) %>% summarise(sum(Area_km2))
+# small amount of Mackenzie as Boreal pop...should this be? Should it be all the way to end of Boreal Hab_zone?
+# keep as is for now, to consider for later iterations of FLEX and shiny
+
+# For Omineca use Prince George Natural Resource District
+ggplot()+
+  geom_sf(data=aoi.NRD %>% filter(grepl("Omineca",REGION_ORG_UNIT_NAME)), aes(fill=DISTRICT_NAME))
+aoi.Omineca <- aoi.NRD %>% filter(grepl("Prince",DISTRICT_NAME))
+
+# ggplot()+
+#   geom_sf(data=aoi.Fpop_simpl)+
+#   geom_sf(data = aoi.Omineca, col="blue", fill="blue")
+
+# For Skeena use Nadina Natural Resource District
+ggplot()+
+  geom_sf(data=aoi.NRD %>% filter(grepl("Skeena",REGION_ORG_UNIT_NAME)), aes(fill=DISTRICT_NAME))
+aoi.Skeena <- aoi.NRD %>% filter(grepl("Nadina",DISTRICT_NAME))
+
+# ggplot()+
+#   geom_sf(data=aoi.Fpop_simpl)+
+#   geom_sf(data = aoi.Skeena, col="blue", fill="blue")
+
+# For Northeast use Peace Natural Resource District
+ggplot()+
+  geom_sf(data=aoi.NRD %>% filter(grepl("Northeast",REGION_ORG_UNIT_NAME)), aes(fill=DISTRICT_NAME))
+aoi.Northeast <- aoi.NRD %>% filter(grepl("Peace",DISTRICT_NAME))
+
+# ggplot()+
+#   geom_sf(data=aoi.Fpop_simpl)+
+#   geom_sf(data = aoi.Northeast, col="blue", fill="blue")
+
+# For Cariboo use Cariboo-Chilcotin Natural Resource District
+ggplot()+
+  geom_sf(data=aoi.NRD %>% filter(grepl("Cariboo",REGION_ORG_UNIT_NAME)), aes(fill=DISTRICT_NAME))
+aoi.Cariboo <- aoi.NRD %>% filter(grepl("Cariboo",DISTRICT_NAME))
+
+# ggplot()+
+#   geom_sf(data=aoi.Fpop_simpl)+
+#   geom_sf(data = aoi.Cariboo, col="blue", fill="blue")
+
+###--- Create artificial example with exaggerated scenarios
+# One for each region, may need to subset if too large
+# 1. Create grid of FETAs
+# 2. Identify Mahalanobis distance for each FETA
+# 3. Keep as probability (consistent with Rich Weir's usage)
+# 4. Generate random numbers for FETAs and change a portion of suitable to movement / unsuitable
 # 1. all cutblocks harvested (420)
 # 2. half cutblocks harvested (210) random selection
 # 3. half cutblocks harvested (210), in 'lower quality' (i.e., unsuitable) habitat
 # 4. half cutblocks harvested (210), in 'higher quality' (i.e., suitable) habitat
 
-aoi <- st_make_grid(st_buffer(aoi.CUT %>% st_transform(crs=26910), dist=30000), n=1)
-aoi <- st_as_sf(aoi)
+# Create examples for Omineca, Skeena, Northeast, and Cariboo
+nrd_name <- "Cariboo"
+nrd_ex_aoi <- aoi.Cariboo
 
-# Baoi <- st_make_grid(st_buffer(aoi.CUT_Bex %>% st_transform(crs=26910), dist=30000), n=1)
-# Baoi <- st_as_sf(Baoi)
+aoi <- st_make_grid(st_buffer(nrd_ex_aoi %>% st_transform(crs=26910), dist=30000), n=1)
+aoi <- st_as_sf(aoi)
 
 pal = pnw_palette(name="Winter",n=2,type="discrete")
 
-Cairo(file="out/BCex_Fpop_aoi_plot.PNG",type="png",width=2400,height=2400,pointsize=16,bg="white",dpi=300)
+Cairo(file=paste0("out/Ex_",nrd_name,"_Fpop_aoi_plot.PNG"),type="png",width=2400,height=2400,pointsize=16,bg="white",dpi=300)
 ggplot()+
-  geom_sf(data=aoi.Fpop, aes(fill=Fpop))+
-  geom_sf(data=Baoi)+
-  geom_sf(data=aoi.CUT_Bex)+
+  geom_sf(data=aoi.Fpop_simpl, aes(fill=Fpop))+
   geom_sf(data=aoi)+
-  geom_sf(data=aoi.CUT)+
+  geom_sf(data=nrd_ex_aoi)+
   scale_fill_manual(values=rev(pal))+
   theme(legend.position="bottom")+
   theme(legend.title=element_blank())
 dev.off()
 
-aoi <- st_join(aoi, aoi.Fpop %>% st_transform(crs=26910),left=TRUE, largest=TRUE)
-
-ggplot()+
-  geom_sf(data=aoi.CUT %>% filter(HARVEST_DECADE %in% c(1980)), aes(fill=HARVEST_YEAR))+
-  geom_sf(data=aoi, fill=NA)
-
-
-### CREATNG SUITABLE HABITAT WITH FIRST ROUND OF MAHALANOBIS DISTANCE OUTPUTS
-aoi.CUTex <- aoi.CUT %>% filter(HARVEST_DECADE==1980)
-aoi.CUTex$rndmrnk <- rank(round(runif(nrow(aoi.CUTex), min=10000, max=99999)))
-
-# maldist <- st_read(dsn=paste0(getwd(),"/data"), layer="Mahalanobis_predictions_2021_220304")
-# summary(maldist %>% st_drop_geometry())
-
+aoi <- st_join(aoi, aoi.Fpop_simpl %>% st_transform(crs=26910),left=TRUE, largest=TRUE)
 aoi <- aoi %>% st_transform(crs=3005)
 aoi.MAL <- retrieve_gdb_shp_aoi(dsn=paste0(getwd(),"/data"), layer="Mahalanobis_predictions_2021_220304")
-# aoi.MAL %>% count(D2) %>% st_drop_geometry()
-summary(aoi.MAL$D2); nrow(aoi.MAL) # 439 FETA in the Boreal aoi, 115 in Columbian
+summary(aoi.MAL); nrow(aoi.MAL) # 2785 FETA in Omineca example; 1651 in Skeena; 3337 in Northeast; 2471 in Cariboo
 
-aoi.MAL <- aoi.MAL %>% mutate(D2_grp = cut(D2, c(0, 10, 20, 30, Inf)))
+aoi.MAL <- aoi.MAL %>% mutate(D2_grp = cut(D2, c(0, 6, 10, 20, Inf))) # this is the input for Mahalanobis threshold
 levels(aoi.MAL$D2_grp)
-aoi.MAL$D2_grp <- recode(aoi.MAL$D2_grp, "(0,10]"="Suitable Territory",
+aoi.MAL$D2_grp <- recode(aoi.MAL$D2_grp, "(0,6]"="Suitable Territory",
+                  "(6,10]"="Possible Territory",
                   "(10,20]"="Suitable Movement",
-                  "(20,30]"="Possible Movement",
-                  "(30,Inf]"="Unsuitable")
+                  "(20,Inf]"="Unsuitable")
 glimpse(aoi.MAL)
-aoi.MAL %>% group_by(D2_grp) %>% summarize(n=n()) %>% st_drop_geometry()
-# Boreal
-# 1 Suitable Territory   140
-# 2 Suitable Movement    124
-# 3 Possible Movement     68
-# 4 Unsuitable           107
+aoi.MAL %>% group_by(D2_grp) %>% summarize(n=n(), min=min(p), max=max(p)) %>% st_drop_geometry()
+# Omineca example - Prince George
+# D2_grp                 n      min     max
+# 1 Suitable Territory    67 0.207    0.992
+# 2 Possible Territory   107 0.0445   0.303
+# 3 Suitable Movement    303 0.000503 0.0720
+# 4 Unsuitable          2307 0        0.00123
+# 5 NA                     1 0        0
 
-# Columbian
-# 1 Suitable Territory     7
-# 2 Suitable Movement      5
-# 3 Possible Movement      4
-# 4 Unsuitable            99
+# Skeena example - Nadina
+# D2_grp                 n      min     max
+# 1 Suitable Territory    25 0.207    0.961
+# 2 Possible Territory    43 0.0432   0.291
+# 3 Suitable Movement    126 0.000540 0.0676
+# 4 Unsuitable          1451 0        0.00122
 
-# indicate which FETA are targeted for harvesting
-aoi.MAL <- st_join(aoi.MAL, aoi.CUTex %>% dplyr::select(rndmrnk),left=TRUE, largest=TRUE)
-aoi.MAL %>% count(rndmrnk)
-aoi.MAL$Harvest <- ifelse(is.na(aoi.MAL$rndmrnk), 0,1)
-aoi.MAL %>% group_by(D2_grp) %>% count(Harvest) %>% st_drop_geometry()
-aoi.MAL %>% count(Harvest) %>% st_drop_geometry() # only 54 cells targeted for harvesting
-# 54/439 12% set for harvesting in 1980
-# 23 or 5% in suitable territory (i.e., 16% of suitable territories to be removed)
+# Northeast example - Peace
+# D2_grp                 n      min      max
+# 1 Suitable Territory   188 2.00e- 1 0.981
+# 2 Possible Territory   265 4.10e- 2 0.303
+# 3 Suitable Movement    642 5.03e- 4 0.0672
+# 4 Unsuitable          2239 3.49e-52 0.000835
 
-# if want to make more dire, can change to all being "suitable" pre model run, but first try with real data
-# aoi.MAL <- aoi.MAL %>% mutate(D2_grp2 = case_when(Harvest==1 ~ "Suitable Territory",
-#                                                   TRUE ~ as.character(D2_grp)))
-# aoi.MAL %>% group_by(D2_grp2) %>% count(Harvest) %>% st_drop_geometry() # now have all harvesting blocks in 'suitable habitat'
+# Cariboo example - Cariboo-Chilcotin
+# D2_grp                 n      min     max
+# 1 Suitable Territory   101 0.207    0.992
+# 2 Possible Territory   159 0.0405   0.299
+# 3 Suitable Movement    461 0.000504 0.0720
+# 4 Unsuitable          1734 0        0.00123
+
 
 pal = pnw_palette(name="Cascades",n=4,type="discrete")
 
 aoi.MAL.plot <- ggplot()+
-  geom_sf(data=aoi.MAL, aes(fill=D2_grp))+
+  geom_sf(data=aoi.MAL %>% filter(!is.na(D2_grp)), aes(fill=D2_grp))+
   geom_sf(data=aoi, fill=NA)+
   scale_fill_manual(values=rev(pal))+
   theme(legend.position="bottom")+
-  theme(legend.title=element_blank())
+  theme(legend.title=element_blank())+
+  ggtitle(paste0("Fisher Equivalent Territory Areas in the ",nrd_name," Scenario"))
 
-Cairo(file="out/Cex_aoi_MAL_plot.PNG",type="png",width=2400,height=2400,pointsize=14,bg="white",dpi=300)
+
+Cairo(file=paste0("out/Ex_",nrd_name,"_aoi_MAL_plot.PNG"),type="png",width=2400,height=2400,pointsize=18,bg="white",dpi=300)
 aoi.MAL.plot
 dev.off()
 
 ################################################################################
 ###--- Set up 4 possible scenarios
-# (1) 0% harvesting - run simulation with underlying landbase for baseline number
-# (2) 25% harvesting of cutblocks in suitable habitat
-# (3) 50% harvesting of cutblocks in suitable habitat
-# (4) 75% harvesting of cutblocks in suitable habitat
+# (1) BAU - keep FETAs as currently mapped; can only establish in 'Suitable'
+# (2) Increase FETAs - can establish in 'suitable' and 'possible'
+# (3) Increase movement - can establish in 'suitable' and move in all FETAs
+# (4) Increase FETAs & movement - can establish in 'suitable' and 'possible' and move in all FETAs
 
-# determine number of cutblocks in suitable territory (FETA)
-###NEED TO REWORK THIS - NOT WORKING NOW
-num.cutblocks.FETA <- aoi.MAL %>% filter(D2_grp=="Suitable Territory") %>% count(D2_grp) %>% st_drop_geometry()
-num.cutblocks.FETA <- num.cutblocks.FETA$n
+aoi.MAL$Scenario1 <- ifelse(aoi.MAL$D2_grp=="Suitable Territory",2,
+                            ifelse(aoi.MAL$D2_grp=="Possible Territory" | aoi.MAL$D2_grp=="Suitable Movement",1,0))
 
-# Scenario 1 -0% harvesting - run simulation with underlying landbase for baseline number - Columbian - only 1 scenario because cutblocks not in suitable habitat
-aoi.CUTCex <- st_join(aoi.CUTex %>% filter(HARVEST_DECADE==1980), aoi.MAL %>% dplyr::select(D2_grp),left=TRUE, largest=TRUE)
-aoi.CUTCex <- aoi.CUTCex %>% arrange(D2_grp,rndmrnk)
-aoi.CUTCex %>% count(D2_grp)
+aoi.MAL$Scenario2 <- ifelse(aoi.MAL$D2_grp=="Suitable Territory" | aoi.MAL$D2_grp=="Possible Territory",2,
+                            ifelse(aoi.MAL$D2_grp=="Suitable Movement",1,0))
 
-aoi.MAL.canCEx1.plot <- ggplot()+
-  geom_sf(data=aoi.MAL, aes(fill=D2_grp))+
-  geom_sf(data=aoi.CUTCex,fill="black",col="black",lwd=1)+
-  geom_sf(data=aoi, fill=NA)+
-  scale_fill_manual(values=rev(pal))+
-  theme(legend.position="bottom")+
-  theme(legend.title=element_blank())+
-  ggtitle("Scenario 1\n 0% harvesting in Fisher Equivalent Territory Areas") +
-  theme(plot.title = element_text(color="grey2", size=12, face="bold"))
+aoi.MAL$Scenario3 <- ifelse(aoi.MAL$D2_grp=="Suitable Territory",2,1)
 
-Cairo(file="out/canCex_aoi_MAL_plot.PNG",type="png",width=2400,height=2400,pointsize=14,bg="white",dpi=300)
-aoi.MAL.canCEx1.plot
-dev.off()
+aoi.MAL$Scenario4 <- ifelse(aoi.MAL$D2_grp=="Suitable Territory" | aoi.MAL$D2_grp=="Possible Territory",2,1)
 
-aoi.MAL <- st_join(aoi.MAL, aoi.CUTCex %>% dplyr::select(HARVEST_DECADE),left=TRUE, largest=TRUE)
-aoi.MAL$HARVEST_DECADE[is.na(aoi.MAL$HARVEST_DECADE)] <- 0
-habitat <- ifelse(aoi.MAL$D2_grp=="Suitable Territory" & aoi.MAL$HARVEST_DECADE==0,1,0)
-aoi.MAL$HARVEST_DECADE <- NULL
-
-aoi.MAL$Habitat_canCex1 <- habitat
-
-aoi.MAL %>% group_by(D2_grp) %>%
-  summarise_at("Habitat_canCex1", sum, na.rm = TRUE) %>%
-  st_drop_geometry()
-
-glimpse(aoi.MAL)
-# because multiple cutblocks within a FETA ended up with 130 FETAs in CanBex1, 121, 118, and 117 in CanBex2, CanBex3, and CanBex4, respectively
+aoi.MAL <- aoi.MAL[complete.cases(aoi.MAL$D2_grp),]
+aoi.MAL %>% count(Scenario1) %>% st_drop_geometry() # 67 suitable FETAs, 410 movement FETAs - Omineca example
+aoi.MAL %>% count(Scenario2) %>% st_drop_geometry() # 174 suitable FETAs, 303 movement FETAs
+aoi.MAL %>% count(Scenario3) %>% st_drop_geometry() # 67 suitable FETAs, 2717 movement FETAs
+aoi.MAL %>% count(Scenario4) %>% st_drop_geometry() # 174 suitable FETAs, 2610 movement FETAs
 
 aoi <- aoi %>% st_transform(crs=26910)
+Ex_raster <- list()
+for(i in 1:4){
+  raoi <- raster(ext=extent(aoi), crs=26910, res=c(5500,5500))
+  raoi <- rasterize(aoi.MAL %>% st_transform(crs=26910), raoi, field=paste0("Scenario",i), fun="max")
+  raoi[is.na(raoi[])] <- 0
 
-canCex_raster <- list()
-raoi <- raster(ext=extent(aoi), crs=26910, res=c(5500,5500))
-raoi <- rasterize(aoi.MAL %>% st_transform(crs=26910), raoi, field="Habitat_canCex1", fun="max")
-raoi[is.na(raoi[])] <- 0
-
-plot(raoi)
-#plot of the raster showing habitat as binary (green = suitable, white = unsuitable)
-# sum(raoi@data@values) # 129
-# round(sum(raoi@data@values) / length(raoi@data@values)*100) # 27% habitat
-Cairo(file="out/IBM_raster_Habitat_canCex1.PNG", type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
-plot(raoi,main=c(paste0("Fisher Equivalent Territory Areas (FETA) in the Area of Interest,"),
-                 paste0(sum(raoi@data@values)," or ",round(sum(raoi@data@values) / length(raoi@data@values)*100),"% FETA in Scenario canCex1")),
-                 cex.main=0.8)
-dev.off()
-canCex1_raster <- raoi
-
-sum(canCex1_raster@data@values) # 7 suitable habitat cells
-dim(canCex1_raster) # 156 cells so 7 chances for fisher
-
-IBM_aoi <- list(aoi=aoi.MAL, canCex1_raster=canCex1_raster)
-save(IBM_aoi, file="data/IBM_aoi_canCex.RData")
-
-
-#################################################################################
-# Boreal
-# Scenario 1 -0% harvesting - run simulation with underlying landbase for baseline number
-aoi.CUTBex <- st_join(aoi.CUTex %>% filter(HARVEST_DECADE==1980), aoi.MAL %>% dplyr::select(D2_grp),left=TRUE, largest=TRUE)
-aoi.CUTBex <- aoi.CUTBex %>% arrange(D2_grp,rndmrnk)
-aoi.CUTBex %>% count(D2_grp)
-
-# Scenario 1 = 0% harvesting aka 0 cutblocks in suitable territory
-canBEx1 <- aoi.CUTBex
-canBEx1 <- canBEx1 %>% filter(D2_grp!="Suitable Territory")
-canBEx1 %>% count(D2_grp)
-
-# Scenario 2 = 25% harvesting in suitable habitat aka 59 cutblocks in suitable territory
-canBEx2 <- aoi.CUTBex
-canBEx2 <- canBEx2[round(num.cutblocks.FETA*.75):nrow(aoi.CUTBex),]
-canBEx2 %>% dplyr::count(D2_grp)
-
-# Scenario 3 = 50% harvesting in suitable habitat aka 94 cutblocks in suitable territory
-canBEx3 <- aoi.CUTBex
-canBEx3 <- canBEx3[round(num.cutblocks.FETA*.5):nrow(aoi.CUTBex),]
-canBEx3 %>% dplyr::count(D2_grp)
-
-# Scenario 4 = 75% harvesting in suitable habitat aka 129 cutblocks in suitable territory
-canBEx4 <- aoi.CUTBex
-canBEx4 <- canBEx4[round(num.cutblocks.FETA*.25):nrow(aoi.CUTBex),]
-canBEx4 %>% dplyr::count(D2_grp)
-
-aoi.MAL.canBEx1.plot <- ggplot()+
-  geom_sf(data=aoi.MAL, aes(fill=D2_grp))+
-  geom_sf(data=canBEx1,fill="black",col="black",lwd=1)+
-  geom_sf(data=aoi, fill=NA)+
-  scale_fill_manual(values=rev(pal))+
-  theme(legend.position="bottom")+
-  theme(legend.title=element_blank())+
-  ggtitle("Scenario 1\n 0% harvesting in Fisher Equivalent Territory Areas") +
-  theme(plot.title = element_text(color="grey2", size=12, face="bold"))
-
-Cairo(file="out/canBex1_aoi_MAL_plot.PNG",type="png",width=2400,height=2400,pointsize=14,bg="white",dpi=300)
-aoi.MAL.canBEx1.plot
-dev.off()
-
-aoi.MAL.canBEx2.plot <- ggplot()+
-  geom_sf(data=aoi.MAL, aes(fill=D2_grp))+
-  geom_sf(data=canBEx2,fill="black",col="black",lwd=1)+
-  geom_sf(data=aoi, fill=NA)+
-  scale_fill_manual(values=rev(pal))+
-  theme(legend.position="bottom")+
-  theme(legend.title=element_blank())+
-  ggtitle("Scenario 1\n 25% harvesting in Fisher Equivalent Territory Areas") +
-  theme(plot.title = element_text(color="grey2", size=12, face="bold"))
-
-Cairo(file="out/canBex2_aoi_MAL_plot.PNG",type="png",width=2400,height=2400,pointsize=14,bg="white",dpi=300)
-aoi.MAL.canBEx2.plot
-dev.off()
-
-aoi.MAL.canBEx3.plot <- ggplot()+
-  geom_sf(data=aoi.MAL, aes(fill=D2_grp))+
-  geom_sf(data=canBEx3,fill="black",col="black",lwd=1)+
-  geom_sf(data=aoi, fill=NA)+
-  scale_fill_manual(values=rev(pal))+
-  theme(legend.position="bottom")+
-  theme(legend.title=element_blank())+
-  ggtitle("Scenario 1\n 50% harvesting in Fisher Equivalent Territory Areas") +
-  theme(plot.title = element_text(color="grey2", size=12, face="bold"))
-
-Cairo(file="out/canBex3_aoi_MAL_plot.PNG",type="png",width=2400,height=2400,pointsize=14,bg="white",dpi=300)
-aoi.MAL.canBEx3.plot
-dev.off()
-
-aoi.MAL.canBEx4.plot <- ggplot()+
-  geom_sf(data=aoi.MAL, aes(fill=D2_grp))+
-  geom_sf(data=canBEx4,fill="black",col="black",lwd=1)+
-  geom_sf(data=aoi, fill=NA)+
-  scale_fill_manual(values=rev(pal))+
-  theme(legend.position="bottom")+
-  theme(legend.title=element_blank())+
-  ggtitle("Scenario 1\n 75% harvesting in Fisher Equivalent Territory Areas") +
-  theme(plot.title = element_text(color="grey2", size=12, face="bold"))
-
-Cairo(file="out/canBex4_aoi_MAL_plot.PNG",type="png",width=2400,height=2400,pointsize=14,bg="white",dpi=300)
-aoi.MAL.canBEx4.plot
-dev.off()
-
-################################################################################
-# (1) transform aoi into fisher grid
-# (2) join cells to identify as habitat based on D2_grp category
-# (3) still binary "suitable" vs all other quality types for model
-
-################################################################################
-# for canned scenarios - i.e., with any harvesting
-
-# (1) 0% harvesting - run simulation with underlying landbase for baseline number
-# (2) 25% harvesting of cutblocks in suitable habitat
-# (3) 50% harvesting of cutblocks in suitable habitat
-# (4) 75% harvesting of cutblocks in suitable habitat
-
-# bring in harvesting data
-habitat <- list()
-canexamples <- list(canBEx1, canBEx2, canBEx3, canBEx4)
-for(i in 1:length(canexamples)){
-aoi.MAL <- st_join(aoi.MAL, canexamples[[i]] %>% dplyr::select(HARVEST_DECADE),left=TRUE, largest=TRUE)
-aoi.MAL$HARVEST_DECADE[is.na(aoi.MAL$HARVEST_DECADE)] <- 0
-habitat[[i]] <- ifelse(aoi.MAL$D2_grp=="Suitable Territory" & aoi.MAL$HARVEST_DECADE==0,1,0)
-aoi.MAL$HARVEST_DECADE <- NULL
+  tmpST <- raoi==2
+  #plot of the raster showing habitat as binary (green = suitable, white = unsuitable)
+  # sum(tmpST@data@values) # 62
+  # round(sum(tmpST@data@values) / length(raoi@data@values)*100) # 1% habitat
+  Cairo(file=paste0("out/IBM_raster_",nrd_name,"_Scenario",i,".PNG"), type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+  plot(raoi,main=c(paste0("Fisher Equivalent Territory Areas (FETA) in the Area of Interest,"),
+                   paste0(sum(tmpST@data@values)," or ",round(sum(tmpST@data@values) / length(raoi@data@values)*100),"% FETA in ",nrd_name," Scenario ",i)),
+       cex.main=0.8)
+  dev.off()
+  Ex_raster[[i]] <- raoi
 }
 
-aoi.MAL$Habitat_canBex1 <- habitat[[1]]
-aoi.MAL$Habitat_canBex2 <- habitat[[2]]
-aoi.MAL$Habitat_canBex3 <- habitat[[3]]
-aoi.MAL$Habitat_canBex4 <- habitat[[4]]
+# plot(IBM_aoi$Ex_raster[[4]])
 
-aoi.MAL %>% group_by(D2_grp) %>%
-  summarise_at(c("Habitat_canBex1","Habitat_canBex2","Habitat_canBex3","Habitat_canBex4"), sum, na.rm = TRUE) %>%
-  st_drop_geometry()
+IBM_aoi <- list(aoi=aoi.MAL, Ex_raster=Ex_raster)
 
-glimpse(aoi.MAL)
-# because multiple cutblocks within a FETA ended up with 130 FETAs in CanBex1, 121, 118, and 117 in CanBex2, CanBex3, and CanBex4, respectively
-
-Habitat_canBex <- c("canBex1", "canBex2", "canBex3", "canBex4")
-aoi <- aoi %>% st_transform(crs=26910)
-
-canBex_raster <- list()
-for(i in 1:length(Habitat_canBex)){
-raoi <- raster(ext=extent(aoi), crs=26910, res=c(5500,5500))
-raoi <- rasterize(aoi.MAL %>% st_transform(crs=26910), raoi, field=paste0("Habitat_",Habitat_canBex[[i]]), fun="max")
-raoi[is.na(raoi[])] <- 0
-
-#plot of the raster showing habitat as binary (green = suitable, white = unsuitable)
-# sum(raoi@data@values) # 129
-# round(sum(raoi@data@values) / length(raoi@data@values)*100) # 27% habitat
-Cairo(file=paste0("out/IBM_raster_",Habitat_canBex[i],".PNG"), type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
-plot(raoi,main=c(paste0("Fisher Equivalent Territory Areas (FETA) in the Area of Interest,"),
-                 paste0(sum(raoi@data@values)," or ",round(sum(raoi@data@values) / length(raoi@data@values)*100),"% FETA in Scenario ",Habitat_canBex[i])),
-     cex.main=0.8)
-dev.off()
-canBex_raster[[i]] <- raoi
-}
-
-sum(canBex_raster[[1]]@data@values) # 118 suitable habitat cells
-sum(canBex_raster[[2]]@data@values) # 109 suitable habitat cells
-sum(canBex_raster[[3]]@data@values) # 106 suitable habitat cells
-sum(canBex_raster[[4]]@data@values) # 105 suitable habitat cells
-
-IBM_aoi <- list(aoi=aoi.MAL, canBex_raster=canBex_raster)
-save(IBM_aoi, file="data/IBM_aoi_canBex.RData")
-
-save.image("05_create_aoi.RData")
-# #####################################################################################
-
-# ###--- view OSM map area of interest (need to figure out how to add polygons...)
-# aoi.latlon <- aoi %>% st_transform(crs=4326)
-# st_bbox(aoi)
-#
-# LAT1 = st_bbox(aoi.latlon)[2] ; LAT2 = st_bbox(aoi.latlon)[4]
-# LON1 = st_bbox(aoi.latlon)[3] ; LON2 = st_bbox(aoi.latlon)[1]
-#
-# #our background map
-# map <- openmap(c(LAT2,LON1), c(LAT1,LON2), zoom = NULL,
-#                type = c("osm", "stamen-toner", "stamen-terrain","stamen-watercolor", "esri","esri-topo")[6],
-#                mergeTiles = TRUE)
-#
-# ## OSM CRS :: "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +no_defs"
-# map.latlon <- openproj(map, projection = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
-#
-# OpenStreetMap::autoplot.OpenStreetMap(map.latlon)
-
-#####################################################################################
+library(qs)
+myfile <- paste0(getwd(),"/data/EX_",nrd_name,"_IBM_aoi.qs")
+qsave(IBM_aoi, myfile)
