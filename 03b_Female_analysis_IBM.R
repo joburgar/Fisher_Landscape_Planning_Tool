@@ -104,7 +104,8 @@ repro.CI <- read.csv("data/repro.CI.csv", header=TRUE)
 
 # survival probability estimates
 # taken from Rory's updated survival, trapping mortality excluded
-rf_surv_estimates <- read.csv("data/rf_surv_estimates.csv", header=TRUE)
+# rf_surv_estimates <- read.csv("data/rf_surv_estimates.csv", header=TRUE)
+surv_estimates <- read.csv("data/el_updated_surv_estimates.csv", header=TRUE)
 
 
 ################################################################################
@@ -113,7 +114,7 @@ rf_surv_estimates <- read.csv("data/rf_surv_estimates.csv", header=TRUE)
 # now that the function is using the cohort survival data, have the survival run on an annual basis, not per time step
 FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                        # import world
                                              repro_estimates=repro.CI, Fpop=Fpop,      # reproduction
-                                             surv_estimates=rf_surv_estimates,        # survive
+                                             surv_estimates=surv_estimates,        # survive
                                              maxAgeFemale=maxAgeFemale,               # survive
                                              dist_mov=1.0, out=TRUE, torus=TRUE,      # disperse
                                              yrs.to.run=10){                          # number of years to run simulations ()
@@ -211,6 +212,33 @@ FEMALE_IBM_simulation_same_world <- function(land=land, t0=t0,                  
    return(IBM.sim.out)
 }
 
+######################################################################################
+# Run a simulated example with larger area
+# Boreal pop, 100x100 grid, 75% prop hab, 50 FETAs
+# Run 100 simulations for each, save as object
+######################################################################################
+
+ex75hab <- set_up_world_FEMALE(nFemales=500, maxAgeFemale=9, xlim=c(0,999), ylim=c(0,999), prophab=.75)
+ex50hab <- set_up_world_FEMALE(nFemales=200, maxAgeFemale=9, xlim=c(0,99), ylim=c(0,99), prophab=.50)
+ex25hab <- set_up_world_FEMALE(nFemales=200, maxAgeFemale=9, xlim=c(0,99), ylim=c(0,99), prophab=.25)
+
+# Scenario1
+start_time <- Sys.time()
+ex75hab.FEMALE.sim100 <- vector('list',100)
+for(i in 1:100){
+  ex75hab.FEMALE.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=ex75hab$land,
+                                                                 t0=ex75hab$t0,             # import world
+                                                                 repro_estimates=repro.CI, Fpop="B",   # reproduction
+                                                                 surv_estimates=surv_estimates,      # survive
+                                                                 maxAgeFemale=9,                        # survive
+                                                                 dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
+                                                                 yrs.to.run=10)                         # number of years to run simulation post set up
+}
+end_time <- Sys.time(); print(end_time - start_time)
+
+ex75hab.FEMALE <- list(ex75hab, ex75hab.FEMALE.sim100)
+
+
 
 ######################################################################################
 # Run a canned example with real world habitat
@@ -226,7 +254,7 @@ load("data/IBM_aoi_canBex.RData")
 
 # glimpse(IBM_aoi)
 Fpop <- unique(substr(IBM_aoi$aoi$Fpop,1,1))
-Fpop = "C" # for using the Boreal example data with Columbian demographic rates
+# Fpop = "C" # for using the Boreal example data with Columbian demographic rates
 
 # print(sum(IBM_aoi$canCex1_raster@data@values)) # number of equivalent territories with suitable habitat
 # 7
@@ -239,8 +267,8 @@ print(sum(IBM_aoi$canBex_raster[[i]]@data@values)) # number of equivalent territ
 length(IBM_aoi$canBex_raster[[1]]@data@values)
 
 # go with ~1/3 for actual female territories to start with, rounded to nearest 5
-nFemales = plyr::round_any(sum(IBM_aoi$canBex_raster[[1]]@data@values)*0.3,5); nFemales
-nFemales = round(sum(IBM_aoi$canCex1_raster@data@values)*0.3); nFemales
+nFemales = plyr::round_any(sum(IBM_aoi$canBex_raster[[1]]@data@values)*0.8,5); nFemales
+# nFemales = round(sum(IBM_aoi$canCex1_raster@data@values)*0.3); nFemales
 #35 for Boreal; 2 for Columbian
 
 canBex.FEMALE.world <- list()
@@ -255,7 +283,7 @@ canBex1.FEMALE.sim100 <- vector('list',100)
     canBex1.FEMALE.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=canBex.FEMALE.world[[1]]$land,
                                                                   t0=canBex.FEMALE.world[[1]]$t0,             # import world
                                                                   repro_estimates=repro.CI, Fpop=Fpop,   # reproduction
-                                                                  surv_estimates=rf_surv_estimates,      # survive
+                                                                  surv_estimates=surv_estimates,      # survive
                                                                   maxAgeFemale=9,                        # survive
                                                                   dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
                                                                   yrs.to.run=10)                         # number of years to run simulation post set up
@@ -285,7 +313,7 @@ for(i in 1:100){
   canBex2.FEMALE.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=canBex.FEMALE.world[[2]]$land,
                                                                  t0=canBex.FEMALE.world[[2]]$t0,             # import world
                                                                  repro_estimates=repro.CI, Fpop=Fpop,   # reproduction
-                                                                 surv_estimates=rf_surv_estimates,      # survive
+                                                                 surv_estimates=surv_estimates,      # survive
                                                                  maxAgeFemale=9,                        # survive
                                                                  dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
                                                                  yrs.to.run=10)                         # number of years to run simulation post set up
@@ -301,7 +329,7 @@ for(i in 1:100){
   canBex3.FEMALE.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=canBex.FEMALE.world[[3]]$land,
                                                                  t0=canBex.FEMALE.world[[3]]$t0,             # import world
                                                                  repro_estimates=repro.CI, Fpop=Fpop,   # reproduction
-                                                                 surv_estimates=rf_surv_estimates,      # survive
+                                                                 surv_estimates=surv_estimates,      # survive
                                                                  maxAgeFemale=9,                        # survive
                                                                  dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
                                                                  yrs.to.run=10)                         # number of years to run simulation post set up
@@ -317,7 +345,7 @@ for(i in 1:100){
   canBex4.FEMALE.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=canBex.FEMALE.world[[4]]$land,
                                                                  t0=canBex.FEMALE.world[[4]]$t0,             # import world
                                                                  repro_estimates=repro.CI, Fpop=Fpop,   # reproduction
-                                                                 surv_estimates=rf_surv_estimates,      # survive
+                                                                 surv_estimates=surv_estimates,      # survive
                                                                  maxAgeFemale=9,                        # survive
                                                                  dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
                                                                  yrs.to.run=10)                         # number of years to run simulation post set up
@@ -341,7 +369,7 @@ for(i in 1:100){
   canCex1.FEMALE.sim100[[i]] <- FEMALE_IBM_simulation_same_world(land=canCex.FEMALE.world$land,
                                                                  t0=canCex.FEMALE.world$t0,             # import world
                                                                  repro_estimates=repro.CI, Fpop=Fpop,   # reproduction
-                                                                 surv_estimates=rf_surv_estimates,      # survive
+                                                                 surv_estimates=surv_estimates,      # survive
                                                                  maxAgeFemale=9,                        # survive
                                                                  dist_mov=1.0, out=TRUE, torus=TRUE,    # disperse
                                                                  yrs.to.run=10)                         # number of years to run simulation post set up
