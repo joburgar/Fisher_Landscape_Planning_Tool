@@ -24,7 +24,7 @@ tz = Sys.timezone() # specify timezone in BC
 
 # Load Packages
 list.of.packages <- c("tidyverse", "lubridate","chron","bcdata", "bcmaps","sf", "rgdal",
-                      "Cairo","OpenStreetMap", "ggmap","PNWColors","units","nngeo","raster")
+                      "Cairo","OpenStreetMap", "ggmap","PNWColors","units","nngeo","raster","qs")
 
 # Check you have them and load them
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
@@ -138,23 +138,25 @@ create_grid <- function (input=input, cellsize=cellsize){
 ###--- CREATE CANNED SCENARIO AOI SHAPEFILE
 #####################################################################################
 # Bring in population polygons
-aoi.Fpop <- st_read(dsn=paste0(getwd(),"/data"), layer="aoi.Fpop")
-aoi.Fpop$Fpop <- case_when(aoi.Fpop$Fpop=="Central Interior" ~ "Columbian",
-                           TRUE ~ as.character(aoi.Fpop$Fpop))
-ggplot()+
-  geom_sf(data=aoi.Fpop)
-
-aoi.Fpop_simpl <- st_simplify(aoi.Fpop %>% st_transform(crs=26910), preserveTopology = FALSE, dTolerance = 1000) %>% st_transform(crs=3005)
-# preserveToplogy=TRUE ensures that no polygons or inner holes are reduced to lines/removed - not necessary because just boundary for other intersections
-
-ggplot()+
-  geom_sf(data=aoi.Fpop_simpl, aes(fill=Fpop))
+# aoi.Fpop <- st_read(dsn=paste0(getwd(),"/data"), layer="aoi.Fpop")
+# aoi.Fpop$Fpop <- case_when(aoi.Fpop$Fpop=="Central Interior" ~ "Columbian",
+#                            TRUE ~ as.character(aoi.Fpop$Fpop))
+# ggplot()+
+#   geom_sf(data=aoi.Fpop)
+#
+# aoi.Fpop_simpl <- st_simplify(aoi.Fpop %>% st_transform(crs=26910), preserveTopology = FALSE, dTolerance = 1000) %>% st_transform(crs=3005)
+# # preserveToplogy=TRUE ensures that no polygons or inner holes are reduced to lines/removed - not necessary because just boundary for other intersections
+#
+# ggplot()+
+#   geom_sf(data=aoi.Fpop_simpl, aes(fill=Fpop))
 
 # st_write(aoi.Fpop_simpl, paste0(getwd(),"/data/aoi.Fpop_simpl.shp"), delete_layer=TRUE)
 # round(c(object.size(aoi.Fpop),object.size((aoi.Fpop_simpl)))/1024) # huge reduction in memory usage 100x magnitude less memory storage!
 
-FHE_zones <- st_read(dsn=paste0(getwd(),"/data"), layer="FHE_zones")
-FHE_zones <- st_simplify(FHE_zones %>% st_transform(crs=26910), preserveTopology = FALSE, dTolerance = 1000) %>% st_transform(crs=3005)
+aoi.Fpop_simpl <- st_read(dsn="./data", layer="aoi.Fpop_simpl")
+
+# FHE_zones <- st_read(dsn=paste0(getwd(),"/data"), layer="FHE_zones")
+# FHE_zones <- st_simplify(FHE_zones %>% st_transform(crs=26910), preserveTopology = FALSE, dTolerance = 1000) %>% st_transform(crs=3005)
 
 # bring in the different Natural Resource Districts
 # Natural Region District
@@ -219,8 +221,8 @@ aoi.Cariboo <- aoi.NRD %>% filter(grepl("Cariboo",DISTRICT_NAME))
 # 4. half cutblocks harvested (210), in 'higher quality' (i.e., suitable) habitat
 
 # Create examples for Omineca, Skeena, Northeast, and Cariboo
-nrd_name <- "Cariboo"
-nrd_ex_aoi <- aoi.Cariboo
+nrd_name <- "Northeast"
+nrd_ex_aoi <- aoi.Northeast
 
 aoi <- st_make_grid(st_buffer(nrd_ex_aoi %>% st_transform(crs=26910), dist=30000), n=1)
 aoi <- st_as_sf(aoi)
@@ -242,14 +244,14 @@ aoi <- aoi %>% st_transform(crs=3005)
 aoi.MAL <- retrieve_gdb_shp_aoi(dsn=paste0(getwd(),"/data"), layer="Mahalanobis_predictions_2021_220304")
 summary(aoi.MAL); nrow(aoi.MAL) # 2785 FETA in Omineca example; 1651 in Skeena; 3337 in Northeast; 2471 in Cariboo
 
-aoi.MAL <- aoi.MAL %>% mutate(D2_grp = cut(D2, c(0, 6, 10, 20, Inf))) # this is the input for Mahalanobis threshold
-levels(aoi.MAL$D2_grp)
-aoi.MAL$D2_grp <- recode(aoi.MAL$D2_grp, "(0,6]"="Suitable Territory",
-                  "(6,10]"="Possible Territory",
-                  "(10,20]"="Suitable Movement",
-                  "(20,Inf]"="Unsuitable")
-glimpse(aoi.MAL)
-aoi.MAL %>% group_by(D2_grp) %>% summarize(n=n(), min=min(p), max=max(p)) %>% st_drop_geometry()
+# aoi.MAL <- aoi.MAL %>% mutate(D2_grp = cut(D2, c(0, 6, 10, 20, Inf))) # this is the input for Mahalanobis threshold
+# levels(aoi.MAL$D2_grp)
+# aoi.MAL$D2_grp <- recode(aoi.MAL$D2_grp, "(0,6]"="Suitable Territory",
+#                   "(6,10]"="Possible Territory",
+#                   "(10,20]"="Suitable Movement",
+#                   "(20,Inf]"="Unsuitable")
+# glimpse(aoi.MAL)
+# aoi.MAL %>% group_by(D2_grp) %>% summarize(n=n(), min=min(p), max=max(p)) %>% st_drop_geometry()
 # Omineca example - Prince George
 # D2_grp                 n      min     max
 # 1 Suitable Territory    67 0.207    0.992
@@ -280,67 +282,97 @@ aoi.MAL %>% group_by(D2_grp) %>% summarize(n=n(), min=min(p), max=max(p)) %>% st
 # 4 Unsuitable          1734 0        0.00123
 
 
-pal = pnw_palette(name="Cascades",n=4,type="discrete")
-
-aoi.MAL.plot <- ggplot()+
-  geom_sf(data=aoi.MAL %>% filter(!is.na(D2_grp)), aes(fill=D2_grp))+
-  geom_sf(data=aoi, fill=NA)+
-  scale_fill_manual(values=rev(pal))+
-  theme(legend.position="bottom")+
-  theme(legend.title=element_blank())+
-  ggtitle(paste0("Fisher Equivalent Territory Areas in the ",nrd_name," Scenario"))
-
-
-Cairo(file=paste0("out/Ex_",nrd_name,"_aoi_MAL_plot.PNG"),type="png",width=2400,height=2400,pointsize=18,bg="white",dpi=300)
-aoi.MAL.plot
-dev.off()
+# pal = pnw_palette(name="Cascades",n=4,type="discrete")
+#
+# aoi.MAL.plot <- ggplot()+
+#   geom_sf(data=aoi.MAL %>% filter(!is.na(D2_grp)), aes(fill=D2_grp))+
+#   geom_sf(data=aoi, fill=NA)+
+#   scale_fill_manual(values=rev(pal))+
+#   theme(legend.position="bottom")+
+#   theme(legend.title=element_blank())+
+#   ggtitle(paste0("Fisher Equivalent Territory Areas in the ",nrd_name," Scenario"))
+#
+#
+# Cairo(file=paste0("out/Ex_",nrd_name,"_aoi_MAL_plot.PNG"),type="png",width=2400,height=2400,pointsize=18,bg="white",dpi=300)
+# aoi.MAL.plot
+# dev.off()
 
 ################################################################################
-###--- Set up 4 possible scenarios
-# (1) BAU - keep FETAs as currently mapped; can only establish in 'Suitable'
-# (2) Increase FETAs - can establish in 'suitable' and 'possible'
-# (3) Increase movement - can establish in 'suitable' and move in all FETAs
-# (4) Increase FETAs & movement - can establish in 'suitable' and 'possible' and move in all FETAs
-
-aoi.MAL$Scenario1 <- ifelse(aoi.MAL$D2_grp=="Suitable Territory",2,
-                            ifelse(aoi.MAL$D2_grp=="Possible Territory" | aoi.MAL$D2_grp=="Suitable Movement",1,0))
-
-aoi.MAL$Scenario2 <- ifelse(aoi.MAL$D2_grp=="Suitable Territory" | aoi.MAL$D2_grp=="Possible Territory",2,
-                            ifelse(aoi.MAL$D2_grp=="Suitable Movement",1,0))
-
-aoi.MAL$Scenario3 <- ifelse(aoi.MAL$D2_grp=="Suitable Territory",2,1)
-
-aoi.MAL$Scenario4 <- ifelse(aoi.MAL$D2_grp=="Suitable Territory" | aoi.MAL$D2_grp=="Possible Territory",2,1)
-
-aoi.MAL <- aoi.MAL[complete.cases(aoi.MAL$D2_grp),]
-aoi.MAL %>% count(Scenario1) %>% st_drop_geometry() # 67 suitable FETAs, 410 movement FETAs - Omineca example
-aoi.MAL %>% count(Scenario2) %>% st_drop_geometry() # 174 suitable FETAs, 303 movement FETAs
-aoi.MAL %>% count(Scenario3) %>% st_drop_geometry() # 67 suitable FETAs, 2717 movement FETAs
-aoi.MAL %>% count(Scenario4) %>% st_drop_geometry() # 174 suitable FETAs, 2610 movement FETAs
+###--- DECISION 4 May 2022 - keep D2 values as raster and use actual value in IBM
+# No need to create individual scenarios, will do that as part of SpaDES parameterization
 
 aoi <- aoi %>% st_transform(crs=26910)
-Ex_raster <- list()
-for(i in 1:4){
-  raoi <- raster(ext=extent(aoi), crs=26910, res=c(5500,5500))
-  raoi <- rasterize(aoi.MAL %>% st_transform(crs=26910), raoi, field=paste0("Scenario",i), fun="max")
-  raoi[is.na(raoi[])] <- 0
+raoi <- raster(ext=extent(aoi), crs=26910, res=c(5500,5500))
+raoi <- rasterize(aoi.MAL %>% st_transform(crs=26910), raoi, field="D2", fun="min")
+# raoi[is.na(raoi[])] <- 0 # keep NAs as NAs (at least for now)
 
-  tmpST <- raoi==2
-  #plot of the raster showing habitat as binary (green = suitable, white = unsuitable)
-  # sum(tmpST@data@values) # 62
-  # round(sum(tmpST@data@values) / length(raoi@data@values)*100) # 1% habitat
-  Cairo(file=paste0("out/IBM_raster_",nrd_name,"_Scenario",i,".PNG"), type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
-  plot(raoi,main=c(paste0("Fisher Equivalent Territory Areas (FETA) in the Area of Interest,"),
-                   paste0(sum(tmpST@data@values)," or ",round(sum(tmpST@data@values) / length(raoi@data@values)*100),"% FETA in ",nrd_name," Scenario ",i)),
-       cex.main=0.8)
-  dev.off()
-  Ex_raster[[i]] <- raoi
-}
+plot(raoi)
+tmpST <- raoi<6
 
-# plot(IBM_aoi$Ex_raster[[4]])
+#plot of the raster showing habitat as binary (green = suitable, white = gray as unsuitable and white as NA [not fisher habitat])
+sum(tmpST@data@values, na.rm=TRUE) # 110
+# round(sum(tmpST@data@values) / length(raoi@data@values)*100) # 1% habitat
+Cairo(file=paste0("out/IBM_raster_",nrd_name,"_Scenario.PNG"), type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+plot(tmpST,main=c(paste0("Fisher Equivalent Territory Areas (FETA) in the ",nrd_name," Scenario,"),
+                 paste0(sum(tmpST@data@values,na.rm=T)," or ",round(sum(tmpST@data@values,na.rm=T) / length(raoi@data@values)*100),"% potentially suitable FETAs")),
+     cex.main=0.8, legend=FALSE)
+dev.off()
 
-IBM_aoi <- list(aoi=aoi.MAL, Ex_raster=Ex_raster)
+aoi.MAL$Fpop_num <- ifelse(aoi.MAL$Fpop=="Boreal",1,2)
+# glimpse(aoi.MAL)
+rFpop <- rasterize(aoi.MAL %>% st_transform(crs=26910), raoi, field="Fpop_num", fun="min")
+# plot(rFpop)
 
-library(qs)
+r_stack <-  stack(rFpop, raoi) # raster stack to run IBM = Fpop for population, raoi for NetLogo world
 myfile <- paste0(getwd(),"/data/EX_",nrd_name,"_IBM_aoi.qs")
-qsave(IBM_aoi, myfile)
+qsave(r_stack, myfile)
+
+
+# ################################################################################
+# ###--- Set up 4 possible scenarios
+# # (1) BAU - keep FETAs as currently mapped; can only establish in 'Suitable'
+# # (2) Increase FETAs - can establish in 'suitable' and 'possible'
+# # (3) Increase movement - can establish in 'suitable' and move in all FETAs
+# # (4) Increase FETAs & movement - can establish in 'suitable' and 'possible' and move in all FETAs
+#
+# aoi.MAL$Scenario1 <- ifelse(aoi.MAL$D2_grp=="Suitable Territory",2,
+#                             ifelse(aoi.MAL$D2_grp=="Possible Territory" | aoi.MAL$D2_grp=="Suitable Movement",1,0))
+#
+# aoi.MAL$Scenario2 <- ifelse(aoi.MAL$D2_grp=="Suitable Territory" | aoi.MAL$D2_grp=="Possible Territory",2,
+#                             ifelse(aoi.MAL$D2_grp=="Suitable Movement",1,0))
+#
+# aoi.MAL$Scenario3 <- ifelse(aoi.MAL$D2_grp=="Suitable Territory",2,1)
+#
+# aoi.MAL$Scenario4 <- ifelse(aoi.MAL$D2_grp=="Suitable Territory" | aoi.MAL$D2_grp=="Possible Territory",2,1)
+#
+# aoi.MAL <- aoi.MAL[complete.cases(aoi.MAL$D2_grp),]
+# aoi.MAL %>% count(Scenario1) %>% st_drop_geometry() # 67 suitable FETAs, 410 movement FETAs - Omineca example
+# aoi.MAL %>% count(Scenario2) %>% st_drop_geometry() # 174 suitable FETAs, 303 movement FETAs
+# aoi.MAL %>% count(Scenario3) %>% st_drop_geometry() # 67 suitable FETAs, 2717 movement FETAs
+# aoi.MAL %>% count(Scenario4) %>% st_drop_geometry() # 174 suitable FETAs, 2610 movement FETAs
+#
+# aoi <- aoi %>% st_transform(crs=26910)
+# Ex_raster <- list()
+# for(i in 1:4){
+#   raoi <- raster(ext=extent(aoi), crs=26910, res=c(5500,5500))
+#   raoi <- rasterize(aoi.MAL %>% st_transform(crs=26910), raoi, field=paste0("Scenario",i), fun="max")
+#   raoi[is.na(raoi[])] <- 0
+#
+#   tmpST <- raoi==2
+#   #plot of the raster showing habitat as binary (green = suitable, white = unsuitable)
+#   # sum(tmpST@data@values) # 62
+#   # round(sum(tmpST@data@values) / length(raoi@data@values)*100) # 1% habitat
+#   Cairo(file=paste0("out/IBM_raster_",nrd_name,"_Scenario",i,".PNG"), type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+#   plot(raoi,main=c(paste0("Fisher Equivalent Territory Areas (FETA) in the Area of Interest,"),
+#                    paste0(sum(tmpST@data@values)," or ",round(sum(tmpST@data@values) / length(raoi@data@values)*100),"% FETA in ",nrd_name," Scenario ",i)),
+#        cex.main=0.8)
+#   dev.off()
+#   Ex_raster[[i]] <- raoi
+# }
+#
+# # plot(Ex_raster[[4]])
+#
+# IBM_aoi <- list(aoi=aoi.MAL, Ex_raster=Ex_raster)
+#
+# myfile <- paste0(getwd(),"/data/EX_",nrd_name,"_IBM_aoi.qs")
+# qsave(IBM_aoi, myfile)
