@@ -155,8 +155,8 @@ create_grid <- function (input=input, cellsize=cellsize){
 
 aoi.Fpop_simpl <- st_read(dsn="./data", layer="aoi.Fpop_simpl")
 
-# FHE_zones <- st_read(dsn=paste0(getwd(),"/data"), layer="FHE_zones")
-# FHE_zones <- st_simplify(FHE_zones %>% st_transform(crs=26910), preserveTopology = FALSE, dTolerance = 1000) %>% st_transform(crs=3005)
+FHE_zones <- st_read(dsn=paste0(getwd(),"/data"), layer="FHE_zones")
+FHE_zones <- st_simplify(FHE_zones %>% st_transform(crs=26910), preserveTopology = FALSE, dTolerance = 1000) %>% st_transform(crs=3005)
 
 # bring in the different Natural Resource Districts
 # Natural Region District
@@ -221,112 +221,121 @@ aoi.Cariboo <- aoi.NRD %>% filter(grepl("Cariboo",DISTRICT_NAME))
 # 4. half cutblocks harvested (210), in 'higher quality' (i.e., suitable) habitat
 
 # Create examples for Omineca, Skeena, Northeast, and Cariboo
-nrd_name <- "Northeast"
-nrd_ex_aoi <- aoi.Northeast
 
-aoi <- st_make_grid(st_buffer(nrd_ex_aoi %>% st_transform(crs=26910), dist=30000), n=1)
-aoi <- st_as_sf(aoi)
+nrd_examples <- c("Omineca","Skeena","Northeast","Cariboo")
+nrd_ex_Laoi <- list(aoi.Omineca, aoi.Skeena, aoi.Northeast, aoi.Cariboo)
 
-pal = pnw_palette(name="Winter",n=2,type="discrete")
+for(i in 1:length(nrd_examples)){
+  nrd_name <- nrd_examples[i]
+  nrd_ex_aoi <- nrd_ex_Laoi[[i]]
 
-Cairo(file=paste0("out/Ex_",nrd_name,"_Fpop_aoi_plot.PNG"),type="png",width=2400,height=2400,pointsize=16,bg="white",dpi=300)
-ggplot()+
-  geom_sf(data=aoi.Fpop_simpl, aes(fill=Fpop))+
-  geom_sf(data=aoi)+
-  geom_sf(data=nrd_ex_aoi)+
-  scale_fill_manual(values=rev(pal))+
-  theme(legend.position="bottom")+
-  theme(legend.title=element_blank())
-dev.off()
+  aoi <- st_make_grid(st_buffer(nrd_ex_aoi %>% st_transform(crs=26910), dist=30000), n=1)
+  aoi <- st_as_sf(aoi)
 
-aoi <- st_join(aoi, aoi.Fpop_simpl %>% st_transform(crs=26910),left=TRUE, largest=TRUE)
-aoi <- aoi %>% st_transform(crs=3005)
-aoi.MAL <- retrieve_gdb_shp_aoi(dsn=paste0(getwd(),"/data"), layer="Mahalanobis_predictions_2021_220304")
-summary(aoi.MAL); nrow(aoi.MAL) # 2785 FETA in Omineca example; 1651 in Skeena; 3337 in Northeast; 2471 in Cariboo
+  pal = pnw_palette(name="Winter",n=2,type="discrete")
 
-# aoi.MAL <- aoi.MAL %>% mutate(D2_grp = cut(D2, c(0, 6, 10, 20, Inf))) # this is the input for Mahalanobis threshold
-# levels(aoi.MAL$D2_grp)
-# aoi.MAL$D2_grp <- recode(aoi.MAL$D2_grp, "(0,6]"="Suitable Territory",
-#                   "(6,10]"="Possible Territory",
-#                   "(10,20]"="Suitable Movement",
-#                   "(20,Inf]"="Unsuitable")
-# glimpse(aoi.MAL)
-# aoi.MAL %>% group_by(D2_grp) %>% summarize(n=n(), min=min(p), max=max(p)) %>% st_drop_geometry()
-# Omineca example - Prince George
-# D2_grp                 n      min     max
-# 1 Suitable Territory    67 0.207    0.992
-# 2 Possible Territory   107 0.0445   0.303
-# 3 Suitable Movement    303 0.000503 0.0720
-# 4 Unsuitable          2307 0        0.00123
-# 5 NA                     1 0        0
+  Cairo(file=paste0("out/Ex_",nrd_name,"_Fpop_aoi_plot.PNG"),type="png",width=2400,height=2400,pointsize=16,bg="white",dpi=300)
+  ggplot()+
+    geom_sf(data=aoi.Fpop_simpl, aes(fill=Fpop))+
+    geom_sf(data=aoi)+
+    geom_sf(data=nrd_ex_aoi)+
+    scale_fill_manual(values=rev(pal))+
+    theme(legend.position="bottom")+
+    theme(legend.title=element_blank())
+  dev.off()
 
-# Skeena example - Nadina
-# D2_grp                 n      min     max
-# 1 Suitable Territory    25 0.207    0.961
-# 2 Possible Territory    43 0.0432   0.291
-# 3 Suitable Movement    126 0.000540 0.0676
-# 4 Unsuitable          1451 0        0.00122
+  aoi <- st_join(aoi, aoi.Fpop_simpl %>% st_transform(crs=26910),left=TRUE, largest=TRUE)
+  aoi <- aoi %>% st_transform(crs=3005)
+  aoi.MAL <- retrieve_gdb_shp_aoi(dsn=paste0(getwd(),"/data"), layer="Mahalanobis_predictions_2021_220304")
+  summary(aoi.MAL); nrow(aoi.MAL) # 2785 FETA in Omineca example; 1651 in Skeena; 3337 in Northeast; 2471 in Cariboo
 
-# Northeast example - Peace
-# D2_grp                 n      min      max
-# 1 Suitable Territory   188 2.00e- 1 0.981
-# 2 Possible Territory   265 4.10e- 2 0.303
-# 3 Suitable Movement    642 5.03e- 4 0.0672
-# 4 Unsuitable          2239 3.49e-52 0.000835
+  # aoi.MAL <- aoi.MAL %>% mutate(D2_grp = cut(D2, c(0, 6, 10, 20, Inf))) # this is the input for Mahalanobis threshold
+  # levels(aoi.MAL$D2_grp)
+  # aoi.MAL$D2_grp <- recode(aoi.MAL$D2_grp, "(0,6]"="Suitable Territory",
+  #                   "(6,10]"="Possible Territory",
+  #                   "(10,20]"="Suitable Movement",
+  #                   "(20,Inf]"="Unsuitable")
+  # glimpse(aoi.MAL)
+  # aoi.MAL %>% group_by(D2_grp) %>% summarize(n=n(), min=min(p), max=max(p)) %>% st_drop_geometry()
+  # Omineca example - Prince George
+  # D2_grp                 n      min     max
+  # 1 Suitable Territory    67 0.207    0.992
+  # 2 Possible Territory   107 0.0445   0.303
+  # 3 Suitable Movement    303 0.000503 0.0720
+  # 4 Unsuitable          2307 0        0.00123
+  # 5 NA                     1 0        0
 
-# Cariboo example - Cariboo-Chilcotin
-# D2_grp                 n      min     max
-# 1 Suitable Territory   101 0.207    0.992
-# 2 Possible Territory   159 0.0405   0.299
-# 3 Suitable Movement    461 0.000504 0.0720
-# 4 Unsuitable          1734 0        0.00123
+  # Skeena example - Nadina
+  # D2_grp                 n      min     max
+  # 1 Suitable Territory    25 0.207    0.961
+  # 2 Possible Territory    43 0.0432   0.291
+  # 3 Suitable Movement    126 0.000540 0.0676
+  # 4 Unsuitable          1451 0        0.00122
+
+  # Northeast example - Peace
+  # D2_grp                 n      min      max
+  # 1 Suitable Territory   188 2.00e- 1 0.981
+  # 2 Possible Territory   265 4.10e- 2 0.303
+  # 3 Suitable Movement    642 5.03e- 4 0.0672
+  # 4 Unsuitable          2239 3.49e-52 0.000835
+
+  # Cariboo example - Cariboo-Chilcotin
+  # D2_grp                 n      min     max
+  # 1 Suitable Territory   101 0.207    0.992
+  # 2 Possible Territory   159 0.0405   0.299
+  # 3 Suitable Movement    461 0.000504 0.0720
+  # 4 Unsuitable          1734 0        0.00123
 
 
-# pal = pnw_palette(name="Cascades",n=4,type="discrete")
-#
-# aoi.MAL.plot <- ggplot()+
-#   geom_sf(data=aoi.MAL %>% filter(!is.na(D2_grp)), aes(fill=D2_grp))+
-#   geom_sf(data=aoi, fill=NA)+
-#   scale_fill_manual(values=rev(pal))+
-#   theme(legend.position="bottom")+
-#   theme(legend.title=element_blank())+
-#   ggtitle(paste0("Fisher Equivalent Territory Areas in the ",nrd_name," Scenario"))
-#
-#
-# Cairo(file=paste0("out/Ex_",nrd_name,"_aoi_MAL_plot.PNG"),type="png",width=2400,height=2400,pointsize=18,bg="white",dpi=300)
-# aoi.MAL.plot
-# dev.off()
+  # pal = pnw_palette(name="Cascades",n=4,type="discrete")
+  #
+  # aoi.MAL.plot <- ggplot()+
+  #   geom_sf(data=aoi.MAL %>% filter(!is.na(D2_grp)), aes(fill=D2_grp))+
+  #   geom_sf(data=aoi, fill=NA)+
+  #   scale_fill_manual(values=rev(pal))+
+  #   theme(legend.position="bottom")+
+  #   theme(legend.title=element_blank())+
+  #   ggtitle(paste0("Fisher Equivalent Territory Areas in the ",nrd_name," Scenario"))
+  #
+  #
+  # Cairo(file=paste0("out/Ex_",nrd_name,"_aoi_MAL_plot.PNG"),type="png",width=2400,height=2400,pointsize=18,bg="white",dpi=300)
+  # aoi.MAL.plot
+  # dev.off()
 
-################################################################################
-###--- DECISION 4 May 2022 - keep D2 values as raster and use actual value in IBM
-# No need to create individual scenarios, will do that as part of SpaDES parameterization
+  ################################################################################
+  ###--- DECISION 4 May 2022 - keep D2 values as raster and use actual value in IBM
+  # No need to create individual scenarios, will do that as part of SpaDES parameterization
 
-aoi <- aoi %>% st_transform(crs=26910)
-raoi <- raster(ext=extent(aoi), crs=26910, res=c(5500,5500))
-raoi <- rasterize(aoi.MAL %>% st_transform(crs=26910), raoi, field="D2", fun="min")
-# raoi[is.na(raoi[])] <- 0 # keep NAs as NAs (at least for now)
+  aoi <- aoi %>% st_transform(crs=26910)
+  raoi <- raster(ext=extent(aoi), crs=26910, res=c(5500,5500))
+  raoi <- rasterize(aoi.MAL %>% st_transform(crs=26910), raoi, field="D2", fun="min")
+  # raoi[is.na(raoi[])] <- 0 # keep NAs as NAs (at least for now)
 
-plot(raoi)
-tmpST <- raoi<6
+  plot(raoi)
+  tmpST <- raoi<6
 
-#plot of the raster showing habitat as binary (green = suitable, white = gray as unsuitable and white as NA [not fisher habitat])
-sum(tmpST@data@values, na.rm=TRUE) # 110
-# round(sum(tmpST@data@values) / length(raoi@data@values)*100) # 1% habitat
-Cairo(file=paste0("out/IBM_raster_",nrd_name,"_Scenario.PNG"), type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
-plot(tmpST,main=c(paste0("Fisher Equivalent Territory Areas (FETA) in the ",nrd_name," Scenario,"),
-                 paste0(sum(tmpST@data@values,na.rm=T)," or ",round(sum(tmpST@data@values,na.rm=T) / length(raoi@data@values)*100),"% potentially suitable FETAs")),
-     cex.main=0.8, legend=FALSE)
-dev.off()
+  #plot of the raster showing habitat as binary (green = suitable, white = gray as unsuitable and white as NA [not fisher habitat])
+  sum(tmpST@data@values, na.rm=TRUE) # 110
+  # round(sum(tmpST@data@values) / length(raoi@data@values)*100) # 1% habitat
+  Cairo(file=paste0("out/IBM_raster_",nrd_name,"_Scenario.PNG"), type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+  plot(tmpST,main=c(paste0("Fisher Equivalent Territory Areas (FETA) in the ",nrd_name," Scenario,"),
+                    paste0(sum(tmpST@data@values,na.rm=T)," or ",round(sum(tmpST@data@values,na.rm=T) / length(raoi@data@values)*100),"% potentially suitable FETAs")),
+       cex.main=0.8, legend=FALSE)
+  dev.off()
 
-aoi.MAL$Fpop_num <- ifelse(aoi.MAL$Fpop=="Boreal",1,2)
-# glimpse(aoi.MAL)
-rFpop <- rasterize(aoi.MAL %>% st_transform(crs=26910), raoi, field="Fpop_num", fun="min")
-# plot(rFpop)
+  aoi.MAL$Fpop_num <- ifelse(aoi.MAL$Fpop=="Boreal",1,2)
+  rFpop <- rasterize(aoi.MAL %>% st_transform(crs=26910), raoi, field="Fpop_num", fun="min")
 
-r_stack <-  stack(rFpop, raoi) # raster stack to run IBM = Fpop for population, raoi for NetLogo world
-myfile <- paste0(getwd(),"/data/EX_",nrd_name,"_IBM_aoi.qs")
-qsave(r_stack, myfile)
+  FHE_zones$Hab_zone_num <- ifelse(FHE_zones$Hab_zone=="Boreal",1,
+                                   ifelse(FHE_zones$Hab_zone=="Sub-Boreal moist",2,
+                                          ifelse(FHE_zones$Hab_zone=="Sub-Boreal dry",3,
+                                                 ifelse(FHE_zones$Hab_zone=="Dry Forest",4,NA))))
+  rFHzone <- rasterize(FHE_zones %>% st_transform(crs=26910), raoi, field="Hab_zone_num", fun="min")
 
+  r_stack <-  stack(rFpop, rFHzone, raoi) # raster stack to run IBM = Fpop for population, rFHzone for Mahalanobis dist value, raoi for NetLogo world
+  myfile <- paste0(getwd(),"/data/EX_",nrd_name,"_IBM_aoi.qs")
+  qsave(r_stack, myfile)
+}
 
 # ################################################################################
 # ###--- Set up 4 possible scenarios
