@@ -308,18 +308,17 @@ for(i in 1:length(nrd_examples)){
 
   aoi <- aoi %>% st_transform(crs=26910)
   raoi <- raster(ext=extent(aoi), crs=26910, res=c(5500,5500))
-  raoi <- rasterize(aoi.MAL %>% st_transform(crs=26910), raoi, field="D2", fun="min")
+  rMahal <- rasterize(aoi.MAL %>% st_transform(crs=26910), raoi, field="D2", fun="min")
   # raoi[is.na(raoi[])] <- 0 # keep NAs as NAs (at least for now)
 
-  plot(raoi)
-  tmpST <- raoi<6
+  tmpST <- rMahal<=6
 
   #plot of the raster showing habitat as binary (green = suitable, white = gray as unsuitable and white as NA [not fisher habitat])
   sum(tmpST@data@values, na.rm=TRUE) # 110
   # round(sum(tmpST@data@values) / length(raoi@data@values)*100) # 1% habitat
   Cairo(file=paste0("out/IBM_raster_",nrd_name,"_Scenario.PNG"), type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
   plot(tmpST,main=c(paste0("Fisher Equivalent Territory Areas (FETA) in the ",nrd_name," Scenario,"),
-                    paste0(sum(tmpST@data@values,na.rm=T)," or ",round(sum(tmpST@data@values,na.rm=T) / length(raoi@data@values)*100),"% potentially suitable FETAs")),
+                    paste0(sum(tmpST@data@values,na.rm=T)," or ",round(sum(tmpST@data@values,na.rm=T) / length(rMahal@data@values)*100),"% potentially suitable FETAs")),
        cex.main=0.8, legend=FALSE)
   dev.off()
 
@@ -332,9 +331,20 @@ for(i in 1:length(nrd_examples)){
                                                  ifelse(FHE_zones$Hab_zone=="Dry Forest",4,NA))))
   rFHzone <- rasterize(FHE_zones %>% st_transform(crs=26910), raoi, field="Hab_zone_num", fun="min")
 
-  r_stack <-  stack(rFpop, rFHzone, raoi) # raster stack to run IBM = Fpop for population, rFHzone for Mahalanobis dist value, raoi for NetLogo world
+  # dynamic raster = raster brick with rasters at 5 year intervals; static raster = single raster layer each; pixel size = 5.5*5.5 or 1 FETA
+  # for now dummy variables in dynamic rasters
+  rMove <- rMahal <- stack(rMahal, rMahal)
+
+  values(rMove[[1]]) = runif(ncell(rMove[[1]]), 0, 1)
+  values(rMove[[2]]) = runif(ncell(rMove[[1]]), 0, 1)
+
+  r_dynamic <- stack(rMahal, rMove)  # raster stack for dynamic values = rMahal for mahalanobis distances; rMove = movement values
+  r_static <-  stack(rFpop, rFHzone) # raster stack for constant values = Fpop for population, rFHzone for Mahalanobis dist value
+
+  r_list <- list(r_dynamic, r_static)
+
   myfile <- paste0(getwd(),"/data/EX_",nrd_name,"_IBM_aoi.qs")
-  qsave(r_stack, myfile)
+  qsave(r_list, myfile)
 }
 
 # ################################################################################
