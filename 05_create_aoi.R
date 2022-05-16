@@ -338,10 +338,10 @@ for(i in 1:length(nrd_examples)){
   values(rMove[[1]]) = runif(ncell(rMove[[1]]), 0, 1)
   values(rMove[[2]]) = runif(ncell(rMove[[1]]), 0, 1)
 
-  r_dynamic <- stack(rMahal, rMove)  # raster stack for dynamic values = rMahal for mahalanobis distances; rMove = movement values
-  r_static <-  stack(rFpop, rFHzone) # raster stack for constant values = Fpop for population, rFHzone for Mahalanobis dist value
+  # r_dynamic <- stack(rMahal, rMove)  # raster stack for dynamic values = rMahal for mahalanobis distances; rMove = movement values
+  # r_static <-  stack(rFpop, rFHzone) # raster stack for constant values = Fpop for population, rFHzone for Mahalanobis dist value
 
-  r_list <- list(r_dynamic, r_static)
+  r_list <- list(rMahal=rMahal, rMove=rMove, rFpop=rFpop, rFHzone=rFHzone)
 
   myfile <- paste0(getwd(),"/data/EX_",nrd_name,"_IBM_aoi.qs")
   qsave(r_list, myfile)
