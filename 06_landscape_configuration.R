@@ -165,7 +165,7 @@ ggplot()+
 #####################################################################################
 ###--- CREATE AGGREGATED RASTER STACK OF FETA VALUES
 #####################################################################################
-# Created, and no need to re-run, just pull in appropriate raster files
+# currently just habitat 1 or 0 if it meets fisher criteria, should be a 0-1 value
 
 FETA.rasters <- list.files("data/FETA_fromKyle")
 # for now, just want to bring in fisher habitat requirement data
