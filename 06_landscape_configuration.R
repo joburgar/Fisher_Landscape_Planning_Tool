@@ -224,3 +224,30 @@ KPF_FHR %>% dplyr::select(Area_km2) %>% st_drop_geometry()
 for(i in 1:length(rBHR_hab_stack)){
   print(sum(rBHR_hab_stack[[i]]$denning@data@values, na.rm=T))
 }
+
+
+################################################################################
+###--- Mahalanobis distance - how to make this work for rasters
+tmp <- rBHR_hab_stack[[1]]
+dim(tmp)
+tmp.mat <- matrix(NA,nrow=182964,ncol=4)
+dim(tmp.mat)
+for(i in 1:4){
+  tmp.mat[,i] <- values(tmp[[i]])
+}
+tmp.mat[is.na(tmp.mat)]<-0
+colSums(tmp.mat)
+
+Sx <- cov(tmp.mat)
+D2 <- mahalanobis(tmp.mat, colMeans(tmp.mat),Sx)
+
+options(scipen = 10)
+summary(D2)
+hist(D2)
+
+plot(density(D2, bw = 0.5),
+     main="Squared Mahalanobis distances, n=100, p=3") ; rug(D2)
+qqplot(qchisq(ppoints(100), df = 3), D2,
+       main = expression("Q-Q plot of Mahalanobis" * ~D^2 *
+                           " vs. quantiles of" * ~ chi[3]^2))
+abline(0, 1, col = 'gray')
