@@ -23,7 +23,7 @@ R_version <- paste0("R-",version$major,".",version$minor)
 tz = Sys.timezone() # specify timezone in BC
 
 # Load Packages
-list.of.packages <- c("tidyverse", "lubridate","chron","bcdata", "bcmaps","sf", "rgdal",
+list.of.packages <- c("tidyverse", "lubridate","chron","bcdata", "bcmaps","sf", "rgdal","viridis",
                       "Cairo","OpenStreetMap", "ggmap","PNWColors","units","nngeo","raster","qs")
 
 # Check you have them and load them
@@ -105,6 +105,9 @@ create_grid <- function (input=input, cellsize=cellsize){
   return(list(aoi_utm=aoi_utm, fishnet_grid_sf=fishnet_grid_sf))
 }
 
+
+se <- function(x) sqrt(var(x)/length(x))
+
 #####################################################################################
 ###--- CREATE AGGREGATED RASTER STACK OF FETA VALUES
 #####################################################################################
@@ -113,6 +116,7 @@ create_grid <- function (input=input, cellsize=cellsize){
 # First create fishnet for entire area (aoi = buffer of 30 km2 around cutblocks and bounding box)
 # Then bring in underlying habitat for aoi
 # make raster stack for Fisher population (combined) extent
+# aoi.Fpop <- st_read(dsn=paste0(getwd(),"/data"), layer="aoi.Fpop_simpl")
 # aoi <- st_make_grid(aoi.Fpop, n=1)
 # aoi <- st_as_sf(aoi)
 # aoi <- st_transform(aoi, crs=26910)
@@ -134,6 +138,250 @@ create_grid <- function (input=input, cellsize=cellsize){
 
 # saved as individual rasters: "Fraster_stack_CBpops_aoi_#.tif" with number 1:5 for 5 habitat types
 
+#####################################################################################
+###--- EXPLORE FOR LANDSCAPE CONFIGURATION EXPERIMENTAL DESIGN
+#####################################################################################
+
+Fpop <- st_read(dsn=paste0(getwd(),"/data"), layer="aoi.Fpop_simpl") %>% st_transform(crs=3005)
+FHEzones <- st_read(dsn=paste0(getwd(),"/data"), layer="FHE_zones")
+FHEzones <- st_simplify(FHEzones %>% st_transform(crs=26910), preserveTopology = FALSE, dTolerance = 1000) %>% st_transform(crs=3005)
+
+ggplot()+
+  geom_sf(data=FHEzones, aes(fill=Hab_zone)) +
+    geom_sf(data=Fpop, aes(fill=Fpop))
+
+aoi <- Fpop %>%
+  summarise(across(geometry, ~ st_union(.))) %>%
+  summarise(across(geometry, ~ st_combine(.)))
+
+# Natural Resource Region
+# 1: Natural Resource (NR) Regions (multiple, wms, oracle_sde)
+# ID: dfc492c0-69c5-4c20-a6de-2c9bc999301f
+# Name: natural-resource-nr-regions
+# 2: Natural Resource (NR) Areas (multiple, wms, oracle_sde)
+# ID: c1861ba4-abb8-4947-b3e5-7f7c4d7257d5
+# Name: natural-resource-nr-areas
+aoi.NRR <- retrieve_geodata_aoi(ID = "dfc492c0-69c5-4c20-a6de-2c9bc999301f")
+unique(aoi.NRR$REGION_NAME) # 6 unique Natural Resource Regions
+
+
+# bring in the different NR Districts
+# Natural Region District
+# bcdc_search("Natural Resource District", res_format = "wms")
+# 1: Natural Resource (NR) Districts (multiple, wms, oracle_sde)
+# ID: 0bc73892-e41f-41d0-8d8e-828c16139337
+# Name: natural-resource-nr-district
+aoi.NRD <- retrieve_geodata_aoi(ID = "0bc73892-e41f-41d0-8d8e-828c16139337")
+unique(aoi.NRD$DISTRICT_NAME) # 15 unique Natural Resource Districts
+aoi.NRD %>% group_by(REGION_ORG_UNIT_NAME, DISTRICT_NAME) %>% summarise(sum(Area_km2)) %>% st_drop_geometry()
+aoi.NRD %>% group_by(DISTRICT_NAME,REGION_ORG_UNIT_NAME) %>% summarise(sum(Area_km2)) %>% st_drop_geometry()
+
+# bring in the different Timber Supply Areas
+# bcdc_search("Timber Supply Area", res_format = "wms")
+# 1: FADM - Timber Supply Area (TSA) (multiple, wms, kml, oracle_sde)
+# ID: 8daa29da-d7f4-401c-83ae-d962e3a28980
+# Name: fadm-timber-supply-area-tsa
+aoi.TSA <- retrieve_geodata_aoi(ID = "8daa29da-d7f4-401c-83ae-d962e3a28980")
+# TSA is a BIG file, simplify to 100 m lines to reduce?
+format(object.size(aoi.TSA), units="Mb")
+aoi.TSA <- st_simplify(aoi.TSA %>% st_transform(crs=26910), preserveTopology = FALSE, dTolerance = 100) %>% st_transform(crs=3005)
+format(object.size(aoi.TSA), units="Mb") # went from 24.7 MB to 1.9 MB
+aoi.TSA$TSA_NUMBER <- as.numeric(aoi.TSA$TSA_NUMBER)
+
+length(unique(aoi.TSA$TSA_NUMBER)) # 25 unique TSAs but 181 features...need to sum area per feature
+options(scipen = 10)
+as.data.frame(aoi.TSA %>% group_by(TSA_NUMBER, TSA_NUMBER_DESCRIPTION) %>% summarise(sum(Area_km2)) %>% st_drop_geometry())
+
+# bring in the different Tree Farm Licenses
+bcdc_search("Tree Farm License Current View", res_format = "wms")
+# 1: FADM - Tree Farm License Current View (TFL) (wms, kml, multiple)
+# ID: 454f2153-efbd-4a6e-8966-a6d9755da9a6
+# Name: fadm-tree-farm-license-current-view-tfl-
+aoi.TFL <- retrieve_geodata_aoi(ID = "454f2153-efbd-4a6e-8966-a6d9755da9a6") # not a ton of info here...
+
+
+# bring in the different Land Use Plan boundaries
+bcdc_search("Land Use Plan", res_format = "wms")
+# 1: Strategic Land and Resource Plans - Current (multiple, wms, kml, other, oracle_sde)
+# ID: 4b142d4c-83d6-4ecc-b66c-66601ae65992
+# Name: strategic-land-and-resource-plans-current
+aoi.LUP <- retrieve_geodata_aoi(ID = "4b142d4c-83d6-4ecc-b66c-66601ae65992")
+length(unique(aoi.LUP$STRGC_LAND_RSRCE_PLAN_ID))
+
+
+# to union each TSA number
+aoi.TSA.union <-aoi.TSA %>% group_by(TSA_NUMBER,TSA_NUMBER_DESCRIPTION) %>%
+  summarise(across(geometry, ~ st_union(.)), .groups = "keep") %>%
+  summarise(across(geometry, ~ st_combine(.)))
+aoi.TSA.union$Area_km2 <- st_area(aoi.TSA.union)*1e-6
+aoi.TSA.union <- drop_units(aoi.TSA.union)
+aoi.TSA.union <- droplevels.sfc(aoi.TSA.union, except = geometry)
+aoi.TSA.union %>% arrange(Area_km2)
+
+# Summary stats of area within fisher habitat per TSA, NRD, and LUP
+summary(aoi.TSA.union$Area_km2)
+summary(aoi.NRD$Area_km2)
+summary(aoi.LUP$Area_km2)
+
+
+# Histograms showing range of sizes per admin type
+# TSA
+aoi.TSA.union$TSA_Name <- aoi.TSA.union$TSA_NUMBER_DESCRIPTION %>% str_replace(" TSA","")
+aoi.TSA.union_FHEzones <- st_distance(aoi.TSA.union %>% st_transform(26910), FHEzones %>% st_transform(26910))
+colnames(aoi.TSA.union_FHEzones)<-FHEzones$Hab_zone
+aoi.TSA.union_FHEzones <- drop_units(aoi.TSA.union_FHEzones)
+aoi.TSA.union_FHEzones <- ifelse(aoi.TSA.union_FHEzones>0,0,1) # a 1 if that habitat zone is in the district
+aoi.TSA.union <- cbind(aoi.TSA.union, aoi.TSA.union_FHEzones)
+
+TSA_NRD <- st_distance(aoi.TSA.union,aoi.NRD)
+rownames(TSA_NRD) <- aoi.TSA.union$TSA_NUMBER_DESCRIPTION
+colnames(TSA_NRD) <- aoi.NRD$DISTRICT_NAME
+TSA_NRD <- drop_units(TSA_NRD)
+TSA_NRD <- ifelse(TSA_NRD>0,0,1) # a 1 if that habitat zone is in the district
+TSA_NRD <- as.data.frame(TSA_NRD)
+TSA_NRD$Fpop <- aoi.TSA.union$Fpop
+TSA_NRD$Area_km2 <- aoi.TSA.union$Area_km2
+TSA_NRD <- TSA_NRD %>% arrange(Fpop, desc(Area_km2))
+
+write.csv(TSA_NRD, "out/TSA_NRD_distance.csv")
+
+Cairo(file=paste0("out/TSA_map_plot.PNG"), type="png", width=2000, height=2200,pointsize=15,bg="white",dpi=300)
+ggplot() +
+  geom_sf(data=aoi.TSA.union, aes(fill=TSA_Name), lwd=0.2, col="black")+
+  scale_fill_viridis_d(option="D")+
+  theme(legend.position = "bottom", legend.title = element_blank())+
+  ggtitle("Timber Supply Areas within Fisher Habitat")
+dev.off()
+
+aoi.TSA.union$Fpop <- as.factor(ifelse(aoi.TSA.union$Boreal==1,"Boreal","Columbian"))
+
+pal=pnw_palette("Lake",2, type = "discrete")
+
+Cairo(file=paste0("out/TSA_area_plot.PNG"), type="png", width=2200, height=1400,pointsize=15,bg="white",dpi=300)
+ggplot(aoi.TSA.union %>% filter(Area_km2>3), aes(x = reorder(TSA_Name, -Area_km2), y = Area_km2, fill=Fpop)) +
+  geom_bar(stat = "identity")+
+  scale_fill_manual(values=pal)+
+  theme(legend.title = element_blank())+
+  theme(axis.text.x = element_text(angle = 45, hjust=1))+
+  ggtitle("Timber Supply Areas within Fisher Habitat") +
+  theme(axis.title.x=element_blank()) +
+  ylab(bquote('Area '(km^2)))
+dev.off()
+
+TSA.area.summarised <- aoi.TSA.union %>% filter(Area_km2>3) %>% group_by(Fpop) %>%
+  summarise(sum=sum(Area_km2),mean=mean(Area_km2),se=se(Area_km2),min=min(Area_km2), max=max(Area_km2)) %>% st_drop_geometry()
+
+write.csv(TSA.area.summarised,"out/TSA.area.summarised.csv")
+
+
+# NRD and NRR
+aoi.NRD$Name <- aoi.NRD$DISTRICT_NAME %>% str_replace(" Natural Resource District","")
+aoi.NRD$Region <- aoi.NRD$REGION_ORG_UNIT_NAME %>% str_replace(" Natural Resource Region","")
+NRD_FHEzones <- st_distance(aoi.NRD %>% st_transform(26910), FHEzones %>% st_transform(26910))
+colnames(NRD_FHEzones)<-FHEzones$Hab_zone
+NRD_FHEzones <- drop_units(NRD_FHEzones)
+NRD_FHEzones <- ifelse(NRD_FHEzones>0,0,1) # a 1 if that habitat zone is in the district
+aoi.NRD <- cbind(aoi.NRD, NRD_FHEzones)
+
+write.csv(as.data.frame(aoi.NRD %>% group_by(Name,Region) %>% summarise(sum(Area_km2)) %>% st_drop_geometry()),
+          "out/Natural_Resource_Districts_in_Regions.csv", row.names = F)
+
+
+pal=pnw_palette("Cascades",6, type = "discrete")
+glimpse(aoi.NRD)
+
+Cairo(file=paste0("out/NRD_area_plot.PNG"), type="png", width=2200, height=1400,pointsize=15,bg="white",dpi=300)
+ggplot(aoi.NRD %>% filter(Area_km2>3), aes(x = reorder(Name, -Area_km2), y = Area_km2, fill=Region)) +
+  geom_bar(stat = "identity")+
+  scale_fill_manual(values=pal)+
+  theme(axis.text.x = element_text(angle = 45, hjust=1))+
+  ggtitle("Natural Resource Districts within Fisher Habitat") +
+  theme(axis.title.x=element_blank()) +
+  ylab(bquote('Area '(km^2)))
+dev.off()
+
+Cairo(file=paste0("out/NRD_map_plot.PNG"), type="png", width=2200, height=2000,pointsize=15,bg="white",dpi=300)
+ggplot() +
+  geom_sf(data=aoi.NRD %>% filter(Area_km2>3), aes(fill=Name), lwd=0.2, col="black")+
+  scale_fill_viridis_d(option="D")+
+  theme(legend.position = "right", legend.title = element_blank())+
+  ggtitle("Natural Resource Districts within Fisher Habitat")
+dev.off()
+
+aoi.NRD %>% arrange(Area_km2)
+
+## LUP
+glimpse(aoi.LUP)
+aoi.LUP %>% group_by(PLAN_TYPE)%>% count(STRGC_LAND_RSRCE_PLAN_NAME) %>% st_drop_geometry()
+aoi.LUP %>% count(PLAN_TYPE)%>%st_drop_geometry()
+aoi.LUP %>% filter(grepl("Cariboo",STRGC_LAND_RSRCE_PLAN_NAME))
+as.data.frame(aoi.LUP %>% filter(PLAN_TYPE=="LRMP") %>% group_by(PLAN_STATUS) %>% count(STRGC_LAND_RSRCE_PLAN_NAME) %>% st_drop_geometry())
+
+write.csv(aoi.LUP %>% st_drop_geometry(),"out/LUP_FHEzones.csv", row.names = F)
+
+LUP.area.summarised <- aoi.LUP %>% filter(Area_km2>3) %>% filter(PLAN_TYPE==c("SRMP","LRMP")) %>% group_by(PLAN_TYPE, Fpop) %>%
+  summarise(sum=sum(Area_km2),mean=mean(Area_km2),se=se(Area_km2),min=min(Area_km2), max=max(Area_km2)) %>% st_drop_geometry()
+
+write.csv(LUP.area.summarised,"out/LUP.area.summarised.csv")
+
+# use LRMP & SRMP only
+Cairo(file=paste0("out/LRMP_SRMP_area_plot.PNG"), type="png", width=2200, height=1400,pointsize=15,bg="white",dpi=300)
+ggplot(aoi.LUP %>% filter(PLAN_TYPE==c("LRMP","SRMP")), aes(x = reorder(STRGC_LAND_RSRCE_PLAN_ID, -Area_km2), y = Area_km2, fill=Fpop)) +
+  geom_bar(stat = "identity")+
+  scale_fill_manual(values=pal)+
+  theme(legend.title = element_blank())+
+  theme(axis.text.x = element_text(angle = 45, hjust=1))+
+  ggtitle("LRMPs and SRMPs within Fisher Habitat") +
+  xlab("Plan ID")+
+  ylab(bquote('Area '(km^2)))
+dev.off()
+
+aoi.LRMP <- aoi.LUP %>% filter(PLAN_TYPE=="LRMP")
+
+LRMP_FHEzones <- st_distance(aoi.LRMP %>% st_transform(26910), FHEzones %>% st_transform(26910))
+colnames(LRMP_FHEzones)<-FHEzones$Hab_zone
+LRMP_FHEzones <- drop_units(LRMP_FHEzones)
+LRMP_FHEzones <- ifelse(LRMP_FHEzones>0,0,1) # a 1 if that habitat zone is in the district
+aoi.LRMP <- cbind(aoi.LRMP, LRMP_FHEzones)
+
+pal=pnw_palette("Lake",2, type = "discrete")
+aoi.LRMP$Fpop <- as.factor(ifelse(aoi.LRMP$Boreal==1,"Boreal","Columbian"))
+aoi.LRMP$Name <- aoi.LRMP$STRGC_LAND_RSRCE_PLAN_NAME %>% str_replace(" Land and Resource Management Plan","")
+aoi.LRMP$Name <- aoi.LRMP$Name %>% str_replace(" Land Resource Management Plan","")
+aoi.LRMP$Abb_Name <- aoi.LRMP$STRGC_LAND_RSRCE_ABRVN %>% str_replace("LRMP","")
+
+
+Cairo(file=paste0("out/LRMP_area_plot.PNG"), type="png", width=2200, height=1400,pointsize=15,bg="white",dpi=300)
+ggplot(aoi.LRMP, aes(x = reorder(Name, -Area_km2), y = Area_km2, fill=Fpop)) +
+  geom_bar(stat = "identity")+
+  scale_fill_manual(values=pal)+
+  theme(legend.title = element_blank())+
+  theme(axis.text.x = element_text(angle = 45, hjust=1), axis.title.x = element_blank())+
+  ggtitle("Land and Resource Management Plans within Fisher Habitat") +
+  ylab(bquote('Area '(km^2)))
+dev.off()
+
+aoi.LRMP <- droplevels.sfc(aoi.LRMP)
+
+Cairo(file=paste0("out/LRMP_map_plot.PNG"), type="png", width=2000, height=2200,pointsize=15,bg="white",dpi=300)
+ggplot() +
+  geom_sf(data=aoi.LRMP, aes(fill=as.factor(STRGC_LAND_RSRCE_PLAN_ID)), lwd=0.2, col="black")+
+  scale_fill_viridis_d(option="D")+
+  theme(legend.position = "right", legend.title = element_blank())+
+  ggtitle("Land and Resource Management Plans \nwithin Fisher Habitat")
+dev.off()
+
+
+aoi.SRMP <- aoi.LUP %>% filter(PLAN_TYPE=="SRMP")
+aoi.SRMP <- droplevels.sfc(aoi.SRMP)
+Cairo(file=paste0("out/SRMP_map_plot.PNG"), type="png", width=2000, height=2200,pointsize=15,bg="white",dpi=300)
+ggplot() +
+  geom_sf(data=aoi.LUP)+
+  geom_sf(data=aoi.SRMP,aes(fill=as.factor(STRGC_LAND_RSRCE_PLAN_ID)), lwd=0.2, col="black")+
+  scale_fill_viridis_d(option="D")+
+  theme(legend.position = "right", legend.title = element_blank())+
+  ggtitle("Strategic Resource Management Plans \nwithin Fisher Habitat")
+dev.off()
 #####################################################################################
 ###--- CREATE CANNED SCENARIO AOI SHAPEFILE
 #####################################################################################
