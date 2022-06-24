@@ -37,16 +37,16 @@ lapply(list.of.packages, require, character.only = TRUE)
 ###--- function to retrieve geodata from BCGW
 droplevels.sfc = function(x, except, exclude, ...) x
 
-retrieve_geodata_aoi <- function (ID=ID){
-  aoi.geodata <- bcdc_query_geodata(ID) %>%
-    filter(BBOX(st_bbox(aoi))) %>%
-    collect()
-  aoi.geodata <- aoi.geodata %>% st_intersection(aoi)
-  aoi.geodata$Area_km2 <- st_area(aoi.geodata)*1e-6
-  aoi.geodata <- drop_units(aoi.geodata)
-  aoi.geodata <- droplevels.sfc(aoi.geodata, except = geometry)
-  return(aoi.geodata)
-}
+# retrieve_geodata_aoi <- function (ID=ID){
+#   aoi.geodata <- bcdc_query_geodata(ID) %>%
+#     filter(BBOX(st_bbox(aoi))) %>%
+#     collect()
+#   aoi.geodata <- aoi.geodata %>% st_intersection(aoi)
+#   aoi.geodata$Area_km2 <- st_area(aoi.geodata)*1e-6
+#   aoi.geodata <- drop_units(aoi.geodata)
+#   aoi.geodata <- droplevels.sfc(aoi.geodata, except = geometry)
+#   return(aoi.geodata)
+# }
 
 ###--- function to retrieve data from downloaded gdb or shapefile
 # Read the feature class
@@ -65,18 +65,18 @@ retrieve_gdb_shp_aoi <- function (dsn=dsn, layer=layer){
 #####################################################################################
 ###--- function to retrieve FETA raster data for aoi
 
-retrieve_raster_aoi <- function(rfile=rfile, raoi=raoi){
-  # rfile=FETA.rasters[3]
-  rfile <- raster(paste0("data/FETA_fromKyle/",rfile))
-  rfile <- projectRaster(rfile,crs = 26910)
-  # Crop FETA rasters by extent of raoi
-  rfile.aoi <- crop(rfile, extent(raoi))
-  # Sum FETA rasters for value of FETA within fisher territory
-  # recall FETA rasters are 100x100 m while aoi is 5500x5500
-  # need to sum by 55 cells in x and y direction to make fisher equivalent territory
-  # ra <- aggregate(rfile.aoi, fact=c(55,55), fun=sum, na.rm=TRUE)
-  return(ra)
-}
+# retrieve_raster_aoi <- function(rfile=rfile, raoi=raoi){
+#   # rfile=FETA.rasters[3]
+#   rfile <- raster(paste0("data/FETA_fromKyle/",rfile))
+#   rfile <- projectRaster(rfile,crs = 26910)
+#   # Crop FETA rasters by extent of raoi
+#   rfile.aoi <- crop(rfile, extent(raoi))
+#   # Sum FETA rasters for value of FETA within fisher territory
+#   # recall FETA rasters are 100x100 m while aoi is 5500x5500
+#   # need to sum by 55 cells in x and y direction to make fisher equivalent territory
+#   # ra <- aggregate(rfile.aoi, fact=c(55,55), fun=sum, na.rm=TRUE)
+#   return(ra)
+# }
 
 ###--- uncertainty function
 se <- function(x) sqrt(var(x)/length(x))
@@ -93,7 +93,6 @@ FHEzones <- st_simplify(FHEzones %>% st_transform(crs=26910), preserveTopology =
 ggplot()+
   geom_sf(data=FHEzones, aes(fill=Hab_zone))+
   scale_fill_viridis_d(option="D", alpha=0.7) # alpha does the transparency
-
 
 aoi <- Fpop %>%
   summarise(across(geometry, ~ st_union(.))) %>%
@@ -129,125 +128,242 @@ ggplot()+
 Female_HRs_compiled %>% group_by(Fpop, Hab_zone) %>% summarise_at(vars(Area_km2), list(Min=min, Mean=mean, Max=max, SE=se)) %>% st_drop_geometry()
 Female_HRs_compiled %>% count(Fpop, Hab_zone) %>% st_drop_geometry()
 
-ggplot()+
-  geom_sf(data=Female_HRs_compiled, aes(fill=Hab_zone))+
-  scale_fill_viridis_d(option="D", alpha=0.7) # alpha does the transparency
-# For proof of concept, try for Boreal first
+unique(Female_HRs_compiled$Hab_zone)
 
-Female_HRs_compiled <- Female_HRs_compiled %>% st_transform(crs=26910)
-Female_HRs_compiled$HR <- 1
+### Now create Fisher Habitat Extension Zone specific home range raster stacks
+# create function and loop it over Hab_zone
 
-Female_HRs_compiled$SA_Fisher_ID
+HR_rasterstack_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone){
+  # FHEzone = "Boreal"
+  FHR <- HRsfobj %>% filter(Hab_zone==FHEzone)
+  FHR <- FHR %>% st_transform(crs=26910)
+  FHR <- FHR %>% arrange(SA_Fisher_ID)
+  FHR$HR <- 1
 
-KPF_FHR <- Female_HRs_compiled %>% filter(grepl("KPF",SA_Fisher_ID))
-KPF_FHR <- KPF_FHR %>% arrange(SA_Fisher_ID)
+  # home ranges overlap each other - need to create rasters for each home range and stack them
+  rHR <- raster(ext=extent(FHR), crs=26910, res=c(100,100))
 
-# home ranges overlap each other - need to create rasters for each home range and stack them
-rBHR <- raster(ext=extent(KPF_FHR), crs=26910, res=c(100,100))
+  rHR_list=list()
+  for(i in 1:nrow(FHR)){
+    rHR_list[[i]] <- rasterize(FHR[i,], rHR, field="HR")
+  }
 
-rBHR_list=list()
-for(i in 1:nrow(KPF_FHR)){
-  rBHR_list[[i]] <- rasterize(KPF_FHR[i,], rBHR, field="HR", background=0) # interim work around until terra and new raster package uploaded
+  rHR_list
+  rHR_stack = stack(rHR_list)
+  names(rHR_stack) <- FHR$SA_Fisher_ID
+
+  return(rHR_stack)
 }
-rBHR_list
-rBHR_stack = stack(rBHR_list)
 
-names(rBHR_stack) <- KPF_FHR$SA_Fisher_ID
-rBHR_stack
+Hab_zone <- unique(Female_HRs_compiled$Hab_zone)
+Hab_HR_rasters <- list()
+for(i in 1:length(Hab_zone)){
+  Hab_HR_rasters[[i]] <- HR_rasterstack_function(HRsfobj=Female_HRs_compiled, FHEzone = Hab_zone[i])
+}
 
-plot(rBHR_stack)
-plot(rBHR_stack,2)
-# quick visual check that individual rasters look the same as vector file
-ggplot()+
-  geom_sf(data=KPF_FHR, aes(fill=SA_Fisher_ID))+
-  scale_fill_viridis_d(option="D", alpha=0.7) # alpha does the transparency
+plot(Hab_HR_rasters[[1]])
+plot(Hab_HR_rasters[[2]])
+plot(Hab_HR_rasters[[3]])
+plot(Hab_HR_rasters[[4]])
 
 #####################################################################################
 ###--- CREATE AGGREGATED RASTER STACK OF FETA VALUES
 #####################################################################################
-# currently just habitat 1 or 0 if it meets fisher criteria, should be a 0-1 value
+# currently just habitat 1 or 0 if it meets fisher criteria, should be a 0-1 value?
+###--- grab data from Rich's gdb
+
+# GISDir <- "//spatialfiles.bcgov/work/srm/vic/tib/Workarea/RWeir/Fisher Habitat Extension/"
+# list.files(GISDir)
+# Boreal_models_210215.gdb
+# Dry_forest_models_210215.gdb
+# Sub_Boreal_dry_models_210215.gdb
+# Sub_Boreal_moist_models_210215.gdb
+
+# fgdb = "Dry_forest_models_210215.gdb"
+# st_layers(paste(GISDir,fgdb, sep="/"))
+
+# massive files, R is not great at geo-processing with vector data
+# work with Rich to have completed in ArcGIS and export rasters for easy upload
+
+# DRY_Denning <- st_read(dsn=paste(GISDir,fgdb, sep="/"),layer="Denning_primary") %>% st_transform(crs=26910)
+# DRY_Denning$Primary <- 1
+# rDRY_Denning <- raster(ext=extent(DRY_Denning), crs=26910, res=c(100,100))
+# rDRY_Denning <- rasterize(DRY_Denning, rDRY_Denning, field="Primary", background=0)
+# plot(rDRY_Denning)
+
+# Vector of the 2020 would be in same folder, but different gdb for each FHE zone:
+# [FHE_zone]_models_210215.gdb (e.g., Sub_Boreal_moist_models_210215.gdb would have the Denning, Branch_resting, Cavity_resting, CWD_resting primary stands).
+
+# List all feature classes in a file geodatabase
+#####################################################################################
+###--- Go back to using Kyle's FETA until 2021 VRI rasters created
 
 FETA.rasters <- list.files("data/FETA_fromKyle")
-# for now, just want to bring in fisher habitat requirement data
+# bring in fisher habitat data - necessary for Mahalanobis
 FETA.rasters <- FETA.rasters[grepl("movement|rest|denning", FETA.rasters)]
 
 Fraster_list=list()
 for(i in 1:length(FETA.rasters)){
   Fraster_list[[i]] <- raster(paste0("data/FETA_fromKyle/",FETA.rasters[i]))
 }
-Fraster_stack = stack(Fraster_list[[1]],Fraster_list[[2]],Fraster_list[[4]],Fraster_list[[5]])
+Fraster_stack = stack(Fraster_list)
+plot(Fraster_stack)
+extent(Fraster_stack)
+projection(Fraster_stack)
 
+# sum(Fraster_list[[3]]$rest_cavity@data@values)
+
+### Now create Fisher Habitat Extension Zone specific FETA raster stacks
 # convert home range raster extent to same as FETA rasters to save time on the crop
-FETAproj <- "+proj=aea +lat_0=45 +lon_0=-126 +lat_1=50 +lat_2=58.5 +x_0=1000000 +y_0=0 +datum=NAD83 +units=m +no_defs"
-tmpprj <- projectExtent(rBHR, crs=FETAproj)
-res(tmpprj) <- 100
+# create function and loop it over Hab_zone_HR_raster hab zones
 
-rBHR_FETAproj <- projectRaster(rBHR,tmpprj)
-# crop FETA raster stack to same extent as home range rasters
-Fraster_tmp <- crop(Fraster_stack, extent(rBHR_FETAproj))
-# reproject back into UTM, same as home range rasters
-Fraster_BHR <- projectRaster(Fraster_tmp, crs=26910, res=100)
 
-extent(Fraster_BHR) <- alignExtent(Fraster_BHR, rBHR_stack)
-Fraster_BHR <- crop(Fraster_BHR, extent(rBHR_stack),snap='out')
+FHEzone_rasterstack_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, Hab_raster=Fraster_stack){
 
-#plot to check it worked
-plot(Fraster_BHR) # no cavity_resting habitat (highly correlated so not necessary)
-Fraster_BHR[is.na(Fraster_BHR[])] <- 0
+  FHR <- HRsfobj %>% filter(Hab_zone==FHEzone)
+  FHR <- FHR %>% st_transform(crs=projection(Hab_raster))
 
-plot(Fraster_BHR[[2]])
-plot(rBHR_stack[[2]])
+  Hab_raster_cropped <- crop(Hab_raster, FHR, snap='out')
 
+  # Fraster_HR[is.na(Fraster_HR[])] <- 0
+  return(Hab_raster_cropped)
+}
+
+Hab_rasters <- list()
+for(i in 1:length(Hab_zone)){
+  Hab_rasters[[i]] <- FHEzone_rasterstack_function(HRsfobj=Female_HRs_compiled,
+                                               FHEzone = Hab_zone[i],
+                                               Hab_raster=Fraster_stack)
+}
+
+plot(Hab_rasters[[1]])
+plot(Hab_rasters[[2]])
+plot(Hab_rasters[[3]])
+plot(Hab_rasters[[4]])
+
+# curiosity - how correlated are the underlying habitat layers?
 # jnk=layerStats(Fraster_BHR, 'pearson', na.rm=T)
 # corr_matrix=jnk$'pearson correlation coefficient'
 
-# want to extract the denning raster values for the home range
-# x = FETA raster brick (can do multiple layers at a time)
-# home range raster is the
-values(Fraster_BHR[[1]])
-
-# extract habitat data for each home range
-rBHR_hab_stack <- list()
-for(i in 1:dim(rBHR_stack)[3]){
-  rBHR_hab_stack[[i]] <- raster::mask(x=Fraster_BHR, mask=rBHR_stack[[i]], maskvalue=0)
-}
-
-# print area for each home range (at 1 ha pixel scale)
-for(i in 1:dim(rBHR_stack)[3]){
-  print(sum(rBHR_stack[[i]]@data@values))
-}
-
-# quick check = seems to match up with polygons, considering now pixelated
-KPF_FHR %>% dplyr::select(Area_km2) %>% st_drop_geometry()
-
-# print area for each home range (at 1 ha pixel scale)
-for(i in 1:length(rBHR_hab_stack)){
-  print(sum(rBHR_hab_stack[[i]]$denning@data@values, na.rm=T))
-}
-
+################################################################################
 
 ################################################################################
+###--- First bring in Rich's vector D2 data
+MAHALDir <- "//Sfp.idir.bcgov/s140/S40203/Ecosystems/Conservation Science/Species Conservation Science/Mesocarnivores/Projects/Fisher Critical Habitat/Analysis/FHE_hexes/"
+list.files(MAHALDir)
+
+# Boreal_FHE_home_ranges.Rda
+# Dry_forest_FHE_home_ranges.Rda
+# Sub_Boreal_dry_FHE_home_ranges.Rda
+# Sub_Boreal_moist_FHE_home_ranges.Rda
+
+load(paste0(MAHALDir,'Boreal_FHE_home_ranges.Rda'))
+Boreal_FHE_home_ranges
+
+load(paste0(MAHALDir,'Dry_forest_FHE_home_ranges.Rda'))
+Dry_forest_FHE_home_ranges
+
+load(paste0(MAHALDir,'Sub_Boreal_dry_FHE_home_ranges.Rda'))
+Sub_Boreal_dry_FHE_home_ranges
+
+load(paste0(MAHALDir,'Sub_Boreal_moist_FHE_home_ranges.Rda'))
+Sub_Boreal_moist_FHE_home_ranges
+
+###################################################################################
+###--- Try Mahalanobis for an entire region, pixel by pixel
+plot(Fraster_HR) # no cavity_resting habitat (highly correlated so not necessary)
+
+###--- NEED TO FIX THIS FUNCTION UP, ALIGN EXTENTS AND THEN RUN MAHALANOBIS FHEZones, THEN CLIP TO HR RASTERS
+
 ###--- Mahalanobis distance - how to make this work for rasters
-tmp <- rBHR_hab_stack[[1]]
-dim(tmp)
-tmp.mat <- matrix(NA,nrow=182964,ncol=4)
-dim(tmp.mat)
-for(i in 1:4){
-  tmp.mat[,i] <- values(tmp[[i]])
-}
-tmp.mat[is.na(tmp.mat)]<-0
-colSums(tmp.mat)
-
-Sx <- cov(tmp.mat)
-D2 <- mahalanobis(tmp.mat, colMeans(tmp.mat),Sx)
-
 options(scipen = 10)
-summary(D2)
-hist(D2)
 
-plot(density(D2, bw = 0.5),
-     main="Squared Mahalanobis distances, n=100, p=3") ; rug(D2)
-qqplot(qchisq(ppoints(100), df = 3), D2,
-       main = expression("Q-Q plot of Mahalanobis" * ~D^2 *
-                           " vs. quantiles of" * ~ chi[3]^2))
-abline(0, 1, col = 'gray')
+add_Mahal_raster_layer_function <- function(Hab_raster=Hab_rasters[[1]],HR_raster=Hab_HR_rasters[[1]]){
+
+  tmp.mat <- matrix(NA,nrow=dim(FHEzone_rasters)[1]*dim(FHEzone_rasters)[2],ncol=dim(FHEzone_rasters)[3])
+  dim(tmp.mat)
+  for(i in 1:dim(tmp.mat)[2]){
+    tmp.mat[,i] <- values(FHEzone_rasters[[i]])
+  }
+
+  # remove the non HR habitat but subsetting to non-NA values
+  # tmp.hab <- tmp.mat[complete.cases(tmp.mat),]
+  tmp.hab <- tmp.mat
+  # tmp.hab[is.na(tmp.hab)]<-0
+  colSums(tmp.hab)
+
+  Sx <- cov(tmp.hab)
+  D2 <- mahalanobis(tmp.hab, colMeans(tmp.hab),Sx)
+
+  # summary(D2)
+  # hist(D2)
+  # plot(density(D2, bw = 0.5),
+  #      main="Squared Mahalanobis distances, n=100, p=3") ; rug(D2)
+  # qqplot(qchisq(ppoints(100), df = 3), D2,
+  #        main = expression("Q-Q plot of Mahalanobis" * ~D^2 *
+  #                            " vs. quantiles of" * ~ chi[3]^2))
+  # abline(0, 1, col = 'gray')
+
+  D2raster <- raster(ext=extent(FHEzone_rasters), crs=26910, res=c(100,100))
+  values(D2raster) <- D2
+
+  # add D2 raster layer to raster stack and add name to layer
+  FHEzone_rasters <- stack(FHEzone_rasters,D2raster)
+  names(FHEzone_rasters)[5] <- "D2"
+
+  # want to extract the denning raster values for the home range
+  # x = FETA raster brick (can do multiple layers at a time)
+  # home range raster is the
+  values(FHEzone_rasters[[1]])
+
+  # extract habitat data for each home range
+  rHR_hab_stack <- list()
+  for(i in 1:dim(FHEzone_HR_rasters)[3]){
+    rHR_hab_stack[[i]] <- raster::mask(x=FHEzone_rasters, mask=FHEzone_HR_rasters[[i]], maskvalue=0)
+  }
+
+  # print area for each home range (at 1 ha pixel scale)
+  for(i in 1:dim(rBHR_stack)[3]){
+    print(sum(rBHR_stack[[i]]@data@values))
+  }
+
+  # quick check = seems to match up with polygons, considering now pixelated
+  KPF_FHR %>% dplyr::select(Area_km2) %>% st_drop_geometry()
+
+  # print area for each home range (at 1 ha pixel scale)
+  # nrow = number of HR polygons (i.e., HR raster stack)
+  # ncol = number of habitat rasters + 1 for total habitat
+  HR_hab_df <- as.data.frame(matrix(NA,nrow=dim(rBHR_stack)[3],ncol=dim(Fraster_BHR)[3]+1))
+  colnames(HR_hab_df) <- c("Total_area","Denning","Movement","Rest_cwd","Rest_rust","D2_sum")
+  for(i in 1:length(rBHR_hab_stack)){
+    HR_hab_df$Total_area[i] <- sum(rBHR_stack[[i]]@data@values, na.rm=T)
+    HR_hab_df$Denning[i] <- sum(rBHR_hab_stack[[i]]$denning@data@values, na.rm=T)
+    HR_hab_df$Movement[i] <- sum(rBHR_hab_stack[[i]]$movement@data@values, na.rm=T)
+    HR_hab_df$Rest_cwd[i] <- sum(rBHR_hab_stack[[i]]$rest_cwd@data@values, na.rm=T)
+    HR_hab_df$Rest_rust[i] <- sum(rBHR_hab_stack[[i]]$rest_rust@data@values, na.rm=T)
+    HR_hab_df$D2_sum[i] <- sum(rBHR_hab_stack[[i]]$D2@data@values, na.rm=T)
+  }
+
+  HR_hab_df$Prop_Denning <- HR_hab_df$Denning / HR_hab_df$Total_area
+  HR_hab_df$Prop_Movement <- HR_hab_df$Movement / HR_hab_df$Total_area
+  HR_hab_df$Prop_Rest_cwd <- HR_hab_df$Rest_cwd / HR_hab_df$Total_area
+  HR_hab_df$Prop_Rest_rust <- HR_hab_df$Rest_rust / HR_hab_df$Total_area
+  HR_hab_df$HR_D2 <- HR_hab_df$D2_sum / HR_hab_df$Total_area
+  HR_hab_df$SA_Fisher_ID <- names(rBHR_stack)
+
+  HR_hab_df <- cbind(HR_hab_df, Boreal_FHE_home_ranges[5:17,])
+  glimpse(HR_hab_df)
+  cor(HR_hab_df$HR_D2, HR_hab_df$D2)
+
+  write.csv(HR_hab_df, "out/KPF_HR_hab_df.csv")
+  plot(HR_hab_df$HR_D2 ~HR_hab_df$Total_area)
+  plot(HR_hab_df$D2 ~HR_hab_df$Total_area)
+
+  # plot the D2 values for each home range
+  D2_stack <- stack(rBHR_hab_stack[[1]]$D2)
+  for(i in 2:length(rBHR_hab_stack)){
+    D2_stack <- stack(D2_stack,rBHR_hab_stack[[i]]$D2)
+  }
+  names(D2_stack) <- names(rBHR_stack)
+  plot(D2_stack)
+}
