@@ -130,41 +130,6 @@ Female_HRs_compiled %>% count(Fpop, Hab_zone) %>% st_drop_geometry()
 
 unique(Female_HRs_compiled$Hab_zone)
 
-### Now create Fisher Habitat Extension Zone specific home range raster stacks
-# create function and loop it over Hab_zone
-
-HR_rasterstack_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone){
-  # FHEzone = "Boreal"
-  FHR <- HRsfobj %>% filter(Hab_zone==FHEzone)
-  FHR <- FHR %>% st_transform(crs=26910)
-  FHR <- FHR %>% arrange(SA_Fisher_ID)
-  FHR$HR <- 1
-
-  # home ranges overlap each other - need to create rasters for each home range and stack them
-  rHR <- raster(ext=extent(FHR), crs=26910, res=c(100,100))
-
-  rHR_list=list()
-  for(i in 1:nrow(FHR)){
-    rHR_list[[i]] <- rasterize(FHR[i,], rHR, field="HR")
-  }
-
-  rHR_list
-  rHR_stack = stack(rHR_list)
-  names(rHR_stack) <- FHR$SA_Fisher_ID
-
-  return(rHR_stack)
-}
-
-Hab_zone <- unique(Female_HRs_compiled$Hab_zone)
-Hab_HR_rasters <- list()
-for(i in 1:length(Hab_zone)){
-  Hab_HR_rasters[[i]] <- HR_rasterstack_function(HRsfobj=Female_HRs_compiled, FHEzone = Hab_zone[i])
-}
-
-plot(Hab_HR_rasters[[1]])
-plot(Hab_HR_rasters[[2]])
-plot(Hab_HR_rasters[[3]])
-plot(Hab_HR_rasters[[4]])
 
 #####################################################################################
 ###--- CREATE AGGREGATED RASTER STACK OF FETA VALUES
@@ -217,15 +182,13 @@ projection(Fraster_stack)
 # convert home range raster extent to same as FETA rasters to save time on the crop
 # create function and loop it over Hab_zone_HR_raster hab zones
 
-
 FHEzone_rasterstack_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, Hab_raster=Fraster_stack){
 
   FHR <- HRsfobj %>% filter(Hab_zone==FHEzone)
   FHR <- FHR %>% st_transform(crs=projection(Hab_raster))
 
-  Hab_raster_cropped <- crop(Hab_raster, FHR, snap='out')
+  Hab_raster_cropped <- crop(Hab_raster, extent(FHR)+30000, snap='out')
 
-  # Fraster_HR[is.na(Fraster_HR[])] <- 0
   return(Hab_raster_cropped)
 }
 
@@ -236,10 +199,10 @@ for(i in 1:length(Hab_zone)){
                                                Hab_raster=Fraster_stack)
 }
 
-plot(Hab_rasters[[1]])
+plot(Hab_rasters[[1]]) # no rest_cavity
 plot(Hab_rasters[[2]])
 plot(Hab_rasters[[3]])
-plot(Hab_rasters[[4]])
+plot(Hab_rasters[[4]]) # no rest_cavity
 
 # curiosity - how correlated are the underlying habitat layers?
 # jnk=layerStats(Fraster_BHR, 'pearson', na.rm=T)
@@ -271,99 +234,131 @@ Sub_Boreal_moist_FHE_home_ranges
 
 ###################################################################################
 ###--- Try Mahalanobis for an entire region, pixel by pixel
-plot(Fraster_HR) # no cavity_resting habitat (highly correlated so not necessary)
 
 ###--- NEED TO FIX THIS FUNCTION UP, ALIGN EXTENTS AND THEN RUN MAHALANOBIS FHEZones, THEN CLIP TO HR RASTERS
 
 ###--- Mahalanobis distance - how to make this work for rasters
 options(scipen = 10)
 
-add_Mahal_raster_layer_function <- function(Hab_raster=Hab_rasters[[1]],HR_raster=Hab_HR_rasters[[1]]){
+add_Mahal_raster_layer_function <- function(Hab_raster=Hab_raster){
 
-  tmp.mat <- matrix(NA,nrow=dim(FHEzone_rasters)[1]*dim(FHEzone_rasters)[2],ncol=dim(FHEzone_rasters)[3])
-  dim(tmp.mat)
-  for(i in 1:dim(tmp.mat)[2]){
-    tmp.mat[,i] <- values(FHEzone_rasters[[i]])
+  # Hab_raster=Hab_rasters[[1]]
+  # extract values from each raster and put into matrix (formatting for Mahalanobis)
+  tmp.mat <- matrix(NA,nrow=ncell(Hab_raster),ncol=nlayers(Hab_raster))
+
+  for(i in 1:ncol(tmp.mat)){
+    tmp.mat[,i] <- values(Hab_raster[[i]])
   }
 
-  # remove the non HR habitat but subsetting to non-NA values
-  # tmp.hab <- tmp.mat[complete.cases(tmp.mat),]
-  tmp.hab <- tmp.mat
-  # tmp.hab[is.na(tmp.hab)]<-0
-  colSums(tmp.hab)
+  # remove the raster data that was completely NA (i.e., rest_cavity)
+  # remove first from df used in Mahalanobis
+  tmp.hab <- as.data.frame(tmp.mat)
+  colnames(tmp.hab) <- names(Hab_raster)
 
-  Sx <- cov(tmp.hab)
-  D2 <- mahalanobis(tmp.hab, colMeans(tmp.hab),Sx)
 
-  # summary(D2)
-  # hist(D2)
-  # plot(density(D2, bw = 0.5),
-  #      main="Squared Mahalanobis distances, n=100, p=3") ; rug(D2)
-  # qqplot(qchisq(ppoints(100), df = 3), D2,
-  #        main = expression("Q-Q plot of Mahalanobis" * ~D^2 *
-  #                            " vs. quantiles of" * ~ chi[3]^2))
-  # abline(0, 1, col = 'gray')
+  tmp.hab[is.na(tmp.hab)]<-0
+  all.hab <- tmp.hab[colSums(tmp.hab)!=0]
 
-  D2raster <- raster(ext=extent(FHEzone_rasters), crs=26910, res=c(100,100))
+  # then drop from raster stack
+  layers_to_drop <- setdiff(names(Hab_raster),colnames(all.hab))
+  Hab_raster <- dropLayer(Hab_raster, layers_to_drop)
+
+  ?dist
+
+  D2 <- mahalanobis(all.hab, colMeans(all.hab),cov(all.hab))
+
+  summary(D2)
+  hist(D2)
+  length(D2)
+  ncell(Hab_raster)
+#   hist(D2)
+#   plot(density(D2, bw = 0.5),
+#        main="Squared Mahalanobis distances, n=100, p=3") ; rug(D2)
+#   qqplot(qchisq(ppoints(100), df = 3), D2,
+#          main = expression("Q-Q plot of Mahalanobis" * ~D^2 *
+#                              " vs. quantiles of" * ~ chi[3]^2))
+#   abline(0, 1, col = 'gray')
+
+  D2raster <- raster(ext=extent(Hab_raster), crs=projection(Hab_raster), res=c(100,100))
   values(D2raster) <- D2
 
+  plot(D2raster<10)
+
+
+
   # add D2 raster layer to raster stack and add name to layer
-  FHEzone_rasters <- stack(FHEzone_rasters,D2raster)
-  names(FHEzone_rasters)[5] <- "D2"
+  Hab_raster_use <- addLayer(Hab_raster, D2raster)
+  names(Hab_raster_use)[nlayers(Hab_raster_use)] <- "D2"
 
-  # want to extract the denning raster values for the home range
-  # x = FETA raster brick (can do multiple layers at a time)
-  # home range raster is the
-  values(FHEzone_rasters[[1]])
+  return(Hab_raster_use)
 
-  # extract habitat data for each home range
-  rHR_hab_stack <- list()
-  for(i in 1:dim(FHEzone_HR_rasters)[3]){
-    rHR_hab_stack[[i]] <- raster::mask(x=FHEzone_rasters, mask=FHEzone_HR_rasters[[i]], maskvalue=0)
-  }
-
-  # print area for each home range (at 1 ha pixel scale)
-  for(i in 1:dim(rBHR_stack)[3]){
-    print(sum(rBHR_stack[[i]]@data@values))
-  }
-
-  # quick check = seems to match up with polygons, considering now pixelated
-  KPF_FHR %>% dplyr::select(Area_km2) %>% st_drop_geometry()
-
-  # print area for each home range (at 1 ha pixel scale)
-  # nrow = number of HR polygons (i.e., HR raster stack)
-  # ncol = number of habitat rasters + 1 for total habitat
-  HR_hab_df <- as.data.frame(matrix(NA,nrow=dim(rBHR_stack)[3],ncol=dim(Fraster_BHR)[3]+1))
-  colnames(HR_hab_df) <- c("Total_area","Denning","Movement","Rest_cwd","Rest_rust","D2_sum")
-  for(i in 1:length(rBHR_hab_stack)){
-    HR_hab_df$Total_area[i] <- sum(rBHR_stack[[i]]@data@values, na.rm=T)
-    HR_hab_df$Denning[i] <- sum(rBHR_hab_stack[[i]]$denning@data@values, na.rm=T)
-    HR_hab_df$Movement[i] <- sum(rBHR_hab_stack[[i]]$movement@data@values, na.rm=T)
-    HR_hab_df$Rest_cwd[i] <- sum(rBHR_hab_stack[[i]]$rest_cwd@data@values, na.rm=T)
-    HR_hab_df$Rest_rust[i] <- sum(rBHR_hab_stack[[i]]$rest_rust@data@values, na.rm=T)
-    HR_hab_df$D2_sum[i] <- sum(rBHR_hab_stack[[i]]$D2@data@values, na.rm=T)
-  }
-
-  HR_hab_df$Prop_Denning <- HR_hab_df$Denning / HR_hab_df$Total_area
-  HR_hab_df$Prop_Movement <- HR_hab_df$Movement / HR_hab_df$Total_area
-  HR_hab_df$Prop_Rest_cwd <- HR_hab_df$Rest_cwd / HR_hab_df$Total_area
-  HR_hab_df$Prop_Rest_rust <- HR_hab_df$Rest_rust / HR_hab_df$Total_area
-  HR_hab_df$HR_D2 <- HR_hab_df$D2_sum / HR_hab_df$Total_area
-  HR_hab_df$SA_Fisher_ID <- names(rBHR_stack)
-
-  HR_hab_df <- cbind(HR_hab_df, Boreal_FHE_home_ranges[5:17,])
-  glimpse(HR_hab_df)
-  cor(HR_hab_df$HR_D2, HR_hab_df$D2)
-
-  write.csv(HR_hab_df, "out/KPF_HR_hab_df.csv")
-  plot(HR_hab_df$HR_D2 ~HR_hab_df$Total_area)
-  plot(HR_hab_df$D2 ~HR_hab_df$Total_area)
-
-  # plot the D2 values for each home range
-  D2_stack <- stack(rBHR_hab_stack[[1]]$D2)
-  for(i in 2:length(rBHR_hab_stack)){
-    D2_stack <- stack(D2_stack,rBHR_hab_stack[[i]]$D2)
-  }
-  names(D2_stack) <- names(rBHR_stack)
-  plot(D2_stack)
 }
+
+D2_rasters <- list()
+for(i in 1:length(Hab_rasters)){
+  D2_rasters[[i]] <- add_Mahal_raster_layer_function(Hab_raster=Hab_rasters[[i]])
+}
+
+options(scipen = 1)
+summary(D2_rasters[[1]]$D2)
+plot(D2_rasters[[1]])
+
+### Now create Fisher Habitat Extension Zone specific home range raster stacks
+# create function and loop it over Hab_zone
+
+### NEED TO SORT THIS OUT....
+
+HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, Hab_raster=Hab_raster){
+  # HRsfobj = Female_HRs_compiled
+  # FHEzone = "Boreal"
+  # Hab_raster = Hab_rasters[[1]]
+
+  # home ranges overlap each other - need to create rasters for each home range and stack them
+
+  FHR <- HRsfobj %>% filter(Hab_zone==FHEzone)
+  FHR <- FHR %>% st_transform(crs=projection(Hab_raster))
+  FHR <- FHR %>% arrange(SA_Fisher_ID)
+
+  # change to 0-1
+  Hab_raster[is.na(Hab_raster)]<-0
+
+  for(i in 1:nrow(FHR)){
+
+    rValues <- extract(Hab_raster, FHR[i,])
+    rValues <- as.data.frame(rValues[[1]])
+    rValues <- rValues[colSums(rValues)!=0]
+
+    # run Mahalanobis for the HR of interest
+    D2 <- mahalanobis(rValues, colMeans(rValues),cov(rValues))
+
+    # HR_Hab_D2 <- as.data.frame(matrix(NA,nrow=nrow(FHR),ncol=ncol(rValues)+2))
+    # bring in habitat values from raster
+    HR_Hab_D2 <- as.data.frame(t(colSums(rValues)))
+    HR_Hab_D2$Total_Area <- nrow(rValues)
+
+    # create proportion for each habitat category and bind to df
+    prop.summaries <- HR_Hab_D2 %>% summarise(across(-(Total_Area), ~. / Total_Area))
+    prop.summaries <- prop.summaries %>% rename_with(.fn = ~paste0("prop_",.x))
+    HR_Hab_D2 <- cbind(HR_Hab_D2, prop.summaries)
+
+    # bring in D2 summary stats for HR and bind to df
+    HR_Hab_D2 <- cbind(HR_Hab_D2,as.data.frame(t(as.matrix(sum_D2))))
+    HR_Hab_D2 <- HR_Hab_D2 %>% rename_with(.fn = ~ paste0("D2_",.x), .cols=(ncol(HR_Hab_D2)-length(sum_D2)):(ncol(HR_Hab_D2)))
+
+    HR_Hab_D2$SA_Fisher_ID <- FHR$SA_Fisher_ID[i]
+
+    if(i==1){
+      HR_Hab_D2_df <- HR_Hab_D2
+    }
+    else{ HR_Hab_D2_df <- rbind(HR_Hab_D2_df,HR_Hab_D2)
+    }
+  }
+
+
+  FHR <- left_join(FHR, HR_Hab_D2_df)
+
+  return(FHR)
+}
+
+Hab_zone
+HR_D2_function(HRsfobj=Female_HRs_compiled, FHEzone=Hab_zone[2], Hab_raster=Hab_rasters[[2]])
