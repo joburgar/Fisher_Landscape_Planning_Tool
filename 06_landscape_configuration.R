@@ -128,8 +128,7 @@ ggplot()+
 Female_HRs_compiled %>% group_by(Fpop, Hab_zone) %>% summarise_at(vars(Area_km2), list(Min=min, Mean=mean, Max=max, SE=se)) %>% st_drop_geometry()
 Female_HRs_compiled %>% count(Fpop, Hab_zone) %>% st_drop_geometry()
 
-unique(Female_HRs_compiled$Hab_zone)
-
+Hab_zone <- unique(Female_HRs_compiled$Hab_zone)
 
 #####################################################################################
 ###--- CREATE AGGREGATED RASTER STACK OF FETA VALUES
@@ -187,7 +186,7 @@ FHEzone_rasterstack_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, Hab_r
   FHR <- HRsfobj %>% filter(Hab_zone==FHEzone)
   FHR <- FHR %>% st_transform(crs=projection(Hab_raster))
 
-  Hab_raster_cropped <- crop(Hab_raster, extent(FHR)+30000, snap='out')
+  Hab_raster_cropped <- crop(Hab_raster, extent(FHR)+2000, snap='out') # add 1 km buffer area around extent)
 
   return(Hab_raster_cropped)
 }
@@ -263,14 +262,13 @@ add_Mahal_raster_layer_function <- function(Hab_raster=Hab_raster){
   layers_to_drop <- setdiff(names(Hab_raster),colnames(all.hab))
   Hab_raster <- dropLayer(Hab_raster, layers_to_drop)
 
-  ?dist
-
+  # run mahalanobis using all data from raster extent
   D2 <- mahalanobis(all.hab, colMeans(all.hab),cov(all.hab))
 
-  summary(D2)
-  hist(D2)
-  length(D2)
-  ncell(Hab_raster)
+  # summary(D2)
+  # hist(D2)
+  # length(D2)
+  # ncell(Hab_raster)
 #   hist(D2)
 #   plot(density(D2, bw = 0.5),
 #        main="Squared Mahalanobis distances, n=100, p=3") ; rug(D2)
@@ -282,9 +280,7 @@ add_Mahal_raster_layer_function <- function(Hab_raster=Hab_raster){
   D2raster <- raster(ext=extent(Hab_raster), crs=projection(Hab_raster), res=c(100,100))
   values(D2raster) <- D2
 
-  plot(D2raster<10)
-
-
+  # plot(D2raster<10)
 
   # add D2 raster layer to raster stack and add name to layer
   Hab_raster_use <- addLayer(Hab_raster, D2raster)
@@ -299,66 +295,99 @@ for(i in 1:length(Hab_rasters)){
   D2_rasters[[i]] <- add_Mahal_raster_layer_function(Hab_raster=Hab_rasters[[i]])
 }
 
+
 options(scipen = 1)
-summary(D2_rasters[[1]]$D2)
-plot(D2_rasters[[1]])
+plot(D2_rasters[[3]]) # because using all the data, looks like the higher D2 is reflective or what might be good habitat..i.e., what comprises most of the area (is this a flip from how it would be if using home ranges to quantify)
 
 ### Now create Fisher Habitat Extension Zone specific home range raster stacks
 # create function and loop it over Hab_zone
+### NEED TO SORT THIS OUT ###
 
-### NEED TO SORT THIS OUT....
-
-HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, Hab_raster=Hab_raster){
+HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, D2_raster=D2_raster){
   # HRsfobj = Female_HRs_compiled
   # FHEzone = "Boreal"
-  # Hab_raster = Hab_rasters[[1]]
+  # D2_raster = D2_rasters[[1]]
 
   # home ranges overlap each other - need to create rasters for each home range and stack them
 
   FHR <- HRsfobj %>% filter(Hab_zone==FHEzone)
-  FHR <- FHR %>% st_transform(crs=projection(Hab_raster))
+  FHR <- FHR %>% st_transform(crs=projection(D2_raster))
   FHR <- FHR %>% arrange(SA_Fisher_ID)
 
-  # change to 0-1
-  Hab_raster[is.na(Hab_raster)]<-0
+  FHR <- FHR %>% st_transform(crs=projection(D2_raster))
 
+  D2_raster_cropped <- list()
   for(i in 1:nrow(FHR)){
+    D2_raster_cropped[[i]] <- raster::mask(D2_raster, FHR[i,], maskvaue=TRUE) # add 1 km buffer area around extent)
+  }
 
-    rValues <- extract(Hab_raster, FHR[i,])
-    rValues <- as.data.frame(rValues[[1]])
-    rValues <- rValues[colSums(rValues)!=0]
+  # habitat and D2 values for each HR
+  D2_tmp_list <- list()
+  for(i in 1:length(D2_raster_cropped)){
+    D2_tmp_list[[i]] <- D2_raster_cropped[[i]]$D2
+  }
 
-    # run Mahalanobis for the HR of interest
-    D2 <- mahalanobis(rValues, colMeans(rValues),cov(rValues))
+  # create raterstack of just D2 for all HRs, easier for plotting
+  D2_HR_raster <- stack(D2_tmp_list)
+  names(D2_HR_raster) <- paste0(FHR$SA_Fisher_ID,"_D2")
 
-    # HR_Hab_D2 <- as.data.frame(matrix(NA,nrow=nrow(FHR),ncol=ncol(rValues)+2))
-    # bring in habitat values from raster
-    HR_Hab_D2 <- as.data.frame(t(colSums(rValues)))
-    HR_Hab_D2$Total_Area <- nrow(rValues)
+  # plot(D2_HR_raster)
 
-    # create proportion for each habitat category and bind to df
-    prop.summaries <- HR_Hab_D2 %>% summarise(across(-(Total_Area), ~. / Total_Area))
-    prop.summaries <- prop.summaries %>% rename_with(.fn = ~paste0("prop_",.x))
-    HR_Hab_D2 <- cbind(HR_Hab_D2, prop.summaries)
+  # HR_Hab_D2 <- as.data.frame(matrix(NA,nrow=nrow(FHR),ncol=ncol(rValues)+2))
+  # bring in habitat values from raster
 
-    # bring in D2 summary stats for HR and bind to df
-    HR_Hab_D2 <- cbind(HR_Hab_D2,as.data.frame(t(as.matrix(sum_D2))))
-    HR_Hab_D2 <- HR_Hab_D2 %>% rename_with(.fn = ~ paste0("D2_",.x), .cols=(ncol(HR_Hab_D2)-length(sum_D2)):(ncol(HR_Hab_D2)))
+  ###- try this two ways as a test
+  # re-run Mahalanobis for each HR with just the data within the HR
+  # delete the rows with NAs for each habitat feature?
 
-    HR_Hab_D2$SA_Fisher_ID <- FHR$SA_Fisher_ID[i]
+  # D2_raster_cropped[[1]]
+  # summary(D2_raster_cropped[[1]])
 
-    if(i==1){
-      HR_Hab_D2_df <- HR_Hab_D2
+  HR_Hab_D2 <- as.data.frame(matrix(NA,nrow=length(D2_raster_cropped),ncol=2*nlayers(D2_raster_cropped[[1]])+3))
+  if(ncol(HR_Hab_D2)==13){
+  colnames(HR_Hab_D2) <- c("denning_prop","movement_prop", "rest_cwd_prop","rest_rust_prop","D2_mean","D2_subset_mean",
+                           "denning_sum","movement_sum", "rest_cwd_sum","rest_rust_sum","D2_sum","D2_subset_sum","Total_Area_ha")
+  } else {
+    colnames(HR_Hab_D2) <- c("denning_prop","movement_prop", "rest_cavity_prop","rest_cwd_prop","rest_rust_prop","D2_mean","D2_subset_mean",
+                             "denning_sum","movement_sum", "rest_cavity_sum","rest_cwd_sum","rest_rust_sum","D2_sum","D2_subset_sum","Total_Area_ha")
+  }
+
+  for(i in 1:length(D2_raster_cropped)){
+    tmp.raster <- D2_raster_cropped[[i]]
+
+    tmp.mat <- matrix(NA,nrow=ncell(tmp.raster),ncol=nlayers(tmp.raster))
+
+    for(y in 1:ncol(tmp.mat)){
+      tmp.mat[,y] <- values(tmp.raster[[y]])
     }
-    else{ HR_Hab_D2_df <- rbind(HR_Hab_D2_df,HR_Hab_D2)
-    }
+
+    tmp.hab <- as.data.frame(tmp.mat)
+    colnames(tmp.hab) <- names(tmp.raster)
+
+    tmp.hab <- tmp.hab[complete.cases(tmp.hab$D2),]
+    tmp.hab[is.na(tmp.hab)]<-0
+
+    D2_subset <- mahalanobis(tmp.hab[,1:ncol(tmp.hab)-1],
+                             colMeans(tmp.hab[,1:ncol(tmp.hab)-1]),
+                             cov(tmp.hab[,1:ncol(tmp.hab)-1]))
+
+    tmp.hab$D2_subset <- D2_subset
+    prop.data <- t(as.data.frame(colSums(tmp.hab)/nrow(tmp.hab)))
+    sum.data <- t(as.data.frame(colSums(tmp.hab)))
+
+    HR_Hab_D2[i,] <- c(prop.data, sum.data,nrow(tmp.hab))
   }
 
 
-  FHR <- left_join(FHR, HR_Hab_D2_df)
+  HR_Hab_D2$SA_Fisher_ID <- FHR$SA_Fisher_ID
 
-  return(FHR)
+  return(list(HR_Hab_D2=HR_Hab_D2, D2_HR_raster=D2_HR_raster,D2_raster_cropped=D2_raster_cropped))
+
 }
 
-Hab_zone
-HR_D2_function(HRsfobj=Female_HRs_compiled, FHEzone=Hab_zone[2], Hab_raster=Hab_rasters[[2]])
+HR_D2_perzone <- list()
+for(i in 1:length(Hab_zone)){
+HR_D2_perzone[[i]] <- HR_D2_function(HRsfobj=Female_HRs_compiled, FHEzone=Hab_zone[i], D2_raster=D2_rasters[[i]])
+}
+
+# not working when has rest_cavity layer but otherwise does work...perhaps no rest_cavity in HR???
