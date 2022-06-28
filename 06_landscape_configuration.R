@@ -207,29 +207,6 @@ plot(Hab_rasters[[4]]) # no rest_cavity
 # jnk=layerStats(Fraster_BHR, 'pearson', na.rm=T)
 # corr_matrix=jnk$'pearson correlation coefficient'
 
-################################################################################
-
-################################################################################
-###--- First bring in Rich's vector D2 data
-MAHALDir <- "//Sfp.idir.bcgov/s140/S40203/Ecosystems/Conservation Science/Species Conservation Science/Mesocarnivores/Projects/Fisher Critical Habitat/Analysis/FHE_hexes/"
-list.files(MAHALDir)
-
-# Boreal_FHE_home_ranges.Rda
-# Dry_forest_FHE_home_ranges.Rda
-# Sub_Boreal_dry_FHE_home_ranges.Rda
-# Sub_Boreal_moist_FHE_home_ranges.Rda
-
-load(paste0(MAHALDir,'Boreal_FHE_home_ranges.Rda'))
-Boreal_FHE_home_ranges
-
-load(paste0(MAHALDir,'Dry_forest_FHE_home_ranges.Rda'))
-Dry_forest_FHE_home_ranges
-
-load(paste0(MAHALDir,'Sub_Boreal_dry_FHE_home_ranges.Rda'))
-Sub_Boreal_dry_FHE_home_ranges
-
-load(paste0(MAHALDir,'Sub_Boreal_moist_FHE_home_ranges.Rda'))
-Sub_Boreal_moist_FHE_home_ranges
 
 ###################################################################################
 ###--- Try Mahalanobis for an entire region, pixel by pixel
@@ -305,8 +282,8 @@ plot(D2_rasters[[3]]) # because using all the data, looks like the higher D2 is 
 
 HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, D2_raster=D2_raster){
   # HRsfobj = Female_HRs_compiled
-  # FHEzone = "Boreal"
-  # D2_raster = D2_rasters[[1]]
+  # FHEzone = Hab_zone[2]
+  # D2_raster = D2_rasters[[2]]
 
   # home ranges overlap each other - need to create rasters for each home range and stack them
 
@@ -366,10 +343,11 @@ HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, D2_raster=D2_raster
 
     tmp.hab <- tmp.hab[complete.cases(tmp.hab$D2),]
     tmp.hab[is.na(tmp.hab)]<-0
+    D2.hab <- tmp.hab[colSums(tmp.hab)!=0]
 
-    D2_subset <- mahalanobis(tmp.hab[,1:ncol(tmp.hab)-1],
-                             colMeans(tmp.hab[,1:ncol(tmp.hab)-1]),
-                             cov(tmp.hab[,1:ncol(tmp.hab)-1]))
+    D2_subset <- mahalanobis(D2.hab[,1:ncol(D2.hab)-1],
+                             colMeans(D2.hab[,1:ncol(D2.hab)-1]),
+                             cov(D2.hab[,1:ncol(D2.hab)-1]))
 
     tmp.hab$D2_subset <- D2_subset
     prop.data <- t(as.data.frame(colSums(tmp.hab)/nrow(tmp.hab)))
@@ -380,6 +358,7 @@ HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, D2_raster=D2_raster
 
 
   HR_Hab_D2$SA_Fisher_ID <- FHR$SA_Fisher_ID
+  HR_Hab_D2$FISHER_ID <- str_remove(HR_Hab_D2$SA_Fisher_ID,".*_")
 
   return(list(HR_Hab_D2=HR_Hab_D2, D2_HR_raster=D2_HR_raster,D2_raster_cropped=D2_raster_cropped))
 
@@ -390,4 +369,106 @@ for(i in 1:length(Hab_zone)){
 HR_D2_perzone[[i]] <- HR_D2_function(HRsfobj=Female_HRs_compiled, FHEzone=Hab_zone[i], D2_raster=D2_rasters[[i]])
 }
 
-# not working when has rest_cavity layer but otherwise does work...perhaps no rest_cavity in HR???
+################################################################################
+###--- Now compare to Rich's vector D2 data
+MAHALDir <- "//Sfp.idir.bcgov/s140/S40203/Ecosystems/Conservation Science/Species Conservation Science/Mesocarnivores/Projects/Fisher Critical Habitat/Analysis/FHE_hexes/"
+list.files(MAHALDir)
+
+# Boreal_FHE_home_ranges.Rda
+# Sub_Boreal_moist_FHE_home_ranges.Rda
+# Sub_Boreal_dry_FHE_home_ranges.Rda
+# Dry_forest_FHE_home_ranges.Rda
+
+Hab_zone
+
+
+load(paste0(MAHALDir,'Boreal_FHE_home_ranges.Rda'))
+colnames(Boreal_FHE_home_ranges) <- c("FISHER_ID","denning","rest_rust","rest_cwd","movement","D2","p")
+Boreal_FHE_home_ranges <- left_join(Boreal_FHE_home_ranges, HR_D2_perzone[[1]]$HR_Hab_D2)
+Boreal_FHE_home_ranges$FHE <- Hab_zone[1]
+
+load(paste0(MAHALDir,'Sub_Boreal_moist_FHE_home_ranges.Rda'))
+colnames(Sub_Boreal_moist_FHE_home_ranges) <- c("FISHER_ID","denning","rest_rust","rest_cavity","rest_cwd","movement","D2","p")
+Sub_Boreal_moist_FHE_home_ranges <- left_join(Sub_Boreal_moist_FHE_home_ranges, HR_D2_perzone[[2]]$HR_Hab_D2)
+Sub_Boreal_moist_FHE_home_ranges$FHE <- Hab_zone[2]
+
+load(paste0(MAHALDir,'Sub_Boreal_dry_FHE_home_ranges.Rda'))
+colnames(Sub_Boreal_dry_FHE_home_ranges) <- c("FISHER_ID","denning","rest_rust","rest_cavity","rest_cwd","movement","D2","p")
+Sub_Boreal_dry_FHE_home_ranges <- left_join(Sub_Boreal_dry_FHE_home_ranges, HR_D2_perzone[[3]]$HR_Hab_D2)
+Sub_Boreal_dry_FHE_home_ranges$FHE <- Hab_zone[3]
+
+load(paste0(MAHALDir,'Dry_forest_FHE_home_ranges.Rda'))
+colnames(Dry_forest_FHE_home_ranges) <- c("FISHER_ID","rest_rust","denning","rest_cwd","movement","D2","p")
+Dry_forest_FHE_home_ranges <- left_join(Dry_forest_FHE_home_ranges, HR_D2_perzone[[4]]$HR_Hab_D2)
+Dry_forest_FHE_home_ranges$FHE <- Hab_zone[4]
+
+
+names(Boreal_FHE_home_ranges)
+names(Sub_Boreal_moist_FHE_home_ranges)
+FHE_home_ranges_hab_D2 <- bind_rows(Boreal_FHE_home_ranges,Sub_Boreal_moist_FHE_home_ranges,Sub_Boreal_dry_FHE_home_ranges,Dry_forest_FHE_home_ranges)
+
+D2_columns <- colnames(FHE_home_ranges_hab_D2)[grepl("D2",colnames(FHE_home_ranges_hab_D2))]
+cor(FHE_home_ranges_hab_D2 %>% dplyr::select(D2_columns))
+
+# D2     D2_mean D2_subset_mean      D2_sum D2_subset_sum
+# D2              1.00000000  0.01956824     0.03158791 -0.03381094   -0.04311010
+# D2_mean         0.01956824  1.00000000     0.28830361  0.90664197   -0.07556379
+# D2_subset_mean  0.03158791  0.28830361     1.00000000  0.33998842    0.36599634
+# D2_sum         -0.03381094  0.90664197     0.33998842  1.00000000    0.25786407
+# D2_subset_sum  -0.04311010 -0.07556379     0.36599634  0.25786407    1.00000000
+
+
+head(FHE_home_ranges_hab_D2)
+
+FHE_HR_Hab_D2_longer <- FHE_home_ranges_hab_D2 %>% dplyr::select(-SA_Fisher_ID,-D2_subset_sum,-D2_sum) %>%
+  pivot_longer(!c(FISHER_ID, FHE), names_to = "Variable", values_to = "Values")
+
+unique(FHE_HR_Hab_D2_longer$Variable)
+FHE_HR_Hab_D2_longer$Group <- "Vector_area"
+FHE_HR_Hab_D2_longer$Group <- case_when(grepl("D2",FHE_HR_Hab_D2_longer$Variable) ~ "Mahalanobis",
+                                        FHE_HR_Hab_D2_longer$Variable=="p" ~ "Mahalanobis",
+                                        grepl("prop",FHE_HR_Hab_D2_longer$Variable) ~ "Raster_prop",
+                                        grepl("sum",FHE_HR_Hab_D2_longer$Variable) ~ "Raster_area",
+                                        FHE_HR_Hab_D2_longer$Variable=="Total_Area_ha" ~ "Raster_area",
+                                        TRUE ~ as.character(FHE_HR_Hab_D2_longer$Group))
+
+# as.data.frame(FHE_HR_Hab_D2_longer %>% group_by(Group) %>% dplyr::count(Variable)) # check to make sure it worked
+
+
+pal = pnw_palette(name="Cascades",n=4,type="discrete")
+unique(FHE_HR_Hab_D2_longer$FHE)
+
+FHE_HR_Hab_D2_longer$FHE <- fct_relevel(FHE_HR_Hab_D2_longer$FHE,  "Boreal","Sub-Boreal moist", "Sub-Boreal dry","Dry Forest")
+FHE_HR_Hab_D2_longer$Group <- fct_relevel(FHE_HR_Hab_D2_longer$Group,  "Mahalanobis","Vector_area", "Raster_prop","Raster_area")
+
+unique(FHE_HR_Hab_D2_longer$Variable)
+FHE_HR_Hab_D2_plot <- ggplot(FHE_HR_Hab_D2_longer %>% filter(Variable!="p"),
+                         aes(x=Variable, y=Values, fill=as.factor(FHE))) +
+  geom_boxplot(notch=FALSE) +
+  # facet_wrap(~Variable, scale="free",nrow=2)+
+  theme(axis.title.x=element_blank(),axis.title.y=element_blank()) +
+  theme(legend.position="bottom")+
+  theme(legend.title=element_blank())+
+  scale_fill_manual(values=pal)+
+  facet_wrap(~Group, scale="free",ncol=1)
+
+Cairo(file="out/FHE_HR_Hab_D2_plot.PNG",type="png",width=3200,height=4000,pointsize=20,bg="white",dpi=300)
+FHE_HR_Hab_D2_plot
+dev.off()
+
+Hab_zone
+Cairo(file="out/FHE_Boreal_rD2_plot.PNG",type="png",width=4000,height=4000,pointsize=20,bg="white",dpi=300)
+plot(HR_D2_perzone[[1]]$D2_HR_raster)
+dev.off()
+
+Cairo(file="out/FHE_SBM_rD2_plot.PNG",type="png",width=4000,height=4000,pointsize=20,bg="white",dpi=300)
+plot(HR_D2_perzone[[2]]$D2_HR_raster)
+dev.off()
+
+Cairo(file="out/FHE_SBD_rD2_plot.PNG",type="png",width=4000,height=4000,pointsize=20,bg="white",dpi=300)
+plot(HR_D2_perzone[[3]]$D2_HR_raster)
+dev.off()
+
+Cairo(file="out/FHE_Dry_rD2_plot.PNG",type="png",width=4000,height=4000,pointsize=20,bg="white",dpi=300)
+plot(HR_D2_perzone[[4]]$D2_HR_raster)
+dev.off()
