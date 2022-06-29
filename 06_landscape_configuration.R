@@ -209,12 +209,7 @@ plot(Hab_rasters[[4]]) # no rest_cavity
 
 
 ###################################################################################
-###--- Try Mahalanobis for an entire region, pixel by pixel
-
-###--- NEED TO FIX THIS FUNCTION UP, ALIGN EXTENTS AND THEN RUN MAHALANOBIS FHEZones, THEN CLIP TO HR RASTERS
-
-###--- Mahalanobis distance - how to make this work for rasters
-options(scipen = 10)
+###--- Mahalanobis for an entire region, pixel by pixel
 
 add_Mahal_raster_layer_function <- function(Hab_raster=Hab_raster){
 
@@ -278,7 +273,6 @@ plot(D2_rasters[[3]]) # because using all the data, looks like the higher D2 is 
 
 ### Now create Fisher Habitat Extension Zone specific home range raster stacks
 # create function and loop it over Hab_zone
-### NEED TO SORT THIS OUT ###
 
 HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, D2_raster=D2_raster){
   # HRsfobj = Female_HRs_compiled
@@ -369,18 +363,19 @@ for(i in 1:length(Hab_zone)){
 HR_D2_perzone[[i]] <- HR_D2_function(HRsfobj=Female_HRs_compiled, FHEzone=Hab_zone[i], D2_raster=D2_rasters[[i]])
 }
 
+saveRDS(HR_D2_perzone,"HR_D2_perzone.Rda")
+# readRDS("HR_D2_perzone.Rda")
 ################################################################################
 ###--- Now compare to Rich's vector D2 data
 MAHALDir <- "//Sfp.idir.bcgov/s140/S40203/Ecosystems/Conservation Science/Species Conservation Science/Mesocarnivores/Projects/Fisher Critical Habitat/Analysis/FHE_hexes/"
-list.files(MAHALDir)
 
+# list.files(MAHALDir)
 # Boreal_FHE_home_ranges.Rda
 # Sub_Boreal_moist_FHE_home_ranges.Rda
 # Sub_Boreal_dry_FHE_home_ranges.Rda
 # Dry_forest_FHE_home_ranges.Rda
 
 Hab_zone
-
 
 load(paste0(MAHALDir,'Boreal_FHE_home_ranges.Rda'))
 colnames(Boreal_FHE_home_ranges) <- c("FISHER_ID","denning","rest_rust","rest_cwd","movement","D2","p")
@@ -402,21 +397,49 @@ colnames(Dry_forest_FHE_home_ranges) <- c("FISHER_ID","rest_rust","denning","res
 Dry_forest_FHE_home_ranges <- left_join(Dry_forest_FHE_home_ranges, HR_D2_perzone[[4]]$HR_Hab_D2)
 Dry_forest_FHE_home_ranges$FHE <- Hab_zone[4]
 
-
 names(Boreal_FHE_home_ranges)
 names(Sub_Boreal_moist_FHE_home_ranges)
 FHE_home_ranges_hab_D2 <- bind_rows(Boreal_FHE_home_ranges,Sub_Boreal_moist_FHE_home_ranges,Sub_Boreal_dry_FHE_home_ranges,Dry_forest_FHE_home_ranges)
 
+# now try running Mahal for the summed data for each home range
+head(FHE_home_ranges_hab_D2)
+FHE_home_ranges_hab_D2 %>% group_by(FHE) %>% summarise(sum(rest_cavity))
+
+BoR_D2_data_rProp <- FHE_home_ranges_hab_D2 %>% filter(FHE=="Boreal") %>% dplyr::select(denning_prop, movement_prop, rest_cwd_prop, rest_rust_prop)
+SBM_D2_data_rProp <- FHE_home_ranges_hab_D2 %>% filter(FHE=="Sub-Boreal moist") %>% dplyr::select(denning_prop, movement_prop, rest_cwd_prop, rest_rust_prop, rest_cavity_prop)
+SBD_D2_data_rProp <- FHE_home_ranges_hab_D2 %>% filter(FHE=="Sub-Boreal dry") %>% dplyr::select(denning_prop, movement_prop, rest_cwd_prop, rest_rust_prop, rest_cavity_prop)
+DRY_D2_data_rProp <- FHE_home_ranges_hab_D2 %>% filter(FHE=="Dry Forest") %>% dplyr::select(denning_prop, movement_prop, rest_cwd_prop, rest_rust_prop)
+
+
+FHE_home_ranges_hab_D2$D2_rProp <- c(mahalanobis(BoR_D2_data_rProp,colMeans(BoR_D2_data_rProp), cov(BoR_D2_data_rProp)),
+                                     mahalanobis(SBM_D2_data_rProp,colMeans(SBM_D2_data_rProp), cov(SBM_D2_data_rProp)),
+                                     mahalanobis(SBD_D2_data_rProp,colMeans(SBD_D2_data_rProp), cov(SBD_D2_data_rProp)),
+                                     mahalanobis(DRY_D2_data_rProp,colMeans(DRY_D2_data_rProp), cov(DRY_D2_data_rProp)))
+
+
+BoR_D2_data_rSum <- FHE_home_ranges_hab_D2 %>% filter(FHE=="Boreal") %>% dplyr::select(denning_sum, movement_sum, rest_cwd_sum, rest_rust_sum)
+SBM_D2_data_rSum <- FHE_home_ranges_hab_D2 %>% filter(FHE=="Sub-Boreal moist") %>% dplyr::select(denning_sum, movement_sum, rest_cwd_sum, rest_rust_sum, rest_cavity_sum)
+SBD_D2_data_rSum <- FHE_home_ranges_hab_D2 %>% filter(FHE=="Sub-Boreal dry") %>% dplyr::select(denning_sum, movement_sum, rest_cwd_sum, rest_rust_sum, rest_cavity_sum)
+DRY_D2_data_rSum <- FHE_home_ranges_hab_D2 %>% filter(FHE=="Dry Forest") %>% dplyr::select(denning_sum, movement_sum, rest_cwd_sum, rest_rust_sum)
+
+FHE_home_ranges_hab_D2$D2_rSum <- c(mahalanobis(BoR_D2_data_rSum,colMeans(BoR_D2_data_rSum), cov(BoR_D2_data_rSum)),
+                                     mahalanobis(SBM_D2_data_rSum,colMeans(SBM_D2_data_rSum), cov(SBM_D2_data_rSum)),
+                                     mahalanobis(SBD_D2_data_rSum,colMeans(SBD_D2_data_rSum), cov(SBD_D2_data_rSum)),
+                                     mahalanobis(DRY_D2_data_rSum,colMeans(DRY_D2_data_rSum), cov(DRY_D2_data_rSum)))
+
 D2_columns <- colnames(FHE_home_ranges_hab_D2)[grepl("D2",colnames(FHE_home_ranges_hab_D2))]
 cor(FHE_home_ranges_hab_D2 %>% dplyr::select(D2_columns))
 
-# D2     D2_mean D2_subset_mean      D2_sum D2_subset_sum
-# D2              1.00000000  0.01956824     0.03158791 -0.03381094   -0.04311010
-# D2_mean         0.01956824  1.00000000     0.28830361  0.90664197   -0.07556379
-# D2_subset_mean  0.03158791  0.28830361     1.00000000  0.33998842    0.36599634
-# D2_sum         -0.03381094  0.90664197     0.33998842  1.00000000    0.25786407
-# D2_subset_sum  -0.04311010 -0.07556379     0.36599634  0.25786407    1.00000000
+#                         D2     D2_mean D2_subset_mean      D2_sum D2_subset_sum    D2_rProp   D2_rSum
+# D2              1.00000000  0.01956824     0.03158791 -0.03381094   -0.04311010  0.53405969 0.1789417
+# D2_mean         0.01956824  1.00000000     0.28830361  0.90664197   -0.07556379  0.21019559 0.1844352
+# D2_subset_mean  0.03158791  0.28830361     1.00000000  0.33998842    0.36599634  0.19242593 0.2090766
+# D2_sum         -0.03381094  0.90664197     0.33998842  1.00000000    0.25786407  0.19592786 0.3758040
+# D2_subset_sum  -0.04311010 -0.07556379     0.36599634  0.25786407    1.00000000 -0.03656169 0.4121138
+# D2_rProp        0.53405969  0.21019559     0.19242593  0.19592786   -0.03656169  1.00000000 0.6352578
+# D2_rSum         0.17894172  0.18443521     0.20907659  0.37580400    0.41211378  0.63525785 1.0000000
 
+write.csv(FHE_home_ranges_hab_D2,"out/FHE_home_ranges_hab_D2.csv")
 
 head(FHE_home_ranges_hab_D2)
 
@@ -472,3 +495,37 @@ dev.off()
 Cairo(file="out/FHE_Dry_rD2_plot.PNG",type="png",width=4000,height=4000,pointsize=20,bg="white",dpi=300)
 plot(HR_D2_perzone[[4]]$D2_HR_raster)
 dev.off()
+
+
+################################################################################
+###--- Now build home range 'clusters' and run them with Mahal
+# https://www.r-bloggers.com/2021/03/clustering-similar-spatial-patterns/
+
+# library(motif)
+# library(stars)
+
+plot(D2_rasters[[1]]) # 8800 km2
+8800/30 # potential for ~290 fisher territories if ave size = 30 km2
+test <- st_as_stars(D2_rasters[[1]][[1]],D2_rasters[[1]][[2]],D2_rasters[[1]][[3]],D2_rasters[[1]][[4]])
+
+# ?lsp_signature
+test_signature = lsp_signature(test,
+                              type = "coma", #co-occurence matrix
+                              window = 10)
+
+test_dist = lsp_to_dist(test_signature, dist_fun="jensen-shannon")
+
+test_hclust = hclust(test_dist, method = "ward.D2")
+plot(test_hclust)
+
+
+clusters = cutree(test_hclust, k = 4)
+test_grid_sf = lsp_add_clusters(test_signature,clusters)
+test_grid_sf %>% count(clust)
+
+ggplot()+
+  geom_sf(data=test_grid_sf, aes(fill=clust))
+
+# https://www.r-bloggers.com/2021/02/finding-similar-spatial-patterns/
+# maybe better to use the home range polygons to then find the spatial patterns in the landscape
+#
