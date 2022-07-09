@@ -177,38 +177,3 @@ HR_DRY_raster_D2$HR_Hab_D2
 
 
 # try  using covariance matrix (Mahal) as weighting tool, conditional on raster layer input
-
-
-###############################################################################
-###--- Now build home range 'clusters' and run them with Mahal
-# https://www.r-bloggers.com/2021/03/clustering-similar-spatial-patterns/
-
-# library(motif)
-# library(stars)
-
-plot(D2_rasters[[1]]) # 8800 km2
-8800/30 # potential for ~290 fisher territories if ave size = 30 km2
-test <- st_as_stars(D2_rasters[[1]][[1]],D2_rasters[[1]][[2]],D2_rasters[[1]][[3]],D2_rasters[[1]][[4]])
-
-# ?lsp_signature
-test_signature = lsp_signature(test,
-                               type = "coma", #co-occurence matrix
-                               window = 10)
-
-test_dist = lsp_to_dist(test_signature, dist_fun="jensen-shannon")
-
-test_hclust = hclust(test_dist, method = "ward.D2")
-plot(test_hclust)
-
-
-clusters = cutree(test_hclust, k = 4)
-test_grid_sf = lsp_add_clusters(test_signature,clusters)
-test_grid_sf %>% count(clust)
-
-ggplot()+
-  geom_sf(data=test_grid_sf, aes(fill=clust))
-
-# https://www.r-bloggers.com/2021/02/finding-similar-spatial-patterns/
-# maybe better to use the home range polygons to then find the spatial patterns in the landscape
-#
-
