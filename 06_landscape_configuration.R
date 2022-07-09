@@ -127,8 +127,21 @@ ggplot()+
 
 Female_HRs_compiled %>% group_by(Fpop, Hab_zone) %>% summarise_at(vars(Area_km2), list(Min=min, Mean=mean, Max=max, SE=se)) %>% st_drop_geometry()
 Female_HRs_compiled %>% count(Fpop, Hab_zone) %>% st_drop_geometry()
+Female_HRs_compiled %>% dplyr::select(Hab_zone, SA_Fisher_ID) %>% st_drop_geometry
+
+Female_HRs_compiled %>% filter(Hab_zone=="Boreal") %>% count(SA_Fisher_ID) %>% st_drop_geometry()
+Female_HRs_compiled <- Female_HRs_compiled %>% mutate(Telem_years = case_when(Hab_zone=="Boreal" ~ "2005-2009",
+                                                                              Hab_zone=="Sub-Boreal moist" ~ "1996-2000",
+                                                                              Hab_zone=="Sub-Boreal dry" ~ "1990-1993",
+                                                                              Hab_zone=="Dry Forest" ~ "2005-2009"))
+# to clip VRI, export HR shapefiles by Hab_zone
+# st_write(Female_HRs_compiled %>% filter(Hab_zone=="Boreal"), paste0(getwd(),"/data/Female_HRs_Boreal.shp"), delete_layer=TRUE)
+# st_write(Female_HRs_compiled %>% filter(Hab_zone=="Sub-Boreal moist"), paste0(getwd(),"/data/Female_HRs_SBM.shp"), delete_layer=TRUE)
+# st_write(Female_HRs_compiled %>% filter(Hab_zone=="Sub-Boreal dry"), paste0(getwd(),"/data/Female_HRs_SBD.shp"), delete_layer=TRUE)
+# st_write(Female_HRs_compiled %>% filter(Hab_zone=="Dry Forest"), paste0(getwd(),"/data/Female_HRs_Dry.shp"), delete_layer=TRUE)
 
 Hab_zone <- unique(Female_HRs_compiled$Hab_zone)
+
 
 #####################################################################################
 ###--- CREATE AGGREGATED RASTER STACK OF FETA VALUES
@@ -190,6 +203,8 @@ FHEzone_rasterstack_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, Hab_r
 
   return(Hab_raster_cropped)
 }
+
+# need to check if normally distributed and then log if not - or just check in with Rich on
 
 Hab_rasters <- list()
 for(i in 1:length(Hab_zone)){
@@ -271,6 +286,7 @@ for(i in 1:length(Hab_rasters)){
 options(scipen = 1)
 plot(D2_rasters[[3]]) # because using all the data, looks like the higher D2 is reflective or what might be good habitat..i.e., what comprises most of the area (is this a flip from how it would be if using home ranges to quantify)
 
+
 ### Now create Fisher Habitat Extension Zone specific home range raster stacks
 # create function and loop it over Hab_zone
 
@@ -289,7 +305,7 @@ HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, D2_raster=D2_raster
 
   D2_raster_cropped <- list()
   for(i in 1:nrow(FHR)){
-    D2_raster_cropped[[i]] <- raster::mask(D2_raster, FHR[i,], maskvaue=TRUE) # add 1 km buffer area around extent)
+    D2_raster_cropped[[i]] <- raster::mask(D2_raster, FHR[i,], maskvalue=TRUE) # add 1 km buffer area around extent)
   }
 
   # habitat and D2 values for each HR
@@ -364,6 +380,7 @@ HR_D2_perzone[[i]] <- HR_D2_function(HRsfobj=Female_HRs_compiled, FHEzone=Hab_zo
 }
 
 saveRDS(HR_D2_perzone,"HR_D2_perzone.Rda")
+
 # readRDS("HR_D2_perzone.Rda")
 ################################################################################
 ###--- Now compare to Rich's vector D2 data
@@ -495,37 +512,3 @@ dev.off()
 Cairo(file="out/FHE_Dry_rD2_plot.PNG",type="png",width=4000,height=4000,pointsize=20,bg="white",dpi=300)
 plot(HR_D2_perzone[[4]]$D2_HR_raster)
 dev.off()
-
-
-################################################################################
-###--- Now build home range 'clusters' and run them with Mahal
-# https://www.r-bloggers.com/2021/03/clustering-similar-spatial-patterns/
-
-# library(motif)
-# library(stars)
-
-plot(D2_rasters[[1]]) # 8800 km2
-8800/30 # potential for ~290 fisher territories if ave size = 30 km2
-test <- st_as_stars(D2_rasters[[1]][[1]],D2_rasters[[1]][[2]],D2_rasters[[1]][[3]],D2_rasters[[1]][[4]])
-
-# ?lsp_signature
-test_signature = lsp_signature(test,
-                              type = "coma", #co-occurence matrix
-                              window = 10)
-
-test_dist = lsp_to_dist(test_signature, dist_fun="jensen-shannon")
-
-test_hclust = hclust(test_dist, method = "ward.D2")
-plot(test_hclust)
-
-
-clusters = cutree(test_hclust, k = 4)
-test_grid_sf = lsp_add_clusters(test_signature,clusters)
-test_grid_sf %>% count(clust)
-
-ggplot()+
-  geom_sf(data=test_grid_sf, aes(fill=clust))
-
-# https://www.r-bloggers.com/2021/02/finding-similar-spatial-patterns/
-# maybe better to use the home range polygons to then find the spatial patterns in the landscape
-#
