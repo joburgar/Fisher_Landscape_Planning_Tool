@@ -76,9 +76,15 @@ VRI_aoi_raster <- function(FHEzone=FHEzone, Raster_Dir=Raster_Dir){
 
   FHEZraster_stack = stack(rFHEZ_list)
 
+  # creating additive raster layer (additive)
+  # thinking about cost layer options - perhaps covariance matrix or correlation matrix
+  # but so few overlapping pixels maybe additive is just as good?
+  rCost <- stackApply(FHEZraster_stack, indices=1, fun=sum)
+
+  FHEZraster_stack <- stack(FHEZraster_stack, rCost)
+
   stack.names.to.use <- word(rFHEZ_HR,3,sep="_")
-  names(FHEZraster_stack) <- stack.names.to.use
-  # plot(FHEZraster_stack)
+  names(FHEZraster_stack) <- c(stack.names.to.use,"cost")
 
   return(FHEZraster_stack)
 }
@@ -104,24 +110,34 @@ HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, rStack_aoi=rStack_a
   ### Create a list with raster stacks of habitat values for each HR
   # length of list is number of HR
   # for each HR, raster stack of habitat rasters, specific to HR but same extent as aoi
+  rStack_aoi <- dropLayer(rStack_aoi,5)
+
   raster_cropped <- list()
   for(i in 1:nrow(FHR)){
     rTMP <- list()
     for(t in 1:nlayers(rStack_aoi)){
       rTMP[[t]] <- mask(rFHR[[i]], rStack_aoi[[t]])
     }
+
     rTMP_stack <- stack(rTMP)
     rTMP_stack <- crop(rTMP_stack, FHR[i,])
-    names(rTMP_stack) <- paste(names(rFHR[[i]]),names(rStack_aoi),sep="_")
-    raster_cropped[[i]] <- rTMP_stack
-  }
 
+    rCost <- stackApply(rTMP_stack, indices=1, fun=sum)
+    rTMP_stack <- stack(rTMP_stack, rCost)
+
+    stack.names.to.use <- c(names(rStack_aoi),"cost")
+    names(rTMP_stack) <- stack.names.to.use
+
+    names(rTMP_stack) <- paste(names(rFHR[[i]]), stack.names.to.use, sep="_")
+    raster_cropped[[i]] <- rTMP_stack
+
+  }
 
   ### Run Mahalanobis distance for each HR
   # delete the rows with NAs for each habitat feature
   # include the transformations to deal with non-normal data (although note it doesn't totally fix normality)
 
-  HR_Hab_D2 <- as.data.frame(matrix(NA,nrow=length(raster_cropped),ncol=2*nlayers(raster_cropped[[1]])+1))
+  HR_Hab_D2 <- as.data.frame(matrix(NA,nrow=length(raster_cropped),ncol=2*nlayers(raster_cropped[[1]])-1))
   if(ncol(HR_Hab_D2)==9){
     colnames(HR_Hab_D2) <- c("Branch_sum","CWD_sum", "Denning_sum","Movement_sum","Total_Area_ha",
                              "Branch_prop","CWD_prop", "Denning_prop","Movement_prop")
@@ -133,13 +149,19 @@ HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, rStack_aoi=rStack_a
   HR_Hab_D2$HR <- FHR$SA_F_ID
 
   for(i in 1:nrow(HR_Hab_D2)){
-    hab_sums <- colSums(raster_cropped[[i]]@data@values, na.rm=T)
-    total_area <- sum(rFHR[[i]]@data@values)
+    hab_sums <- cellStats(raster_cropped[[i]], stat="sum", na.rm=T)
+    total_area <- cellStats(rFHR[[i]], stat="sum", na.rm=T)
     hab_prop <- hab_sums/total_area
 
-    HR_Hab_D2[i,1:4] <- hab_sums
-    HR_Hab_D2[i,5] <- total_area
-    HR_Hab_D2[i,6:9] <- hab_prop
+    if(ncol(HR_Hab_D2)==10){
+      HR_Hab_D2[i,1:4] <- hab_sums[1:4]
+      HR_Hab_D2[i,5] <- total_area
+      HR_Hab_D2[i,6:9] <- hab_prop[1:4]
+    } else {
+      HR_Hab_D2[i,1:5] <- hab_sums[1:5]
+      HR_Hab_D2[i,6] <- total_area
+      HR_Hab_D2[i,7:10] <- hab_prop[1:5]
+    }
   }
 
   D2_inputs <- HR_Hab_D2 %>% dplyr::select(ends_with(("prop")))
@@ -166,14 +188,63 @@ HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, rStack_aoi=rStack_a
 
 }
 
-
 HR_BOR_raster_D2 <- HR_D2_function(HRsfobj=Female_HRs_Boreal, FHEzone="Boreal", rStack_aoi=BOR_aoi_raster)
-plot(HR_BOR_raster_D2$rFHR)
+plot(HR_BOR_raster_D2$raster_cropped[[1]])
 HR_BOR_raster_D2$HR_Hab_D2
+
+plot(BOR_aoi_raster$cost)
+
+# to plot, convert raster to df
+BOR_aoi_raster_df <- as.data.frame(BOR_aoi_raster, xy = TRUE)
+head(BOR_aoi_raster_df)
+
+(g_BOR_cost_map <- ggplot(data = BOR_aoi_raster_df) +
+    geom_raster(aes(x = x, y = y, fill = `cost`)) +
+    geom_sf(data = Female_HRs_Boreal, fill=NA, lwd=1, color="white") +
+    scale_fill_viridis_c() +
+    theme_void() +
+    theme(legend.position = "bottom"))
+
+# check for normality on post-transformed data
+# D2_inputs_names <- names(D2_inputs)
+# D2_inputs %>% shapiro_test(D2_inputs_names)
+
+D2 <- mahalanobis(D2_inputs, colMeans(D2_inputs),cov(D2_inputs))
+HR_Hab_D2$D2 <- D2
 
 HR_DRY_raster_D2 <- HR_D2_function(HRsfobj=Female_HRs_Dry, FHEzone="Dry Forest", rStack_aoi=DRY_aoi_raster)
 HR_DRY_raster_D2$HR_Hab_D2
+# to plot, convert raster to df
+DRY_aoi_raster_df <- as.data.frame(DRY_aoi_raster, xy = TRUE)
+head(DRY_aoi_raster_df)
+
+(g_DRY_cost_map <- ggplot(data = DRY_aoi_raster_df) +
+    geom_raster(aes(x = x, y = y, fill = `cost`)) +
+    geom_sf(data = Female_HRs_Dry, fill=NA, lwd=1, color="white") +
+    scale_fill_viridis_c() +
+    theme_void() +
+    theme(legend.position = "bottom"))
 
 
-
+# checking out options for cost layer...very little overlap so perhaps no reason to do anything but additive
 # try  using covariance matrix (Mahal) as weighting tool, conditional on raster layer input
+D2_inputs <- HR_BOR_raster_D2$HR_Hab_D2 %>% dplyr::select(ends_with(("prop")))
+D2_inputs$Branch_prop <- log(D2_inputs$Branch_prop+1)
+cor(D2_inputs)
+
+
+# habitat and D2 values for each HR
+D2_tmp_values <- matrix(NA,nrow=length(HR_BOR_raster_D2$raster_cropped[[1]]),ncol=nlayers(HR_BOR_raster_D2$raster_cropped[[1]]))
+for(i in 1:nlayers(HR_BOR_raster_D2$raster_cropped[[1]])){
+  D2_tmp_values[,i] <- HR_BOR_raster_D2$raster_cropped[[1]][[i]]@data@values
+}
+
+# subset to where at least movement (most number of pixels) has an input value
+D2_tmp2 <- D2_tmp_values[complete.cases(D2_tmp_values[,4]),]
+D2_tmp2[is.na(D2_tmp2)] <-0 # change all NAs to 0s
+
+sum(rowSums(D2_tmp2)==4)
+sum(rowSums(D2_tmp2)==3)
+sum(rowSums(D2_tmp2)==2)
+sum(rowSums(D2_tmp2)==1)
+length(D2_tmp2)
