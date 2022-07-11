@@ -90,7 +90,11 @@ VRI_aoi_raster <- function(FHEzone=FHEzone, Raster_Dir=Raster_Dir){
 }
 
 BOR_aoi_raster <- VRI_aoi_raster(FHEzone="Boreal", Raster_Dir=VRI2008_Dir)
+writeRaster(BOR_aoi_raster, file="out/BOR_aoi_raster.tif", bylayer=TRUE, overwrite=TRUE)
+
 DRY_aoi_raster <- VRI_aoi_raster(FHEzone="Dry", Raster_Dir=VRI2008_Dir)
+writeRaster(DRY_aoi_raster, file="out/DRY_aoi_raster.tif", bylayer=TRUE, overwrite=TRUE)
+plot(raster("out/DRY_aoi_raster_5.tif"))
 
 HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, rStack_aoi=rStack_aoi){
   # home ranges overlap each other - need to create rasters for each home range and stack them
@@ -189,10 +193,11 @@ HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, rStack_aoi=rStack_a
 }
 
 HR_BOR_raster_D2 <- HR_D2_function(HRsfobj=Female_HRs_Boreal, FHEzone="Boreal", rStack_aoi=BOR_aoi_raster)
+
 plot(HR_BOR_raster_D2$raster_cropped[[1]])
 HR_BOR_raster_D2$HR_Hab_D2
+write.csv(HR_BOR_raster_D2$HR_Hab_D2, "out/HR_BOR_Hab_D2.csv")
 
-plot(BOR_aoi_raster$cost)
 
 # to plot, convert raster to df
 BOR_aoi_raster_df <- as.data.frame(BOR_aoi_raster, xy = TRUE)
@@ -214,6 +219,8 @@ HR_Hab_D2$D2 <- D2
 
 HR_DRY_raster_D2 <- HR_D2_function(HRsfobj=Female_HRs_Dry, FHEzone="Dry Forest", rStack_aoi=DRY_aoi_raster)
 HR_DRY_raster_D2$HR_Hab_D2
+write.csv(HR_DRY_raster_D2$HR_Hab_D2, "out/HR_DRY_Hab_D2.csv")
+
 # to plot, convert raster to df
 DRY_aoi_raster_df <- as.data.frame(DRY_aoi_raster, xy = TRUE)
 head(DRY_aoi_raster_df)
