@@ -125,9 +125,14 @@ ggplot()+
   geom_sf(data=Female_HRs_compiled, aes(fill=SA_Fisher_ID))+
   scale_fill_viridis_d(option="D", alpha=0.7) # alpha does the transparency
 
-Female_HRs_compiled %>% group_by(Fpop, Hab_zone) %>% summarise_at(vars(Area_km2), list(Min=min, Mean=mean, Max=max, SE=se)) %>% st_drop_geometry()
+Female_HRs_compiled %>% filter(!grepl("SiteC",SA_Fisher_ID)) %>% group_by(Fpop, Hab_zone) %>% summarise_at(vars(Area_km2), list(Min=min, Mean=mean, Max=max, SE=se)) %>% st_drop_geometry()
+
 Female_HRs_compiled %>% count(Fpop, Hab_zone) %>% st_drop_geometry()
 Female_HRs_compiled %>% dplyr::select(Hab_zone, SA_Fisher_ID) %>% st_drop_geometry
+
+
+Female_HRs_compiled %>% filter(Hab_zone=="Boreal") %>% filter(grepl("SiteC",SA_Fisher_ID)) %>% st_drop_geometry()
+
 
 Female_HRs_compiled %>% filter(Hab_zone=="Boreal") %>% count(SA_Fisher_ID) %>% st_drop_geometry()
 Female_HRs_compiled <- Female_HRs_compiled %>% mutate(Telem_years = case_when(Hab_zone=="Boreal" ~ "2005-2009",
