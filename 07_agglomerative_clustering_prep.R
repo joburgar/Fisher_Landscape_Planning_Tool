@@ -41,9 +41,24 @@ lapply(list.of.packages, require, character.only = TRUE)
 
 Female_HRs_Boreal <- st_read(dsn=paste0(getwd(),"/data"),layer="Female_HRs_Boreal")
 Female_HRs_Boreal <- Female_HRs_Boreal %>% filter(grepl("KPF",SA_F_ID))
+hist(Female_HRs_Boreal$Are_km2)
+sort(Female_HRs_Boreal$Are_km2)
+summary(Female_HRs_Boreal$Are_km2)
+
 Female_HRs_SBM <- st_read(dsn=paste0(getwd(),"/data"),layer="Female_HRs_SBM")
+hist(Female_HRs_SBM$Are_km2)
+sort(Female_HRs_SBM$Are_km2)
+summary(Female_HRs_SBM$Are_km2)
+
 Female_HRs_SBD <- st_read(dsn=paste0(getwd(),"/data"),layer="Female_HRs_SBD")
+hist(Female_HRs_SBD$Are_km2)
+sort(Female_HRs_SBD$Are_km2)
+summary(Female_HRs_SBD$Are_km2)
+
 Female_HRs_Dry <- st_read(dsn=paste0(getwd(),"/data"),layer="Female_HRs_Dry")
+hist(Female_HRs_Dry$Are_km2)
+sort(Female_HRs_Dry$Are_km2)
+summary(Female_HRs_Dry$Are_km2)
 
 ggplot()+
   geom_sf(data = Female_HRs_Boreal, fill="black") +
@@ -55,13 +70,14 @@ ggplot()+
 ###--- BRING IN HISTORIC VRI TO MATCH WITH HR AOIs
 #####################################################################################
 
+VRI2002_Dir <- "//spatialfiles.bcgov/Work/wlap/sry/Workarea/jburgar/Fisher_rasters/2002/"
 VRI2008_Dir <- "//spatialfiles.bcgov/Work/wlap/sry/Workarea/jburgar/Fisher_rasters/2008/"
-tif.files <- list.files(VRI2008_Dir, pattern="\\.tif$")
+# tif.files <- list.files(VRI2008_Dir, pattern="\\.tif$")
 
 # bring in fisher habitat data - necessary for Mahalanobis
 VRI_aoi_raster <- function(FHEzone=FHEzone, Raster_Dir=Raster_Dir){
-  # FHEzone = "Dry"
-  # Raster_Dir = VRI2008_Dir
+  # FHEzone = "SBD"
+  # Raster_Dir = VRI2002_Dir
 
   rFiles = list.files(Raster_Dir, pattern="\\.tif$")
   rFHEZ <- rFiles[grepl(FHEzone, rFiles)]
@@ -70,31 +86,85 @@ VRI_aoi_raster <- function(FHEzone=FHEzone, Raster_Dir=Raster_Dir){
   rFHEZ_list=list()
   for(i in 1:length(rFHEZ_HR)){
     rFHEZ_list[[i]] <- raster(paste0(Raster_Dir,rFHEZ_HR[i]))
-    # rTMP[is.na(rTMP[])] <- 0
-    # rFHEZ_list[[i]] <- rTMP
   }
 
   FHEZraster_stack = stack(rFHEZ_list)
 
   # creating additive raster layer (additive)
-  # thinking about cost layer options - perhaps covariance matrix or correlation matrix
-  # but so few overlapping pixels maybe additive is just as good?
-  rCost <- stackApply(FHEZraster_stack, indices=1, fun=sum)
+  # rCostadd # additive layer, equal weight
+  rCostadd <- sum(FHEZraster_stack, na.rm = T)
+  # plot(rCostadd)
 
-  FHEZraster_stack <- stack(FHEZraster_stack, rCost)
+  # rCostmult # multiplicative layer, resting hab all gets a 1, denning and movement are 3 and 2, respectively
+  # need to add in if statement to account for cavity in SBD and SBM
+  # to deal with the 4 vs 5 habitat characteristics per FHEzone, need to add if statement on number of raster layers
+  if(length(rFHEZ_list)==4){
+    denning <- rFHEZ_list[[3]]
+  } else {
+    denning <- rFHEZ_list[[4]]
+  }
+  denning[denning ==1] <- 3
+
+  if(length(rFHEZ_list)==4){
+    movement <- rFHEZ_list[[4]]
+  } else {
+    movement <- rFHEZ_list[[5]]
+  }
+  movement[movement==1] <- 2
+
+  if(length(rFHEZ_list)==4){
+    tmpstack <- stack(rFHEZ_list[[1]],rFHEZ_list[[2]], denning, movement)
+  } else {
+    tmpstack <- stack(rFHEZ_list[[1]],rFHEZ_list[[2]], rFHEZ_list[[3]], denning, movement)
+  }
+
+  rCostmult <-prod(tmpstack, na.rm=T)
+  # plot(rCostmult)
+
+  FHEZraster_stack <- stack(FHEZraster_stack, rCostadd, rCostmult)
 
   stack.names.to.use <- word(rFHEZ_HR,3,sep="_")
-  names(FHEZraster_stack) <- c(stack.names.to.use,"cost")
+  names(FHEZraster_stack) <- c(stack.names.to.use,"costAdd","costMult")
+  # plot(FHEZraster_stack[[6:7]])
 
   return(FHEZraster_stack)
 }
 
 BOR_aoi_raster <- VRI_aoi_raster(FHEzone="Boreal", Raster_Dir=VRI2008_Dir)
 writeRaster(BOR_aoi_raster, file="out/BOR_aoi_raster.tif", bylayer=TRUE, overwrite=TRUE)
+plot(raster("out/BOR_aoi_raster_5.tif"))
 
 DRY_aoi_raster <- VRI_aoi_raster(FHEzone="Dry", Raster_Dir=VRI2008_Dir)
 writeRaster(DRY_aoi_raster, file="out/DRY_aoi_raster.tif", bylayer=TRUE, overwrite=TRUE)
 plot(raster("out/DRY_aoi_raster_5.tif"))
+
+SBD_aoi_raster <- VRI_aoi_raster(FHEzone="SBD", Raster_Dir=VRI2002_Dir)
+writeRaster(SBD_aoi_raster, file="out/SBD_aoi_raster.tif", bylayer=TRUE, overwrite=TRUE)
+plot(raster("out/SBD_aoi_raster_6.tif"))
+plot(raster("out/SBD_aoi_raster_7.tif"))
+
+SBM_aoi_raster <- VRI_aoi_raster(FHEzone="SBM", Raster_Dir=VRI2002_Dir)
+writeRaster(SBM_aoi_raster, file="out/SBM_aoi_raster.tif", bylayer=TRUE, overwrite=TRUE)
+plot(raster("out/SBM_aoi_raster_6.tif"))
+plot(raster("out/SBM_aoi_raster_7.tif"))
+colSums(SBM_aoi_raster, na.rm=T)
+
+# to plot, convert raster to df
+SBM_aoi_raster_df <- as.data.frame(SBM_aoi_raster, xy = TRUE)
+head(SBM_aoi_raster_df)
+options(scipen = 10)
+colSums(SBM_aoi_raster_df, na.rm=T)
+SBM_aoi_raster_df %>%
+  # filter(costAdd!=0) %>%
+  count(costAdd, costMult)
+
+(g_BOR_cost_map <- ggplot(data = SBM_aoi_raster_df) +
+    geom_raster(aes(x = x, y = y, fill = `cost`)) +
+    geom_sf(data = Female_HRs_Boreal, fill=NA, lwd=1, color="white") +
+    scale_fill_viridis_c() +
+    theme_void() +
+    theme(legend.position = "bottom"))
+
 
 HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, rStack_aoi=rStack_aoi){
   # home ranges overlap each other - need to create rasters for each home range and stack them
