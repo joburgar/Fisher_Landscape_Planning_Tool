@@ -24,7 +24,7 @@ tz = Sys.timezone() # specify timezone in BC
 
 # Load Packages
 list.of.packages <- c("tidyverse", "lubridate","bcdata", "sf", "rgdal","nngeo","raster",
-                      "viridis","Cairo","PNWColors","units","rstatix")
+                      "viridis","Cairo","PNWColors","units","rstatix","stars")
 
 # Check you have them and load them
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
@@ -165,7 +165,57 @@ SBM_aoi_raster_df %>%
     theme_void() +
     theme(legend.position = "bottom"))
 
+test <- raster("out/test.tif")
+plot(test)
+# to plot, convert raster to df
+test_df <- as.data.frame(test, xy = TRUE)
+head(test_df)
 
+(g_BOR_cost_map <- ggplot(data = test_df) +
+    geom_raster(aes(x = x, y = y, fill = `test`)) +
+    geom_sf(data = Female_HRs_Boreal, fill=NA, lwd=1, color="white") +
+    scale_fill_viridis_c() +
+    theme_void() +
+    theme(legend.position = "bottom"))
+
+test_multi <- raster("out/dry_test.tif")
+plot(test_multi)
+# to plot, convert raster to df
+test_multi_df <- as.data.frame(test_multi, xy = TRUE)
+head(test_multi_df)
+
+(g_DRY_cost_map <- ggplot(data = test_multi_df) +
+    geom_raster(aes(x = x, y = y, fill = `dry_test`)) +
+    geom_sf(data = Female_HRs_Dry, fill=NA, lwd=1, color="white") +
+    scale_fill_viridis_c() +
+    # theme_void() +
+    theme(legend.position = "bottom"))
+
+(g_BOR_cost_map <- ggplot(data = test_multi_df) +
+    geom_raster(aes(x = x, y = y, fill = `test_multi_dt`)) +
+    geom_sf(data = Female_HRs_Boreal, fill=NA, lwd=1, color="white") +
+    scale_fill_viridis_c() +
+    theme_void() +
+    theme(legend.position = "bottom"))
+
+test_multi <- read_stars("out/dry_test.tif", package="stars")
+
+multi_poly <- st_as_sf(test_multi, as_points=FALSE, merge=TRUE) %>% st_transform(3005)
+colnames(multi_poly)[1] <- "Polygon_ID"
+multi_poly$Area_km2 <- st_area(multi_poly)*1e-6
+multi_poly <- drop_units(multi_poly)
+summary(multi_poly$Area_km2)
+
+# multi_poly$HR_id <- as.numeric(rownames(multi_poly))
+multi_poly$SA_F_ID <- paste0("HRId_",rownames(multi_poly))
+multi_poly$Hab_zon <- "Dry Forest"
+glimpse(multi_poly)
+
+ggplot()+
+  geom_sf(data=multi_poly, aes(fill=Polygon_ID))
+
+
+######################################################################################
 HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, rStack_aoi=rStack_aoi){
   # home ranges overlap each other - need to create rasters for each home range and stack them
 
@@ -184,7 +234,11 @@ HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, rStack_aoi=rStack_a
   ### Create a list with raster stacks of habitat values for each HR
   # length of list is number of HR
   # for each HR, raster stack of habitat rasters, specific to HR but same extent as aoi
-  rStack_aoi <- dropLayer(rStack_aoi,5)
+  if(nlayers(rStack_aoi)==6){
+    rStack_aoi <- dropLayer(rStack_aoi,c(5,6))
+  } else {
+    rStack_aoi <- dropLayer(rStack_aoi,c(6,7))
+  }
 
   raster_cropped <- list()
   for(i in 1:nrow(FHR)){
@@ -261,6 +315,48 @@ HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, rStack_aoi=rStack_a
   return(list(rFHR=rFHR, raster_cropped=raster_cropped, HR_Hab_D2=HR_Hab_D2))
 
 }
+
+HR_DRY_multi_D2 <- HR_D2_function(HRsfobj=multi_poly %>% filter(Area_km2>10), FHEzone="Dry Forest", rStack_aoi=DRY_aoi_raster)
+summary(HR_DRY_multi_D2$HR_Hab_D2$D2)
+
+HR_BOR_multi_D2 <- HR_D2_function(HRsfobj=multi_poly %>% filter(Area_km2>10), FHEzone="Boreal", rStack_aoi=BOR_aoi_raster)
+write.csv(HR_BOR_multi_D2$HR_Hab_D2, "out/HR_BOR_multi_D2.csv")
+summary(HR_BOR_multi_D2$HR_Hab_D2$D2)
+HR_BOR_multi_hab_D2 <- read.csv("out/HR_BOR_multi_D2.csv", row.names=1)
+
+# HR_BOR_multi_hab_D2 <- HR_BOR_multi_hab_D2 %>% filter(Total_Area_ha>1000)
+# D2_inputs <- HR_BOR_multi_hab_D2 %>% dplyr::select(ends_with(("prop")))
+# D2_inputs$Branch_prop <- log(D2_inputs$Branch_prop+1)
+# D2 <- mahalanobis(D2_inputs, colMeans(D2_inputs),cov(D2_inputs))
+# HR_BOR_multi_hab_D2$D2_new <- D2
+
+multi_poly$D2 <- HR_BOR_multi_D2$HR_Hab_D2$D2[match(multi_poly$SA_F_ID, HR_BOR_multi_D2$HR_Hab_D2$HR)]
+multi_poly$D2 <- HR_DRY_multi_D2$HR_Hab_D2$D2[match(multi_poly$SA_F_ID, HR_DRY_multi_D2$HR_Hab_D2$HR)]
+
+summary(multi_poly$D2)
+hist(multi_poly$Area_km2)
+multi_poly %>% filter(Area_km2>20)
+multi_poly <- multi_poly %>% st_transform(crs=3005)
+
+ggplot()+
+  geom_sf(data=multi_poly %>% filter(D2<10), fill="lightblue") +
+  geom_sf(data=multi_poly %>% filter(D2<5), fill="darkblue")
+
+hist(HR_BOR_multi_D2$HR_Hab_D2$D2)
+hist(HR_DRY_multi_D2$HR_Hab_D2$D2)
+
+ggplot()+
+  geom_sf(data=multi_poly %>% filter(!is.na(D2)), aes(fill=D2)) # not projecting properly...
+  # geom_sf(data = Female_HRs_Boreal, fill=NA, lwd=1, color="white")
+  # geom_sf(data = Female_HRs_Dry, fill=NA, lwd=1, color="white")
+
+
+sort(D2)
+summary(D2)
+length(D2)
+nrow(HR_BOR_multi_hab_D2)
+multi_poly
+
 
 HR_BOR_raster_D2 <- HR_D2_function(HRsfobj=Female_HRs_Boreal, FHEzone="Boreal", rStack_aoi=BOR_aoi_raster)
 
