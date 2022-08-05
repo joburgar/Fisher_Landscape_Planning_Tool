@@ -43,22 +43,26 @@ Female_HRs_Boreal <- st_read(dsn=paste0(getwd(),"/data"),layer="Female_HRs_Borea
 Female_HRs_Boreal <- Female_HRs_Boreal %>% filter(grepl("KPF",SA_F_ID))
 hist(Female_HRs_Boreal$Are_km2)
 sort(Female_HRs_Boreal$Are_km2)
-summary(Female_HRs_Boreal$Are_km2)
+summary(Female_HRs_Boreal[Female_HRs_Boreal$Are_km2<80,]$Are_km2)
+# rpois(n=1, lambda=29)
+
 
 Female_HRs_SBM <- st_read(dsn=paste0(getwd(),"/data"),layer="Female_HRs_SBM")
 hist(Female_HRs_SBM$Are_km2)
 sort(Female_HRs_SBM$Are_km2)
-summary(Female_HRs_SBM$Are_km2)
+summary(Female_HRs_SBM[Female_HRs_SBM$Are_km2<80,]$Are_km2)
 
 Female_HRs_SBD <- st_read(dsn=paste0(getwd(),"/data"),layer="Female_HRs_SBD")
-hist(Female_HRs_SBD$Are_km2)
+hist(Female_HRs_SBD$Are_km2, breaks=10)
 sort(Female_HRs_SBD$Are_km2)
-summary(Female_HRs_SBD$Are_km2)
+summary(Female_HRs_SBD[Female_HRs_SBD$Are_km2<80,]$Are_km2)
+sd(Female_HRs_SBD[Female_HRs_SBD$Are_km2<80,]$Are_km2)
 
 Female_HRs_Dry <- st_read(dsn=paste0(getwd(),"/data"),layer="Female_HRs_Dry")
-hist(Female_HRs_Dry$Are_km2)
+hist(Female_HRs_Dry$Are_km2, breaks=10)
 sort(Female_HRs_Dry$Are_km2)
-summary(Female_HRs_Dry$Are_km2)
+summary(Female_HRs_Dry[Female_HRs_Dry$Are_km2<80,]$Are_km2)
+sd(Female_HRs_Dry$Are_km2)
 
 ggplot()+
   geom_sf(data = Female_HRs_Boreal, fill="black") +
@@ -250,10 +254,19 @@ HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, rStack_aoi=rStack_a
     rTMP_stack <- stack(rTMP)
     rTMP_stack <- crop(rTMP_stack, FHR[i,])
 
-    rCost <- stackApply(rTMP_stack, indices=1, fun=sum)
-    rTMP_stack <- stack(rTMP_stack, rCost)
+    if(nlayers(rTMP_stack)==4){
+      rRest <- stackApply(rTMP_stack[[1:2]], indices=1, fun=min)
+      rDM <- stackApply(rTMP_stack[[3:4]], indices=1, fun=sum)
+    } else {
+      rRest <- stackApply(rTMP_stack[[1:3]], indices=1, fun=min)
+      rDM <- stackApply(rTMP_stack[[4:5]], indices=1, fun=sum)
+    }
 
-    stack.names.to.use <- c(names(rStack_aoi),"cost")
+    rCost <- stack(rRest, rDM)
+    rCost <- stackApply(rCost, indices=1, fun=sum)
+    rTMP_stack <- stack(rTMP_stack, rRest, rCost)
+
+    stack.names.to.use <- c(names(rStack_aoi),"Rest","cost")
     names(rTMP_stack) <- stack.names.to.use
 
     names(rTMP_stack) <- paste(names(rFHR[[i]]), stack.names.to.use, sep="_")
@@ -265,34 +278,38 @@ HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, rStack_aoi=rStack_a
   # delete the rows with NAs for each habitat feature
   # include the transformations to deal with non-normal data (although note it doesn't totally fix normality)
 
-  HR_Hab_D2 <- as.data.frame(matrix(NA,nrow=length(raster_cropped),ncol=2*nlayers(raster_cropped[[1]])-1))
-  if(ncol(HR_Hab_D2)==9){
-    colnames(HR_Hab_D2) <- c("Branch_sum","CWD_sum", "Denning_sum","Movement_sum","Total_Area_ha",
-                             "Branch_prop","CWD_prop", "Denning_prop","Movement_prop")
+  HR_Hab_D2 <- as.data.frame(matrix(NA,nrow=length(raster_cropped),ncol=2*nlayers(raster_cropped[[1]])+1))
+  if(ncol(HR_Hab_D2)==13){
+    colnames(HR_Hab_D2) <- c("Branch_sum","CWD_sum", "Denning_sum","Movement_sum","Rest_sum","Hab_sum","Total_Area_ha",
+                             "Branch_prop","CWD_prop", "Denning_prop","Movement_prop","Rest_prop","Hab_prop")
   } else {
-    colnames(HR_Hab_D2) <- c("Branch_sum","CWD_sum", "Denning_sum","Movement_sum","Cavity_sum","Total_Area_ha",
-                             "Branch_prop","CWD_prop", "Denning_prop","Movement_prop","Cavity_prop")
+    colnames(HR_Hab_D2) <- c("Branch_sum","Cavity_sum","CWD_sum", "Denning_sum","Movement_sum","Rest_sum","Hab_sum","Total_Area_ha",
+                             "Branch_prop","Cavity_prop","CWD_prop", "Denning_prop","Movement_prop","Rest_prop","Hab_prop")
   }
 
   HR_Hab_D2$HR <- FHR$SA_F_ID
 
+
   for(i in 1:nrow(HR_Hab_D2)){
+    cost_layer <- nlayers(raster_cropped[[i]])
+    values(raster_cropped[[i]][[cost_layer]])[values(raster_cropped[[i]][[cost_layer]]) > 0] = 1
+
     hab_sums <- cellStats(raster_cropped[[i]], stat="sum", na.rm=T)
     total_area <- cellStats(rFHR[[i]], stat="sum", na.rm=T)
     hab_prop <- hab_sums/total_area
 
-    if(ncol(HR_Hab_D2)==10){
-      HR_Hab_D2[i,1:4] <- hab_sums[1:4]
-      HR_Hab_D2[i,5] <- total_area
-      HR_Hab_D2[i,6:9] <- hab_prop[1:4]
+    if(ncol(HR_Hab_D2)==14){
+      HR_Hab_D2[i,1:6] <- hab_sums[1:6]
+      HR_Hab_D2[i,7] <- total_area
+      HR_Hab_D2[i,8:13] <- hab_prop[1:6]
     } else {
-      HR_Hab_D2[i,1:5] <- hab_sums[1:5]
-      HR_Hab_D2[i,6] <- total_area
-      HR_Hab_D2[i,7:10] <- hab_prop[1:5]
+      HR_Hab_D2[i,1:7] <- hab_sums[1:7]
+      HR_Hab_D2[i,8] <- total_area
+      HR_Hab_D2[i,9:15] <- hab_prop[1:7]
     }
   }
 
-  D2_inputs <- HR_Hab_D2 %>% dplyr::select(ends_with(("prop")))
+  D2_inputs <- HR_Hab_D2 %>% dplyr::select(ends_with("prop")) %>% dplyr::select(-c("Hab_prop","Rest_prop"))
 
   if(FHEzone=="Dry Forest"|FHEzone=="Boreal"){
     D2_inputs$Branch_prop <- log(D2_inputs$Branch_prop+1)
@@ -316,6 +333,31 @@ HR_D2_function <- function(HRsfobj=HRsfobj, FHEzone=FHEzone, rStack_aoi=rStack_a
 
 }
 
+Female_HRs_Boreal$FHEzone = Female_HRs_Boreal$Hab_zon
+HR_BOR_D2 <- HR_D2_function(HRsfobj=Female_HRs_Boreal, FHEzone="Boreal", rStack_aoi=BOR_aoi_raster)
+HR_BOR_D2$HR_Hab_D2$FHE <- "Boreal"
+
+Female_HRs_Dry$FHEzone = Female_HRs_Dry$Hab_zon
+HR_DRY_D2 <- HR_D2_function(HRsfobj=Female_HRs_Dry, FHEzone="Dry Forest", rStack_aoi=DRY_aoi_raster)
+HR_DRY_D2$HR_Hab_D2$FHE <- "Dry Forest"
+
+Female_HRs_SBM$FHEzone = Female_HRs_SBM$Hab_zon
+HR_SBM_D2 <- HR_D2_function(HRsfobj=Female_HRs_SBM, FHEzone="Sub-Boreal moist", rStack_aoi=SBM_aoi_raster)
+HR_SBM_D2$HR_Hab_D2$FHE <- "Sub-Boreal moist"
+
+Female_HRs_SBD$FHEzone = Female_HRs_SBD$Hab_zon
+HR_SBD_D2 <- HR_D2_function(HRsfobj=Female_HRs_SBD, FHEzone="Sub-Boreal dry", rStack_aoi=SBD_aoi_raster)
+HR_SBD_D2$HR_Hab_D2$FHE <- "Sub-Boreal dry"
+
+
+HR_df <- bind_rows(HR_BOR_D2$HR_Hab_D2, HR_DRY_D2$HR_Hab_D2, HR_SBM_D2$HR_Hab_D2, HR_SBD_D2$HR_Hab_D2)
+HR_df[is.na(HR_df)] <- 0 # change NAs to 0 for cavity resting (Boreal and Dry)
+HR_df$Fpop <- ifelse(HR_df$FHE=="Boreal","Boreal","Columbian")
+
+write.csv(HR_df, "out/FHE_home_ranges_hab_D2.csv")
+
+
+######################################################################################
 HR_DRY_multi_D2 <- HR_D2_function(HRsfobj=multi_poly %>% filter(Area_km2>10), FHEzone="Dry Forest", rStack_aoi=DRY_aoi_raster)
 summary(HR_DRY_multi_D2$HR_Hab_D2$D2)
 
@@ -421,3 +463,55 @@ sum(rowSums(D2_tmp2)==3)
 sum(rowSums(D2_tmp2)==2)
 sum(rowSums(D2_tmp2)==1)
 length(D2_tmp2)
+
+#################################################################################
+###--- look at proportions of habitat for input parameter specification
+HR_df <- read.csv("out/FHE_home_ranges_hab_D2.csv", row.names=1)
+HR_df %>% as_tibble()
+
+HR_df %>% group_by(Fpop) %>% summarise(across(Hab_prop, list(min=min, mean=mean, max=max, sd=sd)))
+HR_df %>% group_by(Fpop) %>% summarise(across(Denning_prop, list(min=min, mean=mean, max=max, sd=sd)))
+HR_df %>% group_by(Fpop) %>% summarise(across(Movement_prop, list(min=min, mean=mean, max=max, sd=sd)))
+HR_df %>% group_by(Fpop) %>% summarise(across(Rest_prop, list(min=min, mean=mean, max=max, sd=sd)))
+
+HR_df %>% group_by(Fpop) %>% summarise(across(Denning_sum, list(min=min, mean=mean, max=max, sd=sd)))
+HR_df %>% group_by(Fpop) %>% summarise(across(Movement_sum, list(min=min, mean=mean, max=max, sd=sd)))
+HR_df %>% group_by(Fpop) %>% summarise(across(Rest_sum, list(min=min, mean=mean, max=max, sd=sd)))
+
+# plot(HR_df[HR_df$FHE=="Boreal",]$denning_prop ~ HR_df[HR_df$FHE=="Boreal",]$Total_Area_ha)
+# plot(HR_df[HR_df$FHE=="Sub-Boreal moist",]$denning_prop ~ HR_df[HR_df$FHE=="Sub-Boreal moist",]$Total_Area_ha)
+# plot(HR_df[HR_df$FHE=="Sub-Boreal dry",]$denning_prop ~ HR_df[HR_df$FHE=="Sub-Boreal dry",]$Total_Area_ha)
+# plot(HR_df[HR_df$FHE=="Dry Forest",]$denning_prop ~ HR_df[HR_df$FHE=="Dry Forest",]$Total_Area_ha)
+
+names(HR_df)
+HR_df %>% dplyr::select(-starts_with("D2"),-p)
+
+HR_sum_longer <- HR_df %>% dplyr::select(ends_with("sum"), FHE, SA_Fisher_ID, Total_Area_ha) %>%
+  pivot_longer(cols=ends_with("sum"), names_to="hab_char", values_to="sum_values")
+HR_sum_longer$hab_char <- str_replace(HR_sum_longer$hab_char, "_sum", "")
+
+HR_prop_longer <- HR_df %>% dplyr::select(ends_with("prop"),SA_Fisher_ID) %>%
+  pivot_longer(cols=ends_with("prop"), names_to="hab_char", values_to="prop_values")
+HR_prop_longer$hab_char <- str_replace(HR_prop_longer$hab_char, "_prop", "")
+
+HR_longer <- left_join(HR_sum_longer %>% filter(!grepl("D2",  hab_char)),
+                       HR_prop_longer %>% filter(!grepl("D2", hab_char)),
+                       by=c("SA_Fisher_ID", "hab_char"))
+
+
+Cairo(file=paste0("out/hab_vs_area_sum_plot.PNG"), type="png", width=4000, height=3000,pointsize=15,bg="white",dpi=300)
+ggplot(HR_longer %>% filter(Total_Area_ha<14000), aes(x=Total_Area_ha, y=sum_values, color=FHE))+
+  geom_point() +
+  geom_smooth(method=lm, se=TRUE, fullrange=TRUE)+
+  facet_wrap(~hab_char)+
+  # theme_classic()+
+  theme(legend.position = "bottom", legend.title =element_blank())
+dev.off()
+
+Cairo(file=paste0("out/hab_vs_area_prop_plot.PNG"), type="png", width=4000, height=3000,pointsize=15,bg="white",dpi=300)
+ggplot(HR_longer %>% filter(Total_Area_ha<14000), aes(x=Total_Area_ha, y=prop_values, color=FHE))+
+  geom_point() +
+  geom_smooth(method=lm, se=TRUE, fullrange=TRUE)+
+  facet_wrap(~hab_char)+
+  theme(legend.position = "bottom", legend.title =element_blank())
+dev.off()
