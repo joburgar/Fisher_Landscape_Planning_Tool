@@ -77,6 +77,25 @@ repro.CI <- cbind(drC, lsC, drB, lsB)
 rownames(repro.CI) <- c("mean", "sd", "L50CI", "U50CI")
 write.csv(as.data.frame(repro.CI), "data/repro_CI.csv")
 
+SD_from_meanCIn <- function(mean=mean, CI=c(LCI, UCI), n=n, alpha=0.05){
+  # SD = sqrt(n) * (UCI-LCI)/3.92 # assumes 95% CI (for 90% CI, should be 3.29 rather than 3.92)
+  degrees.freedom = n - 1
+  t.score = qt(p=alpha/2, df=degrees.freedom,lower.tail=F)
+  # print(t.score)
+
+  sample.SD <- sqrt(n) * (CI[2]-CI[1])/t.score
+  sample.SE <- sample.SD/(sqrt(n))
+
+  return(list(mean=mean, sample.SD=sample.SD, sample.SE=sample.SE))
+}
+
+CFA_surv <- SD_from_meanCIn(mean=0.79, CI=c(0.61, 0.97), n=30)
+CFJ_surv <- SD_from_meanCIn(mean=0.41, CI=c(0.06, 0.76), n=11)
+
+BFA_surv <- SD_from_meanCIn(mean=0.86, CI=c(0.69, 1.00), n=18)
+BFJ_surv <- SD_from_meanCIn(mean=0.54, CI=c(0.26, 1.00), n=11)
+
+
 ###--- SURVIVE
 # Have the fisher survive one time step depending on their age and cohort
 # Use the survival function output from Eric's latest survival analysis
