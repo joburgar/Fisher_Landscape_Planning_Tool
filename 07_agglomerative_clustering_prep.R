@@ -469,10 +469,36 @@ length(D2_tmp2)
 HR_df <- read.csv("out/FHE_home_ranges_hab_D2.csv", row.names=1)
 HR_df %>% as_tibble()
 
+HR_df %>% summarise(across(Total_Area_ha, list(mean=mean, sd=sd)))
+HR_mean_sd <- HR_df %>% group_by(FHE) %>% summarise(across(Total_Area_ha, list(mean=mean, sd=sd)))
+HR_mean_sd_km <- HR_mean_sd  %>% mutate_at(vars(-FHE), funs(. / 100))
+colnames(HR_mean_sd_km)[2:3] <- c("Mean_Area_km2","SD_Area_km2")
+write.csv(HR_mean_sd_km,"out/Fisher_HR_mean_sd_km.csv", row.names = F)
+
 HR_df %>% group_by(Fpop) %>% summarise(across(Hab_prop, list(min=min, mean=mean, max=max, sd=sd)))
+F_Hab_prop <- HR_df %>% summarise(across(Hab_prop, list(min=min, mean=mean, max=max, sd=sd)))
+F_Hab_prop$Hab_char <- "Hab_prop"
+
 HR_df %>% group_by(Fpop) %>% summarise(across(Denning_prop, list(min=min, mean=mean, max=max, sd=sd)))
+F_Den_prop <- HR_df %>% summarise(across(Denning_prop, list(min=min, mean=mean, max=max, sd=sd)))
+F_Den_prop$Hab_char <- "Denning_prop"
+
 HR_df %>% group_by(Fpop) %>% summarise(across(Movement_prop, list(min=min, mean=mean, max=max, sd=sd)))
+F_Mov_prop <- HR_df %>% summarise(across(Movement_prop, list(min=min, mean=mean, max=max, sd=sd)))
+F_Mov_prop$Hab_char <- "Movement_prop"
+
 HR_df %>% group_by(Fpop) %>% summarise(across(Rest_prop, list(min=min, mean=mean, max=max, sd=sd)))
+F_Rst_prop <- HR_df %>% summarise(across(Rest_prop, list(min=min, mean=mean, max=max, sd=sd)))
+F_Rst_prop$Hab_char <- "Resting_prop"
+
+
+colnames(F_Hab_prop)[1:4] <- c("Min","Mean","Max","SD")
+colnames(F_Den_prop)[1:4] <- c("Min","Mean","Max","SD")
+colnames(F_Mov_prop)[1:4] <- c("Min","Mean","Max","SD")
+colnames(F_Rst_prop)[1:4] <- c("Min","Mean","Max","SD")
+
+F_Hab_char <- rbind(F_Hab_prop,F_Den_prop,F_Mov_prop,F_Rst_prop)
+write.csv(F_Hab_char, "out/Fisher_Hab_char_prop.csv", row.names = F)
 
 HR_df %>% group_by(Fpop) %>% summarise(across(Denning_sum, list(min=min, mean=mean, max=max, sd=sd)))
 HR_df %>% group_by(Fpop) %>% summarise(across(Movement_sum, list(min=min, mean=mean, max=max, sd=sd)))
