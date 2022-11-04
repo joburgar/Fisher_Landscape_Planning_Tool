@@ -15,26 +15,68 @@
 # script to simulate Individual Based Model (IBM) spatial data for fisher
 # written by Joanna Burgar (Joanna.Burgar@gov.bc.ca) - 09-Dec-2021
 #####################################################################################
-version$major
-version$minor
-R_version <- paste0("R-",version$major,".",version$minor)
 
-.libPaths(paste0("C:/Program Files/R/",R_version,"/library")) # to ensure reading/writing libraries from C drive
-tz = Sys.timezone() # specify timezone in BC
+# version$major
+# version$minor
+# R_version <- paste0("R-",version$major,".",version$minor)
+# .libPaths(paste0("C:/Program Files/R/",R_version,"/library")) # to ensure reading/writing libraries from C drive
+# ==> This is not reproducible as not everyone will be in the same directory or computing system. This won't work on Linux, for example. The best way is to pass relative path (i.e., ~) and let a library manager package (i.e., Require) install the packages in a library that is project related. This way you won't be bombed if packages are updated and break backward compatibility when your project is running fine. You update your library ONLY if you want. You should have a separate one for each project.
+
+# Set your main wd path
+setwd(file.path(getwd(), "Fisher_Landscape_Planning_Tool"))
+
+# 1. Installing SpaDES
+if(!require("Require")){
+  install.packages("Require")
+}
+library("Require")
+
+setLibPaths(file.path(getwd(), "libraries/4.1/")) 
+Require("PredictiveEcology/SpaDES.install@development")
+if (!dir.exists(file.path(.libPaths()[1], "raster"))){
+  install.packages("terra", type = "source")
+  install.packages("raster", type = "source")
+}
+
+if(!Require("SpaDES.core")){
+  installSpaDES(upgrade = FALSE)
+}
+
+# tz = Sys.timezone() # specify timezone in BC # notUsed
 
 # Load Packages
 # install.packages("R.methodsS3")
-# install.packages("lcmix", repos="http://R-Forge.R-project.org")
 
-list.of.packages <- c("tidyverse", "NetLogoR","nnls","lcmix","MASS","SpaDES.core","SpaDES.tools",
-                      "Cairo","PNWColors")
+list.of.packages <- c("tidyverse", "nnls","MASS","SpaDES.core","SpaDES.tools",
+                      "Cairo","PNWColors", "Hmisc")
 
 # Check you have them and load them
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
-lapply(list.of.packages, require, character.only = TRUE)
+if(length(new.packages) != 0) 
+  lapply(list.of.packages, Require, character.only = TRUE)
 
-source("00_IBM_functions.R")
+if (!Require("lcmix"))
+  Require("lcmix", repos="http://R-Forge.R-project.org")
+
+# NetLogoR is not available on CRAN for R 4.1, but can be downloaded ans installed from here:
+if (!Require("NetLogoR"))
+  install.packages("https://cran.r-project.org/src/contrib/Archive/NetLogoR/NetLogoR_0.3.9.tar.gz",
+                 repos=NULL, method="libcurl")
+
+Require("reproducible")
+Require("SpaDES.core")
+Require("NetLogoR")
+Require("magrittr")
+Require("raster")
+
+setPaths(cachePath = checkPath(file.path(getwd(), "cache"), create = TRUE),
+         inputPath = checkPath(file.path(getwd(), "inputs"), create = TRUE),
+         outputPath = checkPath(file.path(getwd(), "outputs"), create = TRUE),
+         modulePath = checkPath(file.path(getwd(), "modules"), create = TRUE),
+         rasterPath = checkPath(file.path(getwd(), "tempDir"), create = TRUE))
+
+source("00_IBM_functions.R") # ==> Move this to R folder inside the new module
+
 #####################################################################################
 
 # Start with a very simple example - habitat patch is either suitable or not suitable
@@ -49,60 +91,72 @@ source("00_IBM_functions.R")
 # When the landscape is poor and isn’t able to support fishers, then the distance moved is also far
 
 ################################################################################
+
 # *** Step 1. START ***
-# t0 = April
-# function FIND_MATE - assign status of nearby mates to females (based on distance of nearby males)
-# function DENNING - assign 1 or 0 if female dens (based on nearby mates and published probabilities)
-# function KITS_PRODUCED - kits produced (based on two preceding functions and published probabilities)
-# simple scenario is to start with equal numbers of adult males and females, all on quality habitat with established territories
-
-# *** Step 2. SURVIVE ***
-# t1 = October
-# function SURVIVE - add 0.5 to all fishers, kill off individuals who do not survive through t1
-
+# The assumption is that there is 100% survival during the first year (i.e., the set up), at the first time step no fishers die
+# •	t0 = October to April = kits are born; need to run through the reproduce functions
+# i.	t0 <- find_mate(land=land, fishers=t0, fmdx=fmdx, fmdy=fmdy)
+# ii.	t0 <- denning(fishers=t0, denLCI=denLCI, denUCI=denUCI)
+# iii.	t0 <- kits_produced(fishers=t0, ltrM=ltrM, ltrSD=ltrSD)
+# •	all fishers age 0.5 years
+#
+# *** Step 2. AGE ***
+# •	The assumption is that there is 100% survival during the first year (i.e., the set up), at the second time step no fishers die
+# •	t1 = April to October = kits kicked out of natal territory
+# •	all fishers age 0.5 years
+#
 # *** Step 3. ESTABLISH / MAINTAIN TERRITORY & SCENT TERRITORY (MATE) & SURVIVE ***
-# t2 = April
-# 3a. function DISPERSE - run through DISPERSE function for individuals without territories, up to 30 times to allow 6 months of movement
-# 3b. function FIND_MATE - for female fishers with ESTABLISHED territory, if male is within 2 cells in either direction or 8 adjacent cells plus same cell, assign mated status (i.e., if male is in same cell or ± 1 cell either via xlim and/or ylim)
-# 3c. function SURVIVE - add 0.5 to all fishers, kill off individuals who do not survive this 6 month time step
-
-# *** Step 4.  ESTABLISH / MAINTAIN TERRITORY & SURVIVE ***
-# t3 = October
-# 4a. function DISPERSE - run through DISPERSE function for individuals without territories, up to 30 times to allow 6 months of movement
-# 4b. function SURVIVE - add 0.5 to all fishers, kill off individuals who do not survive through this 6 month time step
-
+# •	 t2 = October to April = females with established territory find mate
+# •	 3a = the first step is for individuals without territories to disperse; run through the disperse function up to 30 times to allow 6 months of movement
+# i.	t2 <- disperse(land=land, fishers=t2, dist_mov=dist_mov, out=FALSE)
+# •	3b = the second step is for female fishers with ESTABLISHED territories to find a mate; run through the reproduce find_mate function
+# i.	t2 <- find_mate(land=land, fishers=t2, fmdx=fmdx, fmdy=fmdy)
+# •	all fishers age 0.5 years
+# •	at the end of this time step, all fishers subject to mortality; run through the survive function
+# i.	t2 <- survive(fishers=t2, surv_estimates=rf_surv_estimates, Fpop=Fpop, maxAgeMale=maxAgeMale, maxAgeFemale=maxAgeFemale)
+#
+# *** Step 4.  ESTABLISH / MAINTAIN TERRITORY ***
+# •	t3 = April to October = keep surviving
+# •	4a = the first step is for individuals without territories to disperse; run through the disperse function up to 30 times to allow 6 months of movement
+# i.	TOct <- disperse(land=land, fishers=tOct, dist_mov=dist_mov, out=FALSE)
+# •	all fishers age 0.5 years
+# •	update the fisher table to change juveniles to adults as they age out of (i.e., age > 2)
+#
 # *** Step 5. ESTABLISH / MAINTAIN TERRITORY & REPRODUCE & SCENT TERRITORY (MATE) & SURVIVE ***
-# t4 = April
-# 5a. function DENNING - assign 1 or 0 if female dens (based on nearby mates and published probabilities)
-# 5b. function KITS_PRODUCED - kits produced (based on denning rate and published probabilities)
+#   •	t4 = October to April = females with established territory produce kits and find mates for next round
+# •	5a = the first step is for pregnant female fishers to reproduce; run through the reproduce denning and kits_produced functions
+# i.	tApr <- denning(fishers=tOct, denLCI=denLCI, denUCI=denUCI)
+# ii.	tApr <- kits_produced(fishers=tApr, ltrM=ltrM, ltrSD=ltrSD)
+# •	5b = the second step is for juvenile fishers without established territories to move; loop through the disperse function up to 30 times
+# i.	tApr <- denning(fishers=tOct, denLCI=denLCI, denUCI=denUCI)
+# ii.	tApr <- disperse(land=land, fishers=tApr, dist_mov=dist_mov, out=out)
+# •	5c = the third step is for female fishers with ESTABLISHED territories to find a mate; run through the reproduce find_mate function
+# i.	tApr <- find_mate(land=land, fishers=tApr, fmdx=fmdx, fmdy=fmdy)
+# •	all fishers age 0.5 years
+# •	at the end of this time step, all fishers subject to mortality; run through the survive function
+# i.	tApr <- survive(fishers=tApr, surv_estimates=rf_surv_estimates, Fpop=Fpop, maxAgeMale=maxAgeMale, maxAgeFemale=maxAgeFemale)
 
-# 5c. function DISPERSE - run through DISPERSE function for individuals without territories, up to 30 times to allow 6 months of movement
-# 5d. function FIND_MATE - for female fishers with ESTABLISHED territory, if male is within 2 cells in either direction or 8 adjacent cells plus same cell, assign mated status (i.e., if male is in same cell or ± 1 cell either via xlim and/or ylim)
-# 5e. function SURVIVE - add 0.5 to all fishers, kill off individuals who do not survive this 6 month time step
-
-# *** Step 6. LOOP THROUGH Steps 4 and 5 for X number of years ***
-# 6a. Print or save each tn to keep details of population over time - create a list and have it populated by each output (normal simulation stuff)
 
 ################################################################################
 # data to read in; already prepped / formatted in 00_surv_repro_estimates_prep.R
 
 # reproductive rates from manuscript
-repro.CI <- read.csv("data/repro.CI.csv", header=TRUE, row.names = 1)
-
+repro.CI <- read.csv(file.path(getwd(), "data/repro.CI.csv"), header=TRUE, row.names = 1)
 # survival probability estimates
 # data from Eric, survival at each time step
-km_surv_estimates <- read.csv("data/km_surv_estimates.csv", header=TRUE)
+km_surv_estimates <- read.csv(file.path(getwd(), "data/km_surv_estimates.csv"), header=TRUE)
 # taken from manuscript, survival binned to cohort
-lwdh_surv_estimates <- read.csv("data/lwdh_surv_estimates.csv", header=TRUE)
+# lwdh_surv_estimates <- read.csv(file.path(getwd(), "data/lwdh_surv_estimates.csv"), header=TRUE) # Missing file, but not used!...
 # taken from Rory's updated survival, trapping mortality excluded
-rf_surv_estimates <- read.csv("data/rf_surv_estimates.csv", header=TRUE)
+rf_surv_estimates <- read.csv(file.path(getwd(), "data/rf_surv_estimates.csv"), header=TRUE)
 
 ################################################################################
 
-
 # create function to loop through functions, allow sub-function specification
-# now that the function is using the cohort survival data, have the survival run on an annual basis, not per time step
-fisher_IBM_simulation <- function(nMales=nMales, maxAgeMale=maxAgeMale, nFemales=nFemales, maxAgeFemale=maxAgeFemale,# max age used to set up the world and also for survival
+# now that the function is using the cohort survival data, have the survival run 
+# on an annual basis, not per time step
+fisher_IBM_simulation <- function(nMales=nMales, maxAgeMale=maxAgeMale, 
+                                  nFemales=nFemales, maxAgeFemale=maxAgeFemale,# max age used to set up the world and also for survival
                                   xlim=xlim, ylim=ylim, prophab=prophab,  # set_up_world
                               fmdx=fmdx, fmdy=fmdy,                                     # find_mate
                               denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
@@ -228,14 +282,15 @@ fisher_IBM_simulation <- function(nMales=nMales, maxAgeMale=maxAgeMale, nFemales
 
 
 # create function to loop through functions, allow sub-function specification
-# now that the function is using the cohort survival data, have the survival run on an annual basis, not per time step
+# now that the function is using the cohort survival data, have the survival run 
+# on an annual basis, not per time step
 fisher_IBM_simulation_same_world <- function(land=land, t0=t0,                                # import world
                                   fmdx=c(-2:2), fmdy=c(-2:2),                                     # find_mate
                                   denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
                                   ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2],                # kits_produced
                                   surv_estimates=rf_surv_estimates, Fpop="C",               # survive
                                   maxAgeMale=maxAgeMale, maxAgeFemale=maxAgeFemale,                                      # survive
-                                  dist_mov=1.0, out=out,                                               # disperse
+                                  dist_mov=1.0, out=TRUE,                                               # disperse
                                   yrs.to.run=10){                                             # number of years to run simulations ()
 
   # 2 times steps per year so yrs.to.run*2 plus the initial 3 time steps (start in Apr=t0, Oct=t1, Apr=t2)
@@ -369,15 +424,15 @@ w1 <- set_up_world(nMales=7, nFemales=13, maxAgeMale=6, maxAgeFemale=9,
                    xlim=c(1,10), ylim=c(1,10), prophab=0.5)
 
 
-IBM.w1.rfsurv.sim100 <- vector('list',100)
+B.w1.rfsurv.sim100 <- vector('list',100)
 for(i in 1:100){
-  IBM.w1.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                                  # set_up_world
+  B.w1.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                                  # set_up_world
                                                                fmdx=c(-3:3), fmdy=c(-3:3),                                     # find_mate
                                                                denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
                                                                ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
                                                                surv_estimates=rf_surv_estimates, Fpop="B",                         # survive
                                                                maxAgeMale=6, maxAgeFemale=9,                                      # survive
-                                                               dist_mov=1.0, out=FALSE,                                               # disperse
+                                                               dist_mov=1.0, out=TRUE,                                               # disperse
                                                                yrs.to.run=10)                                              # number of years to run simulation post set up
 }
 
@@ -385,15 +440,15 @@ for(i in 1:100){
 w2 <- set_up_world(nMales=7, nFemales=13, maxAgeMale=6, maxAgeFemale=9,
                    xlim=c(1,10), ylim=c(1,10), prophab=0.6)
 
-IBM.w2.rfsurv.sim100 <- vector('list',100)
+B.w2.rfsurv.sim100 <- vector('list',100)
 for(i in 1:100){
-  IBM.w2.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w2$land, t0=w2$t0,                                  # set_up_world
+  B.w2.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w2$land, t0=w2$t0,                                  # set_up_world
                                                                fmdx=c(-3:3), fmdy=c(-3:3),                                     # find_mate
                                                                denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
                                                                ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
                                                                surv_estimates=rf_surv_estimates, Fpop="B",                         # survive
                                                                maxAgeMale=6, maxAgeFemale=9,                                      # survive
-                                                               dist_mov=1.0, out=FALSE,                                              # disperse
+                                                               dist_mov=1.0, out=TRUE,                                              # disperse
                                                                yrs.to.run=10)                                              # number of years to run simulation post set up
 }
 
@@ -402,72 +457,74 @@ for(i in 1:100){
 w3 <- set_up_world(nMales=7, nFemales=13, maxAgeMale=6, maxAgeFemale=9,
                    xlim=c(1,10), ylim=c(1,10), prophab=0.7)
 
-IBM.w3.rfsurv.sim100 <- vector('list',100)
+start_time <- Sys.time()
+B.w3.rfsurv.sim100 <- vector('list',100)
 for(i in 1:100){
-  IBM.w3.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w3$land, t0=w3$t0,                                  # set_up_world
+  B.w3.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w3$land, t0=w3$t0,                                  # set_up_world
                                                                fmdx=c(-3:3), fmdy=c(-3:3),                                     # find_mate
                                                                denLCI=repro.CI$drB[3], denUCI=repro.CI$drB[4],             # denning
                                                                ltrM=repro.CI$lsB[1], ltrSD=repro.CI$lsB[2],                # kits_produced
                                                                surv_estimates=rf_surv_estimates, Fpop="B",                         # survive
                                                                maxAgeMale=6, maxAgeFemale=9,                                      # survive
-                                                               dist_mov=1.0,  out=FALSE,                                             # disperse
+                                                               dist_mov=1.0,  out=TRUE,                                             # disperse
                                                                yrs.to.run=10)                                              # number of years to run simulation post set up
 }
+end_time <- Sys.time()
 
 
-Boreal_noescape_rfsurv <- list(w1, w2, w3,
-                     IBM.w1.rfsurv.sim100,IBM.w2.rfsurv.sim100,IBM.w3.rfsurv.sim100)
+Boreal_escape_rfsurv <- list(w1, w2, w3,
+                     B.w1.rfsurv.sim100,B.w2.rfsurv.sim100,B.w3.rfsurv.sim100)
 
-save(Boreal_noescape_rfsurv, file="out/Boreal_noescape_rfsurv.RData")
+save(Boreal_escape_rfsurv, file="out/Boreal_escape_rfsurv.RData")
 
 ################################################################################
 ###--- RUN FOR CENTRAL INTERIOR
 # use the same worlds as with Boreal
 
-CI.w1.rfsurv.sim100 <- vector('list',100)
+C.w1.rfsurv.sim100 <- vector('list',100)
 for(i in 1:100){
-  CI.w1.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                                  # set_up_world
+  C.w1.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w1$land, t0=w1$t0,                                  # set_up_world
                                                                 fmdx=c(-3:3), fmdy=c(-3:3),                                     # find_mate
                                                                 denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
                                                                 ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2],                # kits_produced
                                                                 surv_estimates=rf_surv_estimates, Fpop="C",                         # survive
                                                                 maxAgeMale=6, maxAgeFemale=9,                                      # survive
-                                                                dist_mov=1.0, out=FALSE,                                               # disperse
+                                                                dist_mov=1.0, out=TRUE,                                               # disperse
                                                                 yrs.to.run=10)                                              # number of years to run simulation post set up
 }
 
 ###--- Run with medium habitat (prop hab ~ 0.6)
 
-CI.w2.rfsurv.sim100 <- vector('list',100)
+C.w2.rfsurv.sim100 <- vector('list',100)
 for(i in 1:100){
-  CI.w2.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w2$land, t0=w2$t0,                                  # set_up_world
+  C.w2.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w2$land, t0=w2$t0,                                  # set_up_world
                                                               fmdx=c(-3:3), fmdy=c(-3:3),                                     # find_mate
                                                               denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
                                                               ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2],                # kits_produced
                                                               surv_estimates=rf_surv_estimates, Fpop="C",                         # survive
                                                               maxAgeMale=6, maxAgeFemale=9,                                      # survive
-                                                              dist_mov=1.0, out=FALSE,                                              # disperse
+                                                              dist_mov=1.0, out=TRUE,                                              # disperse
                                                               yrs.to.run=10)                                              # number of years to run simulation post set up
 }
 
 
 ###--- Run with high habitat (prop hab ~ 0.7)
 
-CI.w3.rfsurv.sim100 <- vector('list',100)
+C.w3.rfsurv.sim100 <- vector('list',100)
 for(i in 1:100){
-  CI.w3.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w3$land, t0=w3$t0,                                  # set_up_world
+  C.w3.rfsurv.sim100[[i]] <- fisher_IBM_simulation_same_world(land=w3$land, t0=w3$t0,                                  # set_up_world
                                                                 fmdx=c(-3:3), fmdy=c(-3:3),                                     # find_mate
                                                                 denLCI=repro.CI$drC[3], denUCI=repro.CI$drC[4],             # denning
                                                                 ltrM=repro.CI$lsC[1], ltrSD=repro.CI$lsC[2],                # kits_produced
                                                                 surv_estimates=rf_surv_estimates, Fpop="C",                         # survive
                                                                 maxAgeMale=6, maxAgeFemale=9,                                      # survive
-                                                                dist_mov=1.0,  out=FALSE,                                             # disperse
+                                                                dist_mov=1.0,  out=TRUE,                                             # disperse
                                                                 yrs.to.run=10)                                              # number of years to run simulation post set up
 }
 
 
-CI_noescape_rfsurv <- list(w1, w2, w3,
-                               CI.w1.rfsurv.sim100, CI.w2.rfsurv.sim100, CI.w3.rfsurv.sim100)
+Columbian_escape_rfsurv <- list(w1, w2, w3,
+                               C.w1.rfsurv.sim100, C.w2.rfsurv.sim100, C.w3.rfsurv.sim100)
 
-save(CI_noescape_rfsurv, file="out/CI_noescape_rfsurv.RData")
+save(Columbian_escape_rfsurv, file="out/Columbian_escape_rfsurv.RData")
 
